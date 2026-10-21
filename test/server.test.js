@@ -37,12 +37,24 @@ describe('server', () => {
     await rm(dataDir, { recursive: true, force: true });
   });
 
-  test('serves the studio page', async () => {
+  test('serves the landing page at the root', async () => {
     const res = await fetch(`${live.base}/`);
     assert.equal(res.status, 200);
     const html = await res.text();
+    assert.match(html, /<h1/);
+    assert.match(html, /href="\/builder"/);
+    assert.match(html, /application\/ld\+json/);
+    for (const file of ['robots.txt', 'sitemap.xml', 'llms.txt', 'img/editor.webp']) {
+      assert.equal((await fetch(`${live.base}/${file}`)).status, 200, file);
+    }
+  });
+
+  test('serves the studio page at /builder', async () => {
+    const res = await fetch(`${live.base}/builder`);
+    assert.equal(res.status, 200);
+    const html = await res.text();
     assert.match(html, /Think Web Pros Studio/);
-    assert.match(html, /js\/platform\.js/);
+    assert.match(html, /\/js\/platform\.js/);
     assert.equal((await fetch(`${live.base}/js/app.js`)).status, 200);
   });
 
