@@ -37,11 +37,11 @@ docker build -t think-web-pros .
 docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... -e ADMIN_TOKEN=... -v twp-data:/app/data think-web-pros
 ```
 
-## Host it on Render
+## Host it on Vercel
 
-`render.yaml` sets up a free Render web service that redeploys whenever `main` changes. In Render choose **New > Blueprint**, pick this repo, and fill in `ANTHROPIC_API_KEY` (or leave it blank). `ADMIN_TOKEN` is generated for you.
+`vercel.json` serves `web/` as static files and runs the API from `api/index.js` as a serverless function. In Vercel choose **Add New > Project**, import this repo, and deploy with the defaults. Add `ANTHROPIC_API_KEY` (optional) and `ADMIN_TOKEN` under **Settings > Environment Variables**, then redeploy. Every push to `main` redeploys.
 
-On the free plan the site sleeps after about 15 minutes without visitors (the next visit takes up to a minute to wake it), and orders saved on the server are wiped on each redeploy or restart. Add a paid plan with a disk, or a database, before taking real orders.
+Limits to know before taking real orders: orders are saved to the function's temporary disk, so they don't last, and Vercel caps request bodies at 4.5 MB, so orders with large uploaded photos are rejected (checkout still finishes in the browser). Move orders to a database and photos to file storage first.
 
 ## API
 
