@@ -1836,3 +1836,21 @@ body.one-bar #btnPop.hdr-pop>.bp-h,body.one-bar #btnPop.hdr-pop>.hp-seg,body.one
 @container site (max-width:760px){
  .site .mn-row .mn-ctl{right:0;left:auto;top:0;translate:0 -100%;background:transparent}
 }
+/* tablet and phone previews: edit panes dock on the right so the tall preview stays in view */
+body.dock-side{--dkw:clamp(320px,32vw,420px)}
+body.dock-side .pane.float.insp.dock{left:auto!important;right:0!important;top:var(--dktop,58px);bottom:0;width:var(--dkw);height:auto;max-height:none;border-radius:16px 0 0 0;border-bottom:1px solid var(--line);border-right:0;animation:dkside .2s ease}
+@keyframes dkside{from{transform:translateX(24px);opacity:0}}
+body.dock-side .dock .sheet-grip{display:none}
+body.dock-side .dock #inspector:not(:has(>.dk-track)){overflow-y:auto;padding:0 14px 16px}
+body.dock-side .dock .insp-tabs.float-h{padding:10px 12px 8px}
+body.dock-side .dock .insp-tabs>.iconbtn:last-child{order:1;margin-left:auto}
+body.dock-side .dk-nav{flex-basis:100%}
+body.dock-side .dk-track{padding:10px 12px 12px;gap:10px;scroll-padding-inline:12px}
+body.dock-side .dk-slide,body.dock-side .dock-modal .dk-slide{flex-basis:calc(100% - 4px)}
+body.dock-side.dock-on #canvas,body.dock-side:has(.dock-modal) #canvas,body.dock-side.one-bar:has(#btnPop) #canvas{padding-bottom:22px;padding-right:calc(var(--dkw) + 22px)}
+body.dock-side.dock-on .pane.float.lib{bottom:14px}
+body.dock-side .modal-bg.dock-bg{justify-content:flex-end;align-items:stretch;padding-top:var(--dktop,58px)}
+body.dock-side .modal.dock-modal{width:var(--dkw);height:auto;border-radius:16px 0 0 0;box-shadow:-10px 0 40px rgba(20,22,26,.2);animation:dkside .2s ease}
+body.dock-side .dock-modal .modal-h{flex-wrap:wrap}
+body.one-bar.dock-side #btnPop{left:auto!important;right:0;top:var(--dktop,58px)!important;bottom:0;translate:none;width:var(--dkw);max-height:none;border-radius:16px 0 0 0}
+body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
