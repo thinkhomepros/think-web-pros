@@ -979,7 +979,7 @@ document.addEventListener('dragover',e=>{
  if(list){e.preventDefault();clearDrop();const r=listIndex(list,'.secitem',e.clientY);if(r.el)r.el.classList.add(r.before?'drop-before':'drop-after');return}
  const cv=e.target.closest&&e.target.closest('#canvas');
  if(cv){e.preventDefault();showSiteDrop(e.clientY)}});
-function showSiteDrop(y){const cv=$('#canvas');clearDrop();const r=siteIndex(y);const dev=$('#device').getBoundingClientRect(),cr=cv.getBoundingClientRect();dropLine=document.createElement('div');dropLine.className='drop-line';dropLine.style.top=(r.top-cr.top+cv.scrollTop-2)+'px';dropLine.style.left=(dev.left-cr.left+8)+'px';dropLine.style.right='auto';dropLine.style.width=(dev.width-16)+'px';cv.appendChild(dropLine);return r}
+function showSiteDrop(y){const cv=$('#canvas');clearDrop();const r=siteIndex(y);const dev=$('#device').getBoundingClientRect(),cr=cv.getBoundingClientRect();dropLine=document.createElement('div');dropLine.className='drop-line';const z=devZ();dropLine.style.top=((r.top-cr.top)/z+cv.scrollTop-2)+'px';dropLine.style.left=((dev.left-cr.left)/z+8)+'px';dropLine.style.right='auto';dropLine.style.width=(dev.width/z-16)+'px';cv.appendChild(dropLine);return r}
 document.addEventListener('dragleave',e=>{if(e.target.classList&&e.target.classList.contains('over'))e.target.classList.remove('over')});
 document.addEventListener('drop',e=>{
  if(hasFiles(e)){const z=e.target.closest&&e.target.closest('#site [data-img],[data-drop-img]');if(z){e.preventDefault();clearDrop();const f=e.dataTransfer.files[0];loadInto(z.dataset.img||z.dataset.dropImg,f)}return}
@@ -1311,10 +1311,11 @@ window.addEventListener('resize',()=>{dsMenuClose();if(state.tab==='designs')fit
 function focusSection(id,force){requestAnimationFrame(()=>requestAnimationFrame(()=>{const n=$(`#site [data-sec="${id}"]`),cv=$('#canvas');if(!n||!cv)return;
  const cr=cv.getBoundingClientRect(),r=n.getBoundingClientRect();let bot=Math.min(cr.bottom,innerHeight);
  if(isNarrow())['#fInsp','#fLib'].forEach(s=>{const f=$(s);if(f&&!f.hidden){const t=f.getBoundingClientRect().top;if(t>cr.top+80)bot=Math.min(bot,t)}});
- const top=Math.max(cr.top,0),room=bot-top,pad=10;
+ let top=Math.max(cr.top,0);const fr=$('.dv-shell.framed');if(fr){const sb=fr.querySelector('.dv-sb'),ch=fr.querySelector('.device .chrome'),nb=fr.querySelector('.dv-nb');[sb,ch].forEach(x=>{if(x&&x.offsetHeight)top=Math.max(top,x.getBoundingClientRect().bottom)});if(nb&&nb.offsetHeight)bot=Math.min(bot,nb.getBoundingClientRect().top)}
+ const room=bot-top,pad=10;
  if(!force&&r.top>=top-4&&r.top<bot-Math.min(160,room*.4))return;
  const delta=r.height+pad*2<=room?(r.top-top)-(room-r.height)/2:(r.top-top)-pad;
- FS={id,until:Date.now()+900};cv.scrollTo({top:Math.max(0,cv.scrollTop+delta),behavior:'smooth'})}))}
+ FS={id,until:Date.now()+900};cv.scrollTo({top:Math.max(0,cv.scrollTop+delta/devZ()),behavior:'smooth'})}))}
 let FS=null;
 {const _sa=sectionAct;sectionAct=function(id,act){_sa(id,act);if(act==='edit'||act==='layout')focusSection(id,act==='edit')};
  const _ss=selectSection;selectSection=function(id){_ss(id);focusSection(id,false)}}
@@ -1958,11 +1959,49 @@ function placeHdrPop(){const el=$('#btnPop.hdr-pop');if(!el)return;if(innerWidth
 function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){el.innerHTML=hdrPopHtml();placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
 function setDevice(d){state.device=d;MOPEN=false;$('#device').dataset.device=d;$$('#deviceSeg button').forEach(b=>b.classList.toggle('on',b.dataset.device===d));save();hard();fitDevice()}
 
+/* ---------- device models: real screen sizes and frames for each kind of computer, tablet and phone ---------- */
+const DEVS={
+ desktop:[{k:'fit',n:'Fit my window',s:'Any computer',os:'any'},{k:'win',n:'Windows laptop',s:'1366 wide · Chrome or Edge',os:'win',w:1366},{k:'winhd',n:'Windows desktop',s:'1920 wide · Chrome or Edge',os:'win',w:1920},{k:'mba',n:'MacBook Air',s:'1470 wide · Safari',os:'mac',w:1470},{k:'mbp',n:'MacBook Pro 16"',s:'1728 wide · Safari',os:'mac',w:1728}],
+ tablet:[{k:'ipad',n:'iPad',s:'820 × 1180 · Safari',os:'ipados',w:820,h:1180},{k:'ipadmini',n:'iPad mini',s:'744 × 1133 · Safari',os:'ipados',w:744,h:1133},{k:'ipadpro',n:'iPad Pro 13"',s:'1032 × 1376 · Safari',os:'ipados',w:1032,h:1376},{k:'tabs9',n:'Samsung Galaxy Tab S9',s:'800 × 1280 · Chrome',os:'android',w:800,h:1280,nav:'keys'},{k:'fire',n:'Amazon Fire HD 10',s:'800 × 1280 · Silk',os:'android',w:800,h:1280,nav:'keys'}],
+ phone:[{k:'iphone',n:'iPhone 16',s:'393 × 852 · Safari',os:'ios',w:393,h:852,cut:'island'},{k:'iphonemax',n:'iPhone 16 Pro Max',s:'440 × 956 · Safari',os:'ios',w:440,h:956,cut:'island'},{k:'iphonese',n:'iPhone SE',s:'375 × 667 · Safari',os:'ios',w:375,h:667,cut:'home'},{k:'s24',n:'Samsung Galaxy S24',s:'360 × 780 · Chrome',os:'android',w:360,h:780,cut:'hole',nav:'keys'},{k:'a15',n:'Samsung Galaxy A15',s:'384 × 832 · Chrome',os:'android',w:384,h:832,cut:'drop',nav:'keys'},{k:'pixel',n:'Google Pixel 9',s:'412 × 923 · Chrome',os:'android',w:412,h:923,cut:'hole',nav:'swipe'}]};
+const devModel=t=>{t=t||state.device;const l=DEVS[t]||DEVS.desktop,k=(state.models||{})[t];return l.find(m=>m.k===k)||l[0]};
+/* tablet and phone previews on a screen with room to spare show the whole device, scrolling inside its screen */
+const devFramed=()=>state.tab==='builder'&&state.device!=='desktop'&&innerWidth>700;
+const SB_IC=`<span class="dv-ic"><svg width="17" height="11" viewBox="0 0 17 11" aria-hidden="true"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="15" height="11" viewBox="0 0 15 11" aria-hidden="true"><path d="M7.5 10.5 5 7.8a3.6 3.6 0 0 1 5 0zM2.6 5.4a7 7 0 0 1 9.8 0l-1.3 1.3a5.2 5.2 0 0 0-7.2 0zM.2 3a10.4 10.4 0 0 1 14.6 0l-1.3 1.3a8.6 8.6 0 0 0-12 0z"/></svg><svg width="24" height="11" viewBox="0 0 24 11" aria-hidden="true"><rect x=".5" y=".5" width="20" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="15" height="7" rx="1.8"/><path d="M22 3.8v3.4a1.8 1.8 0 0 0 0-3.4z" opacity=".45"/></svg></span>`;
+function devShell(){const cv=$('#canvas');if(!cv)return null;let sh=cv.parentElement;if(sh.classList.contains('dv-shell'))return sh;sh=document.createElement('div');sh.className='dv-shell';cv.before(sh);sh.appendChild(cv);
+ const sb=document.createElement('div');sb.className='dv-sb';sb.setAttribute('aria-hidden','true');cv.insertBefore(sb,cv.firstChild);
+ const nb=document.createElement('div');nb.className='dv-nb';nb.setAttribute('aria-hidden','true');cv.appendChild(nb);
+ const ch=$('#device .chrome');if(ch&&!ch.querySelector('.dv-win'))ch.insertAdjacentHTML('beforeend','<span class="dv-win" aria-hidden="true"><i>&#8211;</i><i>&#9633;</i><i>&#10005;</i></span>');return sh}
+function devFrame(){const sh=devShell(),d=$('#device');if(!sh||!d)return;const m=devModel(),on=devFramed();
+ sh.classList.toggle('framed',on);d.dataset.os=m.os;sh.dataset.os=m.os;sh.dataset.cut=m.cut||'';sh.dataset.nav=m.nav||'';sh.dataset.dev=state.device;sh.dataset.model=m.k;
+ if(!on){sh.style.zoom='';sh.style.removeProperty('--sw');sh.style.removeProperty('--sh');return}
+ sh.style.setProperty('--sw',m.w+'px');sh.style.setProperty('--sh',m.h+'px');
+ const sb=sh.querySelector('.dv-sb'),nb=sh.querySelector('.dv-nb'),ipad=m.os==='ipados';
+ sb.innerHTML=`<b>9:41</b>${ipad?'<span class="dv-date">Tue Oct 21</span>':''}<span class="dv-cut"></span>${SB_IC}`;
+ const url=($('#urlbar')||{}).textContent||'';
+ nb.innerHTML=m.os==='ios'?`<span class="dv-url">${ic('lock',11)}${esc(url.replace(/^https?:\/\//,''))}</span>${m.cut==='home'?'':'<i class="dv-home"></i>'}`:m.nav==='keys'?'<span class="dv-keys"><i class="k-r"></i><i class="k-h"></i><i class="k-b"></i></span>':'<i class="dv-home"></i>'}
+/* fit the whole device in the space left between the Sections list and the edit pane */
+function devZoom(){const sh=$('.dv-shell');if(!sh||!sh.classList.contains('framed'))return;sh.style.zoom='';sh.style.translate='';const pv=sh.parentElement;if(!pv)return;
+ const vis=x=>x&&!x.hidden&&x.offsetWidth>0;const ins=$('#fInsp'),lib=$('#fLib'),dm=$('.dock-modal'),bp=$('#btnPop');
+ const pr=vis(dm)?dm.offsetWidth:vis(bp)&&document.body.classList.contains('one-bar')?bp.offsetWidth:vis(ins)&&ins.classList.contains('dock')?ins.offsetWidth:0;
+ const pl=vis(lib)&&innerWidth>1020?lib.getBoundingClientRect().right+12:0;
+ let aw=pv.clientWidth-pl-pr-32,ah=pv.clientHeight-32;[...pv.children].forEach(c=>{if(c!==sh&&getComputedStyle(c).position!=='absolute'&&getComputedStyle(c).position!=='fixed')ah-=c.offsetHeight});
+ let z=Math.min(1,aw/sh.offsetWidth,ah/sh.offsetHeight);if(!(z>0))z=1;if(z<1)sh.style.zoom=z.toFixed(4);
+ const shift=(pl-pr)/2/z;if(shift)sh.style.translate=shift.toFixed(1)+'px 0'}
+const devZ=()=>{const sh=$('.dv-shell.framed');return sh&&+sh.style.zoom||1};
 /* a computer or tablet preview on a small screen: show the real wide layout, shrunk to fit */
-const DEV_W={desktop:1200,tablet:820};
-function fitDevice(){const d=$('#device'),cv=$('#canvas');if(!d||!cv)return;d.style.zoom='';d.style.width='';d.style.maxWidth='';d.classList.remove('fitted');const w=DEV_W[state.device];if(!w||state.tab!=='builder')return;
- const cs=getComputedStyle(cv);const avail=cv.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);if(avail>=780||avail<=0)return;
- d.style.width=w+'px';d.style.maxWidth='none';d.style.zoom=(avail/w).toFixed(4);d.classList.add('fitted')}
+function fitDevice(){const d=$('#device'),cv=$('#canvas');if(!d||!cv)return;devFrame();d.style.zoom='';d.style.width='';d.style.maxWidth='';d.classList.remove('fitted');if(state.tab!=='builder')return;
+ if(devFramed()){devZoom();return}
+ const m=devModel();if(state.device==='phone'){d.style.maxWidth=m.w+'px';return}const w=m.w;if(!w)return;
+ const cs=getComputedStyle(cv);const avail=cv.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);if(avail<=0)return;
+ d.style.width=w+'px';d.style.maxWidth='none';if(avail>=w)return;d.style.zoom=(avail/w).toFixed(4);d.classList.add('fitted')}
+/* the model picker: a small arrow beside Computer, Tablet and Phone, and an item in the More menu on smaller screens */
+function dvMenuHtml(){return [['desktop','Computer'],['tablet','Tablet'],['phone','Phone']].map(([t,l])=>`<div class="obm-h">${l}</div>`+DEVS[t].map(m=>obItem(`data-dvmodel="${t}|${m.k}"`,t,esc(m.n),esc(m.s),state.device===t&&devModel(t).k===m.k)).join('')).join('')}
+renderBuilder=(o=>function(){o.apply(this,arguments);const sg=$('#deviceSeg');if(sg&&!sg.querySelector('[data-dvpick]')){const m=devModel();sg.insertAdjacentHTML('beforeend',`<button type="button" class="dv-pick" data-dvpick aria-haspopup="menu" aria-label="Pick a device: ${esc(m.n)}" title="Pick a device to preview: ${esc(m.n)}">${ic('chev',13)}</button>`)}})(renderBuilder);
+moreMenuHtml=(o=>function(){let h=o.apply(this,arguments);if(OBW()<=900){const m=devModel();h=h.replace('<div class="obm-h">Design</div>',obItem('data-dvpick',state.device,'Pick a device',esc(m.n))+'<div class="obm-h">Design</div>')}return h})(moreMenuHtml);
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;let el;
+ if(el=t.closest('[data-dvpick]')){e.stopPropagation();const inMenu=!!el.closest('.ob-menu'),btn=inMenu?$('#obMore'):el;if(!inMenu&&OBM&&OBM.btn===el)return;setTimeout(()=>obMenu(btn,dvMenuHtml()),30);return}
+ if(el=t.closest('[data-dvmodel]')){e.stopPropagation();const[d,k]=el.dataset.dvmodel.split('|');state.models={...(state.models||{}),[d]:k};const sg=$('#deviceSeg [data-dvpick]');if(sg)sg.remove();setDevice(d);dockSync();return}},true);
 addEventListener('resize',()=>{clearTimeout(fitDevice._t);fitDevice._t=setTimeout(fitDevice,120)});
 
 document.addEventListener('click',e=>{const T0=e.target;if(!(T0 instanceof Element))return;const q=s=>T0.closest(s);let el;
@@ -2089,9 +2128,9 @@ let dockOn=()=>state.tab==='builder'&&state.inspOpen&&state.rightTab==='section'
 function dockSync(){const on=dockOn(),p=$('#fInsp');if(!p)return;const was=p.classList.contains('dock');p.classList.toggle('dock',on);document.body.classList.toggle('dock-on',on);dockSide();if(!on){const n=$('#fInsp .dk-nav');if(n)n.remove()}if(on&&!was)requestAnimationFrame(dockReveal)}
 /* tablet and phone previews are tall, so on a wide screen the edit panes sit on the right instead of across the bottom */
 let DK_SIDE=null;
-function dockSide(){const b=document.body,cv=$('#canvas'),side=state.tab==='builder'&&state.device!=='desktop'&&innerWidth>760;b.classList.toggle('dock-side',side);
- if(side&&cv)b.style.setProperty('--dktop',Math.max(0,Math.round(cv.getBoundingClientRect().top))+'px');
- const k=side+'|'+b.classList.contains('dock-on');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
+function dockSide(){const b=document.body,cv=$('#canvas'),side=devFramed();b.classList.toggle('dock-side',side);
+ if(side&&cv){let t=0;[$('.prevbar'),$('#pagebar')].forEach(x=>{if(x&&x.offsetParent)t=Math.max(t,x.getBoundingClientRect().bottom)});b.style.setProperty('--dktop',Math.max(0,Math.round(t))+'px')}
+ const k=[side,b.classList.contains('dock-on'),state.libOpen,!!$('.dock-modal'),!!$('#btnPop')].join('|');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
 function dkSlide(key,title,nodes,icon){const s=document.createElement('section');s.className='dk-slide';s.dataset.dk=key;s.setAttribute('aria-label',title);s.innerHTML=`<h4>${icon?ic(icon,14):''}${esc(title)}</h4>`;nodes.forEach(n=>s.appendChild(n));return s}
 function dockify(){const ins=$('#inspector');if(!ins||ins.querySelector(':scope>.dk-track'))return;const kids=[...ins.children];if(!kids.length)return;
  const slides=[];let words=[],wn=0,last=null;const used={};const key=k=>{used[k]=(used[k]||0)+1;return used[k]>1?k+used[k]:k};
@@ -2118,7 +2157,7 @@ function dkMark(k){DKKEY=k;$$('#fInsp .dk-chips [data-dkgo]').forEach(b=>{const 
 function dkGo(k){const tr=$('#inspector .dk-track'),s=tr&&tr.querySelector(`[data-dk="${k}"]`);if(!s)return;DK_LOCK=true;tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});dkMark(k);setTimeout(()=>{DK_LOCK=false},450)}
 /* keep the picked section in view above the dock */
 function dockReveal(){const s=$(`#site .sec[data-sec="${state.selected}"]`),cv=$('#canvas'),p=$('#fInsp');if(!s||!cv||!p)return;const r=s.getBoundingClientRect(),c=cv.getBoundingClientRect(),bottom=document.body.classList.contains('dock-side')?c.bottom:p.getBoundingClientRect().top;
- if(r.top<c.top+8||r.top>bottom-80)cv.scrollBy({top:r.top-c.top-12,behavior:'smooth'})}
+ const ft=$('.dv-shell.framed')?(state.device==='phone'&&devModel().os==='ios'?60:96)*devZ():0;if(r.top<c.top+ft+8||r.top>bottom-80)cv.scrollBy({top:(r.top-c.top-ft-12)/devZ(),behavior:'smooth'})}
 renderInspector=(o=>function(){o.apply(this,arguments);dockSync();if(dockOn()&&state.rightTab==='section')dockify()})(renderInspector);
 openPanel=(o=>function(){o.apply(this,arguments);dockSync()})(openPanel);
 selectSection=(o=>function(id){const prev=state.selected;o(id);if(prev!==id)DKKEY=null;if(dockOn())requestAnimationFrame(dockReveal)})(selectSection);
