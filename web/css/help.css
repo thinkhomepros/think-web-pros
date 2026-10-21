@@ -8,8 +8,10 @@
 /* Help button in the top bar: on narrower screens Help lives in the ☰ and ⋯ menus instead */
 .help-btn{display:none}
 body.one-bar .help-btn{display:inline-flex}
-@media (max-width:1180px){ body.one-bar .help-btn span{display:none} }
+@media (max-width:1400px){ body.one-bar .help-btn span{display:none} }
 @media (max-width:900px){ body.one-bar .help-btn{display:none} }
+/* keep the preview-size buttons on one line now that the bar holds one more button */
+body.one-bar #deviceSeg{flex-wrap:nowrap;flex:none}
 body.help-open .help-btn{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
 
 /* ---------- Help panel ---------- */
