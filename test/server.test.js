@@ -58,6 +58,20 @@ describe('server', () => {
     assert.equal((await fetch(`${live.base}/js/app.js`)).status, 200);
   });
 
+  test('serves the studio guide at /guide and the help scripts', async () => {
+    const res = await fetch(`${live.base}/guide`);
+    assert.equal(res.status, 200);
+    const html = await res.text();
+    assert.match(html, /HowTo/);
+    assert.match(html, /\/js\/help-content\.js/);
+    for (const file of ['js/help-content.js', 'js/help.js', 'css/help.css', 'img/guide/pc-1.webp', 'img/guide/tab-8.webp', 'img/guide/ph-4.webp']) {
+      assert.equal((await fetch(`${live.base}/${file}`)).status, 200, file);
+    }
+    const studio = await (await fetch(`${live.base}/builder`)).text();
+    assert.match(studio, /id="helpBtn"/);
+    assert.match(studio, /\/js\/help\.js/);
+  });
+
   test('reports whether AI is configured', async () => {
     assert.deepEqual(await (await fetch(`${live.base}/api/config`)).json(), { ai: true });
     assert.deepEqual(await (await fetch(`${offline.base}/api/config`)).json(), { ai: false });

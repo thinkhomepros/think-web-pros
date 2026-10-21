@@ -11,6 +11,8 @@ Think Web Pros builds websites for small businesses. In the Studio, an owner des
 | `web/` | Plain HTML, CSS and JavaScript, no build step. |
 | `web/index.html` | The marketing landing page at `/` (meta tags, schema.org data, FAQ). `robots.txt`, `sitemap.xml` and `llms.txt` sit next to it. |
 | `web/builder.html` | The Studio (designer) at `/builder`. |
+| `web/guide.html` | Step-by-step Studio guide at `/guide`, with steps for computer, tablet and phone and searchable help. |
+| `web/js/help-content.js` | Tutorial steps and help articles, shared by `/guide` and the Studio's Help panel and first-time tour (`web/js/help.js`). |
 | `web/js/app.js` | The designer, plans and checkout, owner dashboard, and admin views. |
 | `web/js/platform.js` | Connects the Studio to the server (AI logo maker and order submission). |
 | `server/` | Node + Express server that serves the Studio and the API. |

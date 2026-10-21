@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Work+Sans:wght@400;500;600&family=Lora:wght@500;700&family=Nunito+Sans:wght@400;600;700&family=Archivo+Black&family=Archivo:wght@400;500;600&family=Playfair+Display:wght@500;700&family=Karla:wght@400;500;700&family=Sora:wght@500;700&family=DM+Sans:wght@400;500;700&family=Bitter:wght@500;700&family=Source+Sans+3:wght@400;600;700&family=Pacifico&family=Oswald:wght@500;700&family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&family=Cormorant+Garamond:wght@500;600;700&family=Fredoka:wght@400;500;600;700&family=Syne:wght@600;700;800&family=Alfa+Slab+One&display=swap">
 <link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/help.css">
 </head>
 <body>
 
@@ -40,6 +41,7 @@
             <button type="button" class="btn sm mode-btn" id="modeBtn" data-mode="toggle"></button>
             <div class="seg" id="deviceSeg" role="group" aria-label="Preview size"></div>
             <button type="button" class="btn sm pri next-btn" data-gonext>Next<span class="nb-x">: plans</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+            <button type="button" class="btn sm help-btn" id="helpBtn" data-helpopen aria-label="Help" title="Help and tutorial (press ?)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17v.5"/></svg><span> Help</span></button>
             <button type="button" class="btn sm" id="tglInsp" data-toggle="insp" aria-pressed="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="15.5" cy="10" r="1.3"/><path d="M12 21c-1.5 0-2-1-2-2s1-2 2.5-2H15"/></svg><span> Design</span></button>
           </div>
           <div class="pagebar" id="pagebar"></div>
@@ -79,5 +81,7 @@
 </div>
 <script src="/js/platform.js"></script>
 <script src="/js/app.js"></script>
+<script src="/js/help-content.js"></script>
+<script src="/js/help.js"></script>
 </body>
 </html>
