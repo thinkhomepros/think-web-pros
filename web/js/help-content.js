@@ -1,0 +1,287 @@
+/* Think Web Pros Studio: tutorial steps and help articles.
+   Shared by the studio's Help panel and tour (js/help.js) and the guide page (/guide).
+   Text inside <span data-only="pc|tab|ph|touch"> only shows on that kind of device. */
+window.TWP_HELP = (function () {
+  'use strict';
+
+  /* the 8 tutorial steps; img is the screenshot number in /img/guide/{pc|tab|ph}-N.webp */
+  var tour = [
+    {
+      id: 'start', img: 1, title: 'Pick your business',
+      text: {
+        pc: 'Choose the kind of business you run, then pick a layout. Every layout comes with pages, a menu and words written for your business. Nothing is locked in, so you can change all of it later.',
+        tab: 'Tap the kind of business you run, then pick a layout. Every layout comes with pages, a menu and words written for your business. You can change all of it later.',
+        ph: 'Tap the kind of business you run, then scroll and pick a layout. Each one comes with pages, a menu and words written for you. You can change all of it later.'
+      },
+      tips: ['Not sure? Pick the closest match. "Something else" and "Start with a blank page" are at the bottom of the list.', 'Change type, next to the layouts, takes you back to the business list.']
+    },
+    {
+      id: 'words', img: 2, title: 'Click any words to change them',
+      text: {
+        pc: 'Click any text on your page and type over it, just like a document. A Text color button pops up above the words you picked.',
+        tab: 'Tap any text on your page and type over it. A Text color button pops up above the words you picked.',
+        ph: 'Tap any text on your page and type over it. A Text color button pops up above the words you picked.'
+      },
+      tips: ['Every button on the page has a small link badge. Click it to change where the button goes.', 'Click + Photo or video on any picture to upload your own.']
+    },
+    {
+      id: 'business', img: 3, title: 'Add your logo and business info',
+      text: {
+        pc: 'Click Design in the top right corner and choose Business. Fill in your name, phone, email, address and a short line about you, then upload your logo on the Logo card. No logo yet? The AI logo maker can draw one.',
+        tab: 'Tap Design in the top right corner and choose Business. Fill in your name, phone, email, address and a short line about you, then upload your logo on the Logo card. Swipe sideways to move between cards.',
+        ph: 'Tap the palette button in the top right corner and choose Business. The panel slides up from the bottom. Swipe sideways through the cards to add your name, phone, email, address, about line and logo.'
+      },
+      tips: ['Your logo\'s colors are picked up automatically and offered as color schemes.', 'Rather not show your phone or address? Switch it to Hidden. We still need it for your account.']
+    },
+    {
+      id: 'style', img: 4, title: 'Choose a style',
+      text: {
+        pc: 'In the Design panel, open Style. Try a different site style, flip between Light and Dark, and change colors, fonts, the page background and button shapes. Your words and photos stay right where they are.',
+        tab: 'In the Design panel, open Style. Try a different site style, flip between Light and Dark, and change colors, fonts, the page background and button shapes. Your words and photos stay put.',
+        ph: 'In the Design panel, tap Style. Swipe through the cards to try site styles, Light or Dark, colors, fonts, the page background and button shapes. Your words and photos stay put.'
+      },
+      tips: ['Found a look you like? Save it under Saved styles so you can come back to it.', 'The Light and Dark versions each keep their own colors.']
+    },
+    {
+      id: 'sections', img: 5, title: 'Move, change and add sections',
+      text: {
+        pc: 'Each part of your page is a section. Click its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add a new one, click Sections in the top left.',
+        tab: 'Each part of your page is a section. Tap its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add a new one, tap Sections in the top left.',
+        ph: 'Each part of your page is a section. Tap its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add one, open the ⋯ menu and tap Sections.'
+      },
+      tips: ['Drag the dotted grip on a section to move it anywhere on the page.', 'Edit opens that section\'s Layout, Buttons, Background, Words and Photo settings.']
+    },
+    {
+      id: 'pages', img: 6, title: 'Pages and your menu',
+      text: {
+        pc: 'The page picker (it says Home to start) switches pages, adds a page, and opens Pages & menu to rename, reorder and pick a menu style. Click your header and choose Logo & menu to place your logo and menu.',
+        tab: 'The page picker (it says Home to start) switches pages, adds a page, and opens Pages & menu to rename, reorder and pick a menu style. Tap your header and choose Logo & menu to place your logo and menu.',
+        ph: 'Tap the page picker (it says Home to start) to switch pages, add a page, or open Pages & menu to rename, reorder and pick a menu style. Tap your header and choose Logo & menu to place your logo and menu.'
+      },
+      tips: ['Computers and phones each keep their own logo and menu layout.', 'Phones can use a bottom tab bar menu, just like an app.']
+    },
+    {
+      id: 'preview', img: 7, title: 'Preview and save',
+      text: {
+        pc: 'Use Computer, Tablet and Phone at the top to see your site at each size. Light flips to the dark version. Undo, Redo and Save sit right beside them, and Designs holds everything you have saved.',
+        tab: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone. Undo, Redo and Save are in the top bar, the sun button flips light and dark, and Designs holds everything you have saved.',
+        ph: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone, show the dark version, save, or open My designs. Undo and Save are in the top bar.'
+      },
+      tips: ['A pink dot on Save means you have changes that are not saved to My designs yet.', 'On a computer, Ctrl+Z undoes and Ctrl+Shift+Z redoes (Cmd on a Mac).']
+    },
+    {
+      id: 'launch', img: 8, title: 'Launch when you love it',
+      text: {
+        pc: 'Designing is free. When you are ready, click Next: plans. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.',
+        tab: 'Designing is free. When you are ready, tap Next: plans. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.',
+        ph: 'Designing is free. When you are ready, tap the pink arrow in the top bar. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.'
+      },
+      tips: ['We ask for your business name, phone, email, address and a short description before checkout.', 'Stuck at any point? Open Help for searchable tips, or replay this tour.']
+    }
+  ];
+
+  var cats = [
+    ['start', 'Getting started'],
+    ['words', 'Words, photos and buttons'],
+    ['brand', 'Logo and business info'],
+    ['style', 'Style, colors and fonts'],
+    ['sections', 'Sections'],
+    ['pages', 'Pages, menu and header'],
+    ['save', 'Preview, undo and saving'],
+    ['launch', 'Plans and launching'],
+    ['devices', 'Phone and tablet tips'],
+    ['trouble', 'Fixes and questions']
+  ];
+
+  var D = {
+    design: '<span data-only="pc">Click <b>Design</b> in the top right corner</span><span data-only="tab">Tap <b>Design</b> in the top right corner</span><span data-only="ph">Tap the <b>palette button</b> in the top right corner</span>',
+    sections: '<span data-only="pc">Click <b>Sections</b> in the top left</span><span data-only="tab">Tap <b>Sections</b> in the top left</span><span data-only="ph">Open the <b>⋯</b> menu and tap <b>Sections</b></span>',
+    more: '<span data-only="pc">the top bar</span><span data-only="touch">the <b>⋯</b> menu</span>',
+    click: '<span data-only="pc">Click</span><span data-only="touch">Tap</span>',
+    next: '<span data-only="pc">Click <b>Next: plans</b> in the top right</span><span data-only="tab">Tap <b>Next: plans</b> in the top bar</span><span data-only="ph">Tap the <b>pink arrow</b> in the top bar</span>'
+  };
+
+  var articles = [
+    /* getting started */
+    { id: 'first-steps', cat: 'start', title: 'Start designing your website',
+      keys: 'begin start new first time how to use studio builder overview',
+      body: '<p>Open the studio and pick the kind of business you run. You will see a few layouts made for that kind of business. Each one comes with pages, a menu and words already written, so you start with a real site instead of a blank page.</p><ol><li>Pick your business type.</li><li>Pick a layout and choose <b>Use this layout</b>.</li><li>' + D.click + ' any words to change them and any photo to upload your own.</li><li>Add your logo and business info under <b>Design › Business</b>.</li><li>When you love it, go to plans and launch.</li></ol>' },
+    { id: 'tour-replay', cat: 'start', title: 'See the tutorial again',
+      keys: 'tutorial tour walkthrough replay intro guide show again popup welcome',
+      body: '<p>Open <b>Help</b> and choose <b>Take the tour</b>. <span data-only="tab">On a tablet, Help is in the main menu (the logo button in the top left) and the <b>⋯</b> menu.</span><span data-only="ph">On a phone, Help is in the <b>☰</b> main menu and the <b>⋯</b> menu.</span> The full illustrated guide, with steps for computers, tablets and phones, is at <a href="/guide">thinkwebpros.com/guide</a>.</p>' },
+    { id: 'tour-off', cat: 'start', title: 'Stop the tutorial from popping up',
+      keys: 'dont show again turn off disable tutorial popup tour skip annoying hide welcome',
+      body: '<p>Tick <b>Don\'t show this again</b> at the bottom of the tutorial, or finish it once, and it will not open by itself again on this device. If you only choose <b>Skip</b>, it may come back on your next visit. You can always reopen it from <b>Help</b>.</p><p class="muted">The choice is saved in this browser. Clearing your browser data or using a private window will bring the tutorial back once.</p>' },
+    { id: 'business-type', cat: 'start', title: 'Change your business type or layout',
+      keys: 'industry business type category layout template switch change type restaurant salon bakery',
+      body: '<p>' + D.design + ', open <b>Business</b> and change <b>Type of business</b>. Choose <b>See layouts made for your business</b> to pick a different layout, or <b>Write my page</b> to fill your page with words written for that type of business.</p><p>On the first screen, <b>Change type</b> next to the layouts takes you back to the full list of 16 business types.</p>' },
+    { id: 'quick-start', cat: 'start', title: 'Quick start form and starting over',
+      keys: 'quick start form questions start over blank page reset new design fresh',
+      body: '<p>The <b>Quick start form</b> asks a few questions and builds a page for you. Find it in ' + D.more + ' under <b>Design</b>, or in the <b>Designs</b> menu.</p><p><b>Start over</b>, in the same place, removes every section from the current design. You can undo right after. To keep your current design and begin a new one, use <b>New design</b> instead.</p>' },
+
+    /* words, photos, buttons */
+    { id: 'edit-text', cat: 'words', title: 'Change the words on your page',
+      keys: 'edit text words type headline title paragraph change wording copy write',
+      body: '<p>' + D.click + ' any words on the page and type over them. Press Enter for a new line where the text allows it. Your changes show up right away.</p><p>Each section also has a <b>Words</b> card under <b>Edit</b>, with a box for every headline, line and button label, which can be easier on a small screen.</p>' },
+    { id: 'text-color', cat: 'words', title: 'Change the color of some text',
+      keys: 'text color font colour recolor words highlight',
+      body: '<p>' + D.click + ' the words, then choose <b>Text color</b> in the small bar that appears above them. The color picker shows your logo colors, your site colors and colors you used recently. Light and dark versions each remember their own text colors.</p>' },
+    { id: 'photos', cat: 'words', title: 'Add or replace a photo or video',
+      keys: 'photo picture image video upload replace change gallery dish photo',
+      body: '<p>' + D.click + ' <b>+ Photo or video</b> on any picture spot and choose a file from your device. <span data-only="pc">You can also drag a file straight onto the spot.</span> Videos play muted on a loop.</p><p>To remove or swap a photo later, select the section, choose <b>Edit</b> and open its <b>Photo</b> card.</p>' },
+    { id: 'slideshow', cat: 'words', title: 'Photo slideshows (image rotator)',
+      keys: 'slideshow rotator carousel slider slides gallery captions seconds dots indicator',
+      body: '<p>Add the <b>Image rotator</b> section from ' + (D.sections.replace(/<\/?b>/g, '')) + '. Then select it and choose <b>Edit</b> to add or remove slides, set how many seconds each slide shows, write a caption on each photo and pick an indicator style: dots, pills, progress bars, thumbnails, a counter or none.</p>' },
+    { id: 'buttons', cat: 'words', title: 'Change where a button goes',
+      keys: 'button link url call text email map phone page section cta contact us',
+      body: '<p>Every button has a small pink link badge. ' + D.click + ' it to change the button\'s label and where it goes: a page on your site, a section, a phone call, a text message, an email, a map, or any web address.</p><p>You can also select the section, choose <b>Edit</b> and open the <b>Buttons</b> card to change all of its buttons in one place.</p>' },
+    { id: 'banner', cat: 'words', title: 'Add a banner message across the top',
+      keys: 'banner announcement top bar ticker sale message notice promo',
+      body: '<p>' + D.click + ' <b>+ Add a banner message across the top</b>, right above your header. Write your message, then choose a plain bar or a scrolling ticker, its colors and size, which pages show it, and whether visitors can close it. Choose <b>Remove banner</b> to take it off.</p>' },
+    { id: 'food-menu', cat: 'words', title: 'Food menus, prices and categories',
+      keys: 'menu food dishes prices restaurant cafe category add dish drinks',
+      body: '<p>Add the <b>Food menu</b> section from ' + (D.sections.replace(/<\/?b>/g, '')) + '. ' + D.click + ' a dish name, description or price to type over it. Use <b>+ Add a dish</b> under a category and <b>+ Add a category</b> for a new group like Drinks or Desserts. Each dish can have its own photo.</p>' },
+
+    /* logo and business info */
+    { id: 'business-info', cat: 'brand', title: 'Add your business name, phone, email and address',
+      keys: 'business info name phone email address about contact details hidden hide nap',
+      body: '<p>' + D.design + ' and choose <b>Business</b>. Fill in each card: business name, type of business, phone, email, street address and a short line about your business. Your page updates as you type.</p><p>Rather not show your phone, email or address on the site? Switch it to <b>Hidden</b>. We still need it to set up your account, and it helps Google and AI assistants describe your business correctly.</p>' },
+    { id: 'logo-upload', cat: 'brand', title: 'Upload your logo',
+      keys: 'logo upload image brand png svg transparent replace',
+      body: '<p>' + D.design + ', choose <b>Business</b> and go to the <b>Logo</b> card. <span data-only="pc">Drop a file on it or click <b>Upload</b>.</span><span data-only="touch">Tap <b>Upload</b> and pick the file.</span> Your logo appears across your site and owner dashboard. A logo with a transparent background looks best on both light and dark versions.</p>' },
+    { id: 'logo-ai', cat: 'brand', title: 'Make a logo with the AI logo maker',
+      keys: 'ai logo maker create generate design draw artificial intelligence no logo',
+      body: '<p>No logo yet? On the <b>Logo</b> card choose <b>Create a logo in the logo maker</b> and describe what you want in your own words, such as "a friendly loaf of bread with a sun". Your first 3 AI requests are free. The AI logo package ($49 once) unlocks unlimited requests and changes. Prefer a person? A Think Web Pros designer can draw 3 concepts for you as an add-on.</p>' },
+    { id: 'logo-colors', cat: 'brand', title: 'Use your logo colors on your site',
+      keys: 'logo colors palette scheme match brand colours suggested',
+      body: '<p>When you upload a logo, the studio picks out its colors and suggests 4 color schemes built from them. Open <b>Design › Style</b> and look under <b>Colors</b> to apply one. Every color picker in the studio also shows your logo colors first, so it is easy to stay on brand.</p>' },
+
+    /* style */
+    { id: 'site-style', cat: 'style', title: 'Change the whole look of your site',
+      keys: 'style theme look design template classic magazine loud luxe playful glass portfolio retro',
+      body: '<p>' + D.design + ' and choose <b>Style</b>. Under <b>Site style</b>, pick from 8 looks: Classic, Magazine, Loud, Luxe, Playful, Glass, Portfolio and Retro. Each one changes the layout, type and feel of your site, not just the colors. Your words and photos stay put.</p>' },
+    { id: 'light-dark', cat: 'style', title: 'Light and dark versions',
+      keys: 'dark mode light mode night theme switch flip',
+      body: '<p>Every site has a light and a dark version, and each one keeps its own colors. <span data-only="pc">Click <b>Light</b> (or <b>Dark</b>) in the top bar to flip between them.</span><span data-only="tab">Tap the sun or moon button in the top bar to flip between them.</span><span data-only="ph">Open the <b>⋯</b> menu and tap <b>Show dark version</b>.</span> You can also switch under <b>Design › Style › Site style</b>.</p>' },
+    { id: 'colors-fonts', cat: 'style', title: 'Change colors and fonts',
+      keys: 'colors colours fonts typeface typography accent palette',
+      body: '<p>Open <b>Design › Style</b> and swipe to <b>Colors and fonts</b>. Pick one of the suggested schemes, or set each color yourself. Under <b>Fonts</b>, choose a pairing for headlines and body text.</p>' },
+    { id: 'shape', cat: 'style', title: 'Rounded or square corners',
+      keys: 'shape corners rounded square buttons cards radius',
+      body: '<p>Open <b>Design › Style</b> and find <b>Shape</b>. Choose how round the corners of buttons, cards and photos are, from square to fully rounded.</p>' },
+    { id: 'backgrounds', cat: 'style', title: 'Backgrounds: color, gradient, texture or photo',
+      keys: 'background texture gradient pattern photo backdrop page background section background opacity',
+      body: '<p>For the whole page, open <b>Design › Style › Page background</b>. For one section, select it, choose <b>Edit</b> and open its <b>Background</b> card.</p><p>You can use a plain color, a gradient, one of 21 textures (with intensity and size controls), your own texture image, or a background photo with a color behind it, plus opacity and fade.</p>' },
+    { id: 'saved-styles', cat: 'style', title: 'Save a look and come back to it',
+      keys: 'saved styles save look favorite preset compare',
+      body: '<p>Open <b>Design › Style › Saved styles</b> and choose <b>Save this style</b>. It keeps the look, layouts and both color versions so you can try something else and come back. To keep a whole separate site, use <b>Save as a copy</b> instead.</p>' },
+
+    /* sections */
+    { id: 'select-section', cat: 'sections', title: 'Select a whole section',
+      keys: 'select section toolbar name tag pill click empty space',
+      body: '<p>' + D.click + ' the dark name tag at the top left of a section, such as <b>Hero banner section</b>. <span data-only="pc">You can also click empty space inside the section.</span> A toolbar appears with the section\'s layout, <b>Edit</b>, move up, move down, hide and delete.</p>' },
+    { id: 'add-section', cat: 'sections', title: 'Add a section',
+      keys: 'add section new block contact map hours testimonials reviews services pricing team faq gallery',
+      body: '<p>' + D.sections + '. Sections popular for your type of business are at the top, and every other section is below. <span data-only="pc">Drag one onto the page where you want it, or click <b>+</b> to add it.</span><span data-only="touch">Tap <b>+</b> to add one.</span></p><p>Your plan sets how many sections a site can have: up to 6 on Starter, 10 on Growth and 20 on Pro.</p>' },
+    { id: 'move-section', cat: 'sections', title: 'Move a section up or down',
+      keys: 'move reorder drag order arrange up down section position',
+      body: '<p>Select the section and use the up and down arrows in its toolbar. You can also drag it by the dotted grip, on the page or in the <b>Your page</b> list in the Sections panel. <span data-only="pc">With the grip focused, the arrow keys move it too.</span></p>' },
+    { id: 'section-layout', cat: 'sections', title: 'Change how a section is laid out',
+      keys: 'section layout split centered overlay variant arrangement design of section',
+      body: '<p>Select the section and use the layout button in its toolbar (it shows the current layout, like <b>Split</b>) to cycle through options. Or choose <b>Edit</b> and open the <b>Layout</b> card to see them all, such as Split, Centered, Photo overlay and Big headline.</p>' },
+    { id: 'hide-delete', cat: 'sections', title: 'Hide, duplicate or delete a section',
+      keys: 'hide delete remove duplicate copy section trash eye',
+      body: '<p>Select the section. In its toolbar, the eye button hides it (it stays in the studio, marked Hidden, but visitors will not see it) and the trash button deletes it. Under <b>Edit › Layout</b> you will also find <b>Duplicate</b>. Deleted something by mistake? Use <b>Undo</b>.</p>' },
+    { id: 'social', cat: 'sections', title: 'Show your social media',
+      keys: 'social media instagram facebook tiktok youtube links icons feed',
+      body: '<p>Add the <b>Social media</b> section from ' + (D.sections.replace(/<\/?b>/g, '')) + '. Choose <b>Edit</b> to add each network and your name or link, then pick icons, cards or a feed, in each network\'s own colors or matched to your site.</p>' },
+
+    /* pages, menu, header */
+    { id: 'add-page', cat: 'pages', title: 'Add, rename or reorder pages',
+      keys: 'page add new page rename reorder delete pages about contact multiple pages',
+      body: '<p>Open the page picker in the top bar (it says <b>Home</b> to start). Choose a page to switch to it, <b>Add page</b> for a new one from a template, or <b>Pages &amp; menu</b> to rename, reorder, hide from the menu or delete pages.</p>' },
+    { id: 'menu-style', cat: 'pages', title: 'Choose a menu style',
+      keys: 'menu navigation nav style tab bar hamburger links pills underline',
+      body: '<p>' + D.click + ' your site\'s header and choose <b>Logo &amp; menu</b>. Computers and phones each keep their own layout: switch between <b>Computer</b> and <b>Phone</b> at the top of the panel. Computers have styles like Simple links, Underline, Pills and Outlined. Phones can use a <b>Menu button</b> or a <b>Tab bar</b> along the bottom, like an app.</p>' },
+    { id: 'logo-placement', cat: 'pages', title: 'Center your logo or move the menu',
+      keys: 'header logo left centered position placement layout',
+      body: '<p>' + D.click + ' your site\'s header and choose <b>Logo &amp; menu</b>. Pick <b>Logo left</b> or <b>Logo centered</b>. Set it separately for computers and phones so each looks right.</p>' },
+
+    /* preview and saving */
+    { id: 'preview-devices', cat: 'save', title: 'See your site on a computer, tablet or phone',
+      keys: 'preview device phone tablet computer mobile desktop responsive size view',
+      body: '<p><span data-only="pc">Use <b>Computer</b>, <b>Tablet</b> and <b>Phone</b> in the top bar.</span><span data-only="touch">Open the <b>⋯</b> menu and choose <b>Computer</b>, <b>Tablet</b> or <b>Phone</b> under Preview.</span> You keep editing in every preview size. Your site adjusts itself to each screen, so you design once.</p>' },
+    { id: 'undo', cat: 'save', title: 'Undo and redo',
+      keys: 'undo redo mistake back revert oops ctrl z',
+      body: '<p>Use <b>Undo</b> and <b>Redo</b> in the top bar. <span data-only="ph">On a phone, Redo is in the <b>⋯</b> menu.</span><span data-only="pc"> Keyboard: Ctrl+Z to undo and Ctrl+Shift+Z to redo (Cmd on a Mac).</span> Big changes like a new layout also show an <b>Undo</b> button in the message at the bottom of the screen.</p>' },
+    { id: 'save-design', cat: 'save', title: 'Save your design and open it later',
+      keys: 'save saved designs my designs keep later copy open come back lost work',
+      body: '<p>Choose <b>Save</b> in the top bar to save to <b>My designs</b>. A pink dot on Save means you have unsaved changes. <b>Save as a copy</b> keeps the current version and starts a copy, and <b>New design</b> starts fresh. Find all of these in the <b>Designs</b> menu <span data-only="touch">or the <b>⋯</b> menu</span>.</p><p>Open <b>My designs</b> to switch between saved designs.</p>' },
+    { id: 'where-saved', cat: 'save', title: 'Where is my design stored?',
+      keys: 'storage browser device lost cleared another computer account sync',
+      body: '<p>For now your designs are saved in this browser on this device. They stay put when you close the tab, but clearing your browser data or switching devices will not bring them along. When you check out, your design is sent to us with your order, so your finished site does not depend on this browser.</p>' },
+
+    /* plans */
+    { id: 'plans', cat: 'launch', title: 'Choose a plan',
+      keys: 'plans pricing price cost starter growth pro monthly yearly buy purchase pay',
+      body: '<p>' + D.next + '. Plans have a one-time design fee and a monthly price:</p><ul><li><b>Starter</b>: $299, then $19 a month. Up to 6 sections, a free thinkwebpros.com address, hosting and SSL.</li><li><b>Growth</b>: $599, then $39 a month. Up to 10 sections, your own domain and email, and 1 hour of edits by our team each month.</li><li><b>Pro</b>: $1,199, then $79 a month. Up to 20 sections, SEO boost and live chat, no Think Web Pros badge, and 3 hours of edits each month.</li></ul><p>Choose <b>Yearly</b> for 2 months free.</p>' },
+    { id: 'addons', cat: 'launch', title: 'Add services: booking, store, domain, SEO and more',
+      keys: 'add ons services booking appointments online store shop domain email seo live chat copywriting photo shoot badge',
+      body: '<p>Under <b>Add-ons</b> on the plans page, turn on what your business needs: online booking, an online store, a custom domain and email, an SEO boost, live chat, professional copywriting, an on-site photo shoot and more. Items your plan already includes are marked <b>Included</b>.</p>' },
+    { id: 'pos', cat: 'launch', title: 'Point of sale for in-person sales',
+      keys: 'pos point of sale card reader register in person hardware terminal',
+      body: '<p>The plans page also offers a point of sale system for in-person sales, with card readers and register hardware. It syncs with your website store, so your products and sales live in one place.</p>' },
+    { id: 'checkout', cat: 'launch', title: 'Why can\'t I check out yet?',
+      keys: 'checkout cant continue required missing info blocked next disabled',
+      body: '<p>Before checkout we need your business name, phone, email, street address and a short description. ' + D.design + ', open <b>Business</b>, and fill in any card marked with a pink dot. The circle on <b>Your business</b> shows how many are done, like 3/5.</p>' },
+    { id: 'dashboard', cat: 'launch', title: 'The owner dashboard',
+      keys: 'owner dashboard leads messages visits analytics sales',
+      body: '<p>The <b>Owner dashboard</b> shows messages and leads from your site, website visits and, if you use the point of sale, your register sales. <span data-only="pc">Open it from the main menu: click the Think Web Pros logo in the top left.</span><span data-only="tab">Open it from the main menu, the logo button in the top left.</span><span data-only="ph">Open it from the <b>☰</b> main menu.</span></p>' },
+
+    /* devices */
+    { id: 'phone-tips', cat: 'devices', title: 'Designing on a phone',
+      keys: 'phone mobile iphone android small screen bottom sheet swipe menu',
+      body: '<ul><li>The <b>☰</b> button opens the main menu: My designs, Owner dashboard, Plans and Help.</li><li>The <b>palette</b> button opens the Design panel. It slides up from the bottom so your page stays in view.</li><li>Swipe sideways inside the panel to move between cards, or tap the names along the top.</li><li>Drag the small handle at the top of the panel to make it taller or shorter.</li><li>The <b>⋯</b> menu holds Sections, Redo, preview sizes, the dark version and saving options.</li><li>The <b>pink arrow</b> goes to plans.</li></ul>' },
+    { id: 'tablet-tips', cat: 'devices', title: 'Designing on a tablet',
+      keys: 'tablet ipad touch landscape portrait',
+      body: '<ul><li>Tap any words or photos to edit them, just like on a computer.</li><li>Tap <b>Design</b> to open the Design panel at the bottom. Swipe sideways to move between cards.</li><li>Preview sizes and saving options are in the <b>⋯</b> menu, and Help is in the main menu (the logo button in the top left) and the <b>⋯</b> menu.</li><li>Turning the tablet sideways gives you a wider top bar with more buttons showing.</li></ul>' },
+    { id: 'computer-tips', cat: 'devices', title: 'Designing on a computer',
+      keys: 'computer laptop desktop mouse keyboard shortcuts',
+      body: '<ul><li>Edit panels open across the bottom so your page stays visible above them. Use the arrows or the names along the top to move between cards.</li><li>Drag sections by their dotted grip, and drag photos straight onto a picture spot.</li><li>Press <b>?</b> anywhere in the studio to open Help.</li><li>Ctrl+Z undoes and Ctrl+Shift+Z redoes (Cmd on a Mac).</li></ul>' },
+
+    /* trouble */
+    { id: 'panel-gone', cat: 'trouble', title: 'The edit panel disappeared',
+      keys: 'panel closed missing gone design panel cant find settings hidden',
+      body: '<p>' + D.design + ' to open it again. To edit one section, select it first by its name tag, then choose <b>Edit</b>.</p>' },
+    { id: 'cant-see-page', cat: 'trouble', title: 'The panel covers my page',
+      keys: 'covered blocking cant see page panel too big sheet small screen',
+      body: '<p>The panel scrolls the section you are editing into view above it. <span data-only="touch">Drag the handle at the top of the panel down to make it shorter, or close it with ✕.</span><span data-only="pc">Close it with ✕ when you are done, or switch the preview to Phone to see more of the page at once.</span></p>' },
+    { id: 'help', cat: 'trouble', title: 'Get more help',
+      keys: 'help support contact question stuck human person',
+      body: '<p>Search this Help panel with a few words, like "logo" or "add page". The full illustrated guide is at <a href="/guide">thinkwebpros.com/guide</a>. Once your site is live, every plan includes support from our team, and Growth and Pro include edits done for you each month.</p>' }
+  ];
+
+  /* search: every word must match somewhere; titles and keywords count more than body text */
+  function strip(html) { return String(html).replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&#39;|’/g, "'"); }
+  articles.forEach(function (a) { a._t = a.title.toLowerCase(); a._k = a.keys.toLowerCase(); a._b = strip(a.body).toLowerCase(); });
+  function search(q) {
+    var words = String(q || '').toLowerCase().replace(/[^\w\s'-]/g, ' ').split(/\s+/).filter(function (w) { return w.length > 1; });
+    if (!words.length) return [];
+    var out = [];
+    articles.forEach(function (a) {
+      var score = 0, all = true;
+      words.forEach(function (w) {
+        var stem = w.length > 4 ? w.replace(/(ing|es|s)$/, '') : w, s = 0;
+        if (a._t.indexOf(stem) > -1) s += 6;
+        if (a._k.indexOf(stem) > -1) s += 4;
+        if (a._b.indexOf(stem) > -1) s += 1;
+        if (!s) all = false;
+        score += s;
+      });
+      if (all && score) out.push([score, a]);
+    });
+    return out.sort(function (x, y) { return y[0] - x[0]; }).map(function (x) { return x[1]; });
+  }
+
+  return { tour: tour, cats: cats, articles: articles, search: search };
+})();
