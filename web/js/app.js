@@ -2086,7 +2086,12 @@ document.addEventListener('keydown',e=>{const t=e.target;if(t instanceof Element
 /* ---------- section editing dock: a short pane across the bottom with slides you swipe through ---------- */
 let DKKEY=null,DK_LOCK=false;
 let dockOn=()=>state.tab==='builder'&&state.inspOpen&&state.rightTab==='section'&&!!sec(state.selected);
-function dockSync(){const on=dockOn(),p=$('#fInsp');if(!p)return;const was=p.classList.contains('dock');p.classList.toggle('dock',on);document.body.classList.toggle('dock-on',on);if(!on){const n=$('#fInsp .dk-nav');if(n)n.remove()}if(on&&!was)requestAnimationFrame(dockReveal)}
+function dockSync(){const on=dockOn(),p=$('#fInsp');if(!p)return;const was=p.classList.contains('dock');p.classList.toggle('dock',on);document.body.classList.toggle('dock-on',on);dockSide();if(!on){const n=$('#fInsp .dk-nav');if(n)n.remove()}if(on&&!was)requestAnimationFrame(dockReveal)}
+/* tablet and phone previews are tall, so on a wide screen the edit panes sit on the right instead of across the bottom */
+let DK_SIDE=null;
+function dockSide(){const b=document.body,cv=$('#canvas'),side=state.tab==='builder'&&state.device!=='desktop'&&innerWidth>760;b.classList.toggle('dock-side',side);
+ if(side&&cv)b.style.setProperty('--dktop',Math.max(0,Math.round(cv.getBoundingClientRect().top))+'px');
+ const k=side+'|'+b.classList.contains('dock-on');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
 function dkSlide(key,title,nodes,icon){const s=document.createElement('section');s.className='dk-slide';s.dataset.dk=key;s.setAttribute('aria-label',title);s.innerHTML=`<h4>${icon?ic(icon,14):''}${esc(title)}</h4>`;nodes.forEach(n=>s.appendChild(n));return s}
 function dockify(){const ins=$('#inspector');if(!ins||ins.querySelector(':scope>.dk-track'))return;const kids=[...ins.children];if(!kids.length)return;
  const slides=[];let words=[],wn=0,last=null;const used={};const key=k=>{used[k]=(used[k]||0)+1;return used[k]>1?k+used[k]:k};
@@ -2112,7 +2117,7 @@ function dkNearest(tr){const x=tr.scrollLeft;let best=null,bd=1e9;tr.querySelect
 function dkMark(k){DKKEY=k;$$('#fInsp .dk-chips [data-dkgo]').forEach(b=>{const on=b.dataset.dkgo===k;b.classList.toggle('on',on);b.setAttribute('aria-selected',on);if(on){const c=b.parentElement;const l=b.offsetLeft-c.offsetLeft;if(l<c.scrollLeft||l+b.offsetWidth>c.scrollLeft+c.clientWidth)c.scrollTo({left:l-24,behavior:'smooth'})}})}
 function dkGo(k){const tr=$('#inspector .dk-track'),s=tr&&tr.querySelector(`[data-dk="${k}"]`);if(!s)return;DK_LOCK=true;tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});dkMark(k);setTimeout(()=>{DK_LOCK=false},450)}
 /* keep the picked section in view above the dock */
-function dockReveal(){const s=$(`#site .sec[data-sec="${state.selected}"]`),cv=$('#canvas'),p=$('#fInsp');if(!s||!cv||!p)return;const r=s.getBoundingClientRect(),c=cv.getBoundingClientRect(),bottom=p.getBoundingClientRect().top;
+function dockReveal(){const s=$(`#site .sec[data-sec="${state.selected}"]`),cv=$('#canvas'),p=$('#fInsp');if(!s||!cv||!p)return;const r=s.getBoundingClientRect(),c=cv.getBoundingClientRect(),bottom=document.body.classList.contains('dock-side')?c.bottom:p.getBoundingClientRect().top;
  if(r.top<c.top+8||r.top>bottom-80)cv.scrollBy({top:r.top-c.top-12,behavior:'smooth'})}
 renderInspector=(o=>function(){o.apply(this,arguments);dockSync();if(dockOn()&&state.rightTab==='section')dockify()})(renderInspector);
 openPanel=(o=>function(){o.apply(this,arguments);dockSync()})(openPanel);
@@ -2254,7 +2259,7 @@ document.addEventListener('pointerdown',e=>{const b=e.target instanceof Element&
  const g=row.cloneNode(true);g.classList.add('mn-ghost');g.style.width=r.width+'px';g.style.left=r.left+'px';g.style.top=r.top+'px';const site=$('#site');g.setAttribute('style',g.getAttribute('style')+';'+site.getAttribute('style'));document.body.appendChild(g);
  row.classList.add('mn-lifted');MND={id,from:+i,row,ghost:g,dx:e.clientX-r.left,dy:e.clientY-r.top,to:null,moved:false,x:e.clientX,y:e.clientY};try{b.setPointerCapture(e.pointerId)}catch(err){}},true);
 document.addEventListener('pointermove',e=>{if(!MND)return;e.preventDefault();MND.moved=MND.moved||Math.hypot(e.clientX-MND.x,e.clientY-MND.y)>4;MND.ghost.style.left=(e.clientX-MND.dx)+'px';MND.ghost.style.top=(e.clientY-MND.dy)+'px';mnTarget(e.clientX,e.clientY);
- const cv=$('#canvas').getBoundingClientRect(),dk=$('#fInsp.dock:not([hidden]),.dock-modal'),bot=dk?Math.min(cv.bottom,dk.getBoundingClientRect().top):cv.bottom;clearInterval(MND.sc);const edge=e.clientY<cv.top+50?-1:e.clientY>bot-50?1:0;if(edge)MND.sc=setInterval(()=>{$('#canvas').scrollTop+=edge*14},16)},{passive:false});
+ const cv=$('#canvas').getBoundingClientRect(),dk=$('#fInsp.dock:not([hidden]),.dock-modal'),bot=dk&&!document.body.classList.contains('dock-side')?Math.min(cv.bottom,dk.getBoundingClientRect().top):cv.bottom;clearInterval(MND.sc);const edge=e.clientY<cv.top+50?-1:e.clientY>bot-50?1:0;if(edge)MND.sc=setInterval(()=>{$('#canvas').scrollTop+=edge*14},16)},{passive:false});
 function mnEnd(ok){if(!MND)return;const d=MND;MND=null;clearInterval(d.sc);d.ghost.remove();d.row.classList.remove('mn-lifted');mnClear();if(ok&&d.moved&&d.to)mnMove(d.id,d.from,d.to.cat,d.to.at)}
 document.addEventListener('pointerup',()=>mnEnd(true));document.addEventListener('pointercancel',()=>mnEnd(false));
 document.addEventListener('click',e=>{const t=e.target instanceof Element&&e.target;if(!t)return;let el;
