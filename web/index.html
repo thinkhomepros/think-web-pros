@@ -203,6 +203,29 @@ section{padding:84px 0}
 .steps p{color:var(--muted);margin-top:8px;font-size:16px}
 @media (max-width:760px){.steps{grid-template-columns:1fr}}
 
+/* devices */
+.devices{background:linear-gradient(180deg,var(--bg) 0%,var(--accent-soft) 100%)}
+.dev{margin:0}
+.dev img{width:100%;height:auto;display:block}
+.dev a{display:block;cursor:zoom-in}
+.dev figcaption{text-align:center;margin-top:22px}
+.dev figcaption p{color:var(--muted);font-size:16px;margin:6px auto 0;max-width:30em}
+.chip{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--accent-text);background:var(--card);border:1px solid var(--line);padding:4px 10px;border-radius:999px;margin-bottom:10px}
+.laptop{max-width:1000px;margin:0 auto}
+.laptop .screen{background:#141418;border:1px solid rgba(255,255,255,.08);border-radius:18px 18px 0 0;padding:12px 12px 16px;box-shadow:var(--shadow)}
+.laptop .screen img{border-radius:4px}
+.laptop .base{position:relative;height:16px;margin:0 -6%;background:linear-gradient(#e3e3e8,#b4b4bc);border-radius:0 0 16px 16px;box-shadow:var(--shadow)}
+.laptop .base::before{content:"";position:absolute;left:50%;top:0;transform:translateX(-50%);width:16%;height:6px;background:#a2a2ab;border-radius:0 0 8px 8px}
+.dev-row{display:flex;justify-content:center;align-items:flex-start;gap:64px;margin-top:72px}
+.tablet{width:min(440px,100%)}
+.phone{width:min(260px,100%)}
+.dev .bezel{background:#141418;border:1px solid rgba(255,255,255,.08);box-shadow:var(--shadow)}
+.tablet .bezel{border-radius:32px;padding:16px}
+.tablet .bezel img{border-radius:16px}
+.phone .bezel{border-radius:44px;padding:10px}
+.phone .bezel img{border-radius:34px}
+@media (max-width:760px){.laptop .screen{border-radius:12px 12px 0 0;padding:7px 7px 10px}.laptop .base{height:10px;margin:0 -3%}.dev-row{flex-direction:column;align-items:center;gap:56px;margin-top:56px}.tablet{width:min(360px,100%)}.phone{width:min(240px,72%)}}
+
 /* pricing */
 .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
 @media (max-width:900px){.tiers{grid-template-columns:1fr;max-width:480px;margin:0 auto}}
@@ -383,7 +406,31 @@ footer a:hover{color:var(--ink)}
         <li><h3>Choose your plan</h3><p>Pick Starter, Growth or Pro, then add only the services you need, like booking, a store or a custom domain.</p></li>
         <li><h3>Launch and get found</h3><p>We publish your site with hosting and SSL, set it up for search and AI, and you manage it from your owner dashboard.</p></li>
       </ol>
-      <img class="shot" src="/img/devices.webp" width="1400" height="910" alt="Think Web Pros on an iPhone, Android phone, iPad, Android tablet, Mac and Windows laptop" loading="lazy" decoding="async" style="margin-top:48px">
+    </div>
+  </section>
+
+  <section id="devices" class="devices" aria-labelledby="dev-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Works on every screen</span>
+        <h2 id="dev-h">Design on your computer, tablet or phone</h2>
+        <p class="lead">The Think Web Pros Studio fits whatever screen you have, and your site looks right on every one of them too.</p>
+      </div>
+      <figure class="dev laptop">
+        <div class="screen"><a href="/img/device-computer.webp" target="_blank" rel="noopener" title="Open full size"><img src="/img/device-computer.webp" width="1600" height="1000" alt="The Studio on a computer: a bakery website in the Classic style with the Style panel open, showing light and dark, saved styles, and pages and menu" loading="lazy" decoding="async"></a></div>
+        <div class="base" aria-hidden="true"></div>
+        <figcaption><span class="chip">Classic style</span><h3>On a computer</h3><p>The full studio with every panel in reach. Change styles, colors and fonts while you see the whole page.</p></figcaption>
+      </figure>
+      <div class="dev-row">
+        <figure class="dev tablet">
+          <div class="bezel"><a href="/img/device-tablet.webp" target="_blank" rel="noopener" title="Open full size"><img src="/img/device-tablet.webp" width="900" height="1288" alt="The Studio on a tablet: the same bakery website in the Playful style with an online ordering section" loading="lazy" decoding="async"></a></div>
+          <figcaption><span class="chip">Playful style</span><h3>On a tablet</h3><p>Tap any words or photo to change them. Panels slide in only when you need them.</p></figcaption>
+        </figure>
+        <figure class="dev phone">
+          <div class="bezel"><a href="/img/device-phone.webp" target="_blank" rel="noopener" title="Open full size"><img src="/img/device-phone.webp" width="540" height="1169" alt="The Studio on a phone: the same bakery website in the Retro style" loading="lazy" decoding="async"></a></div>
+          <figcaption><span class="chip">Retro style</span><h3>On a phone</h3><p>Compact toolbars and a short bottom sheet, so you can update your site between customers.</p></figcaption>
+        </figure>
+      </div>
     </div>
   </section>
 
