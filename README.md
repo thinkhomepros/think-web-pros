@@ -37,6 +37,12 @@ docker build -t think-web-pros .
 docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... -e ADMIN_TOKEN=... -v twp-data:/app/data think-web-pros
 ```
 
+## Host it on Render
+
+`render.yaml` sets up a free Render web service that redeploys whenever `main` changes. In Render choose **New > Blueprint**, pick this repo, and fill in `ANTHROPIC_API_KEY` (or leave it blank). `ADMIN_TOKEN` is generated for you.
+
+On the free plan the site sleeps after about 15 minutes without visitors (the next visit takes up to a minute to wake it), and orders saved on the server are wiped on each redeploy or restart. Add a paid plan with a disk, or a database, before taking real orders.
+
 ## API
 
 | Method | Path | Notes |

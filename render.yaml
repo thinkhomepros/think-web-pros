@@ -1,0 +1,23 @@
+# Render Blueprint: hosts the Studio as one free web service.
+# In Render: New > Blueprint > pick this repo. You'll be asked for ANTHROPIC_API_KEY.
+services:
+  - type: web
+    name: think-web-pros
+    runtime: node
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      # Optional: leave blank to use the logo maker's built-in quick ideas.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # Render makes a random one; copy it from the service's Environment tab.
+      - key: ADMIN_TOKEN
+        generateValue: true
