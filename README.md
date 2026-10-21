@@ -8,7 +8,9 @@ Think Web Pros builds websites for small businesses. In the Studio, an owner des
 
 | Path | What it is |
 | --- | --- |
-| `web/` | The Studio front end: plain HTML, CSS and JavaScript, no build step. |
+| `web/` | Plain HTML, CSS and JavaScript, no build step. |
+| `web/index.html` | The marketing landing page at `/` (meta tags, schema.org data, FAQ). `robots.txt`, `sitemap.xml` and `llms.txt` sit next to it. |
+| `web/builder.html` | The Studio (designer) at `/builder`. |
 | `web/js/app.js` | The designer, plans and checkout, owner dashboard, and admin views. |
 | `web/js/platform.js` | Connects the Studio to the server (AI logo maker and order submission). |
 | `server/` | Node + Express server that serves the Studio and the API. |
@@ -21,7 +23,7 @@ Requires Node 20 or newer.
 ```bash
 npm install
 cp .env.example .env   # optional, then fill in values
-npm run dev            # http://localhost:3000
+npm run dev            # http://localhost:3000 (Studio at /builder)
 ```
 
 Set environment variables in your shell or host (the server doesn't read `.env` on its own; use `node --env-file=.env server/index.js` if you want it to):

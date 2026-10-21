@@ -43,7 +43,7 @@ p{margin:0}
 
 /* top bar */
 .top{display:flex;align-items:center;gap:14px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);flex:none;position:relative;z-index:30}
-.brandlogo{display:flex;align-items:center;flex:none}
+.brandlogo{display:flex;align-items:center;flex:none;text-decoration:none}
 .brandlogo img{height:30px;width:auto}
 .brandlogo .lg-l{display:var(--logo-light)} .brandlogo .lg-d{display:var(--logo-dark)}
 .brandlogo small{margin-left:10px;font:700 10px/1 var(--f-body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-left:1px solid var(--line);padding-left:10px;white-space:nowrap}
