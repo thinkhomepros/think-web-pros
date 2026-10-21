@@ -146,14 +146,14 @@ h3{font-size:19px;letter-spacing:-.01em;font-weight:700}
 
 /* header */
 .top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:24px;height:68px}
+.top .wrap{display:flex;align-items:center;gap:24px;height:80px}
 .brand{display:flex;align-items:center;flex:none}
-.brand img{height:32px;width:auto}
+.brand img{height:46px;width:auto}
 .brand .lg-l{display:var(--logo-light)} .brand .lg-d{display:var(--logo-dark)}
 .nav{display:flex;gap:4px;margin-left:auto}
 .nav a{text-decoration:none;font-weight:600;font-size:15px;color:var(--ink-2);padding:8px 12px;border-radius:999px}
 .nav a:hover{background:var(--bg-2);color:var(--ink)}
-@media (max-width:820px){.nav{display:none}.top .btn{margin-left:auto}.brand img{height:26px}}
+@media (max-width:820px){.nav{display:none}.top .btn{margin-left:auto}.top .wrap{height:68px}.top .brand img{height:36px}}
 
 /* hero */
 .hero{padding:64px 0 40px;background:radial-gradient(1100px 500px at 85% -10%,var(--accent-soft),transparent 60%)}
@@ -247,7 +247,7 @@ footer a:hover{color:var(--ink)}
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="/" aria-label="Think Web Pros home"><img class="lg-l" src="/logo-light.png" alt="Think Web Pros" width="122" height="32"><img class="lg-d" src="/logo-dark.png" alt="" width="122" height="32"></a>
+    <a class="brand" href="/" aria-label="Think Web Pros home"><img class="lg-l" src="/logo-light.png" alt="Think Web Pros" width="175" height="46"><img class="lg-d" src="/logo-dark.png" alt="" width="175" height="46"></a>
     <nav class="nav" aria-label="Main">
       <a href="#features">Features</a>
       <a href="#seo-geo">SEO &amp; GEO</a>
