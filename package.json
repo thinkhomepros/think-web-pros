@@ -1,0 +1,17 @@
+{
+  "name": "think-web-pros",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Think Web Pros Studio: small businesses design their website, add their logo, and buy the site and web services.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
+    "express": "^5.3.0"
+  }
+}
