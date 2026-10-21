@@ -1854,3 +1854,12 @@ body.dock-side .modal.dock-modal{width:var(--dkw);height:auto;border-radius:16px
 body.dock-side .dock-modal .modal-h{flex-wrap:wrap}
 body.one-bar.dock-side #btnPop{left:auto!important;right:0;top:var(--dktop,58px)!important;bottom:0;translate:none;width:var(--dkw);max-height:none;border-radius:16px 0 0 0}
 body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
+/* layout chooser: blank page first, then popular layouts */
+.kl.kl-blank{grid-template-rows:none;grid-template-columns:150px 1fr;width:100%;max-width:560px;justify-self:center}
+.kl.kl-blank .kl-pv{height:auto;min-height:110px}
+.kl-or{width:100%;margin:6px 0 0;text-align:center;font:800 .82rem/1.3 var(--fb,'Figtree',system-ui,sans-serif);letter-spacing:.08em;color:var(--mut,var(--muted));display:flex;align-items:center;gap:12px}
+.kl-or::before,.kl-or::after{content:"";flex:1;height:1px;background:color-mix(in srgb,var(--tx,#222) 16%,transparent)}
+.kl-b .kl-look{display:flex;align-items:center;gap:7px;font-size:.78rem;font-weight:600;color:var(--tx,var(--ink))}
+.kl-look .sw{display:inline-flex;border-radius:4px;overflow:hidden;border:1px solid color-mix(in srgb,var(--tx,#222) 14%,transparent)}
+.kl-look .sw i{width:12px;height:12px;display:block}
+@container site (max-width:560px){ .kl.kl-blank{grid-template-columns:96px 1fr} .kl-or::before,.kl-or::after{display:none} }
