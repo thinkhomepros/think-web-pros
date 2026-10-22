@@ -576,7 +576,7 @@ function toast(msg,action){const t=document.createElement('div');t.className='to
  const box=$('#toasts');box.appendChild(t);const max=innerWidth<=700?1:2;while(box.children.length>max)box.firstElementChild.remove();setTimeout(()=>t.remove(),action?6500:(innerWidth<=700?2400:3200))}
 const hist=[];
 var fut=[],FUT_AT=null,DIRTY=false;
-function histState(){return JSON.stringify({sections:state.sections,pages:pagesCopy(),pageId:state.pageId,brand:state.brand,announce:state.announce,hours:state.hours})}
+function histState(){return JSON.stringify({sections:state.sections,pages:pagesCopy(),pageId:state.pageId,brand:state.brand,announce:state.announce,hours:state.hours,ads:state.ads||null})}
 function snap(){const c=histState();if(hist[hist.length-1]===c)return;hist.push(c);if(hist.length>40)hist.shift();DIRTY=true;if(fut.length&&c!==FUT_AT)fut.length=0;histBtns()}
 function undo(){const c=histState();let s;do{s=hist.pop()}while(s===c&&hist.length);if(!s||s===c){histBtns();return}if(fut[fut.length-1]!==c)fut.push(c);Object.assign(state,JSON.parse(s));FUT_AT=histState();DIRTY=true;histBtns();hard()}
 function redo(){if(!fut.length)return;const c=histState();if(FUT_AT&&c!==FUT_AT&&hist[hist.length-1]!==FUT_AT){fut.length=0;histBtns();return}const s=fut.pop();if(hist[hist.length-1]!==c)hist.push(c);Object.assign(state,JSON.parse(s));FUT_AT=histState();DIRTY=true;histBtns();hard()}
@@ -1392,7 +1392,7 @@ function designsLoad(){IDB.all('designs').then(a=>{DESIGNS=(a||[]).sort((x,y)=>y
  .catch(()=>{idbDesigns=false;try{DESIGNS=JSON.parse(localStorage.getItem(DKEY)||'[]')}catch(e){DESIGNS=[]}designsReady=true;if(state.tab==='designs')renderDesigns()})}
 function designStore(d){if(idbDesigns)return IDB.put('designs',d);localStorage.setItem(DKEY,JSON.stringify(DESIGNS));return Promise.resolve()}
 function designDrop(id){if(idbDesigns)return IDB.del('designs',id).catch(()=>{});try{localStorage.setItem(DKEY,JSON.stringify(DESIGNS))}catch(e){}return Promise.resolve()}
-const designData=()=>JSON.parse(JSON.stringify({pages:syncPage(),pageId:state.pageId,brand:state.brand,sections:state.sections,biz:state.biz,started:state.started,announce:state.announce}));
+const designData=()=>JSON.parse(JSON.stringify({pages:syncPage(),pageId:state.pageId,brand:state.brand,sections:state.sections,biz:state.biz,started:state.started,announce:state.announce,...(state.ads?{ads:state.ads}:{})}));
 const curDesign=()=>DESIGNS.find(x=>x.id===state.designId);
 function isDirty(){const d=curDesign();if(!d)return state.sections.length>0;return JSON.stringify(d.data)!==JSON.stringify(designData())}
 function designAutoName(){const base=(state.biz.name||state.brand.name||'My site').trim(),st=(STYLES[state.brand.style]||STYLES.classic).name;let n=`${base} · ${st}`,k=2;while(DESIGNS.some(x=>x.name===n))n=`${base} · ${st} ${k++}`;return n}
@@ -1408,7 +1408,7 @@ function freshDesign(keepId){snap();const B=state.brand,def=defaultState().brand
  if(!keepId){state.designId=null;state.designName='Untitled design';state.draftAt=null}
  state.tab='builder';closeModal();dsMenuClose();hard();$('#canvas')&&($('#canvas').scrollTop=0)}
 function openDesign(id){const d=DESIGNS.find(x=>x.id===id);if(!d)return;snap();const x=JSON.parse(JSON.stringify(d.data));
- Object.assign(state,{pages:x.pages||null,pageId:x.pageId||'home',brand:x.brand,sections:x.sections,biz:x.biz||state.biz,started:x.started!==false,announce:x.announce||state.announce,designId:d.id,designName:d.name,draftAt:holdOf(d),selected:null,tab:'builder'});
+ Object.assign(state,{pages:x.pages||null,pageId:x.pageId||'home',brand:x.brand,sections:x.sections,biz:x.biz||state.biz,started:x.started!==false,announce:x.announce||state.announce,ads:x.ads||null,designId:d.id,designName:d.name,draftAt:holdOf(d),selected:null,tab:'builder'});
  Object.keys(ssIdx).forEach(k=>delete ssIdx[k]);closeModal();hard();toast(`Opened “${d.name}”`)}
 /* small confirm dialog: buttons are [label, class, fn] */
 let ASK=[];
@@ -3404,6 +3404,372 @@ R.apps=s=>{const d=s.data,v=s.variant;const list=(d.items||[]).map((x,i)=>({x,i,
   body=`${fr.map(o=>`<div class="ap-embed ap-${o.a.shape||'tall-'+o.a.g}"${PK(`items.${o.i}`)}>${EDIT?'<div class="ap-shield" aria-hidden="true"></div>':''}<iframe src="${esc(o.embed)}" title="${esc(o.a.n)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe></div>`).join('')}${rest.length?`<div class="ap-grid">${rest.map(card).join('')}</div>`:''}`}
  else body=`<div class="ap-grid">${list.map(card).join('')}</div>`;
  return `<section class="ap-sec ap-v-${v}"><div class="wrap">${head}${list.length?body:''}</div></section>`};
+/* ---------- news sites: stories, article pages, breaking ticker and newsletter ----------
+   Stories live in the news section's data and open as a full article page in an overlay, so it works in the
+   editor and full screen. Newsletter signups land in state.subscribers and the owner's messages. */
+Object.assign(P,{
+ news:'<path d="M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 12.5h7M7 16h4"/>',
+ megaphone:'<path d="M3 10v4h3l8 4.5v-13L6 10zM17.5 9a4 4 0 0 1 0 6M6 14l1.5 5.5h2.6L9 14.6"/>',
+ adbox:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6.5 15.5L9 8.5l2.5 7M7.4 13.2h3.2M14 8.5v7h1.6a3.5 3.5 0 0 0 0-7z"/>',
+ bolt:'<path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/>'
+});
+Object.assign(THEMES,{
+ gazette:{name:'Gazette',colors:{p:'#111111',a:'#B3261E',bg:'#FFFFFF',sf:'#F3F0E8',tx:'#151515'},font:'dmserif',radius:0,btn:'square'},
+ bulletin:{name:'Bulletin',colors:{p:'#13315C',a:'#D64933',bg:'#FFFFFF',sf:'#EEF2F7',tx:'#16202C'},font:'fraunces',radius:8,btn:'rounded'},
+ wire:{name:'Wire',colors:{p:'#60A5FA',a:'#F43F5E',bg:'#0D1117',sf:'#161B22',tx:'#E6EDF3'},font:'sora',radius:10,btn:'rounded'},
+ glossy:{name:'Glossy',colors:{p:'#1A1A1A',a:'#E0457B',bg:'#FFFFFF',sf:'#FBF1F3',tx:'#1A1A1A'},font:'playfair',radius:4,btn:'square'}
+});
+(()=>{const add={
+ news:{name:'News stories',desc:'Headlines, a story grid and full article pages',variants:{lead:'Headline hero',grid:'Story grid',list:'Latest list',cover:'Magazine cover',cats:'By topic'}},
+ breaking:{name:'Breaking news ticker',desc:'Scrolling headlines across the page',variants:{ticker:'Scrolling',flash:'Still bar'}},
+ newsletter:{name:'Newsletter signup',desc:'Collect emails for your newsletter',variants:{band:'Color band',card:'Card',split:'Beside a photo'}},
+ ads:{name:'Ad space',desc:'Google AdSense, an ad you sold, or “Advertise here”',variants:{strip:'Banner',boxed:'Boxed with label'}},
+ adrates:{name:'Advertise with us',desc:'Your ad prices and a form to request a spot',variants:{cards:'Cards',table:'Table'}}};
+ const all={...CATALOG,...add},order=Object.keys(CATALOG);order.splice(order.indexOf('slideshow')+1,0,'news','breaking','newsletter');order.push('ads','adrates');
+ Object.keys(CATALOG).forEach(k=>delete CATALOG[k]);order.forEach(k=>{if(all[k])CATALOG[k]=all[k]})})();
+Object.assign(TH,{
+ news:'<rect x="3" y="4" width="22" height="14" rx="1.5" opacity=".35"/><rect x="3" y="21" width="18" height="2.5" rx="1"/><rect x="3" y="26" width="13" height="2" rx="1" opacity=".5"/><rect x="29" y="4" width="12" height="2.5" rx="1"/><rect x="29" y="9" width="10" height="2" rx="1" opacity=".5"/><rect x="29" y="15" width="12" height="2.5" rx="1"/><rect x="29" y="20" width="9" height="2" rx="1" opacity=".5"/>',
+ breaking:'<rect x="3" y="11" width="38" height="10" rx="1.5" opacity=".25"/><rect x="3" y="11" width="11" height="10" rx="1.5"/><rect x="17" y="15" width="10" height="2" rx="1" opacity=".6"/><rect x="30" y="15" width="9" height="2" rx="1" opacity=".6"/>',
+ newsletter:'<rect x="3" y="6" width="38" height="20" rx="3" opacity=".25"/><rect x="8" y="10" width="16" height="3" rx="1"/><rect x="8" y="17" width="18" height="5" rx="1.5" opacity=".5"/><rect x="28" y="17" width="9" height="5" rx="1.5"/>',
+ ads:'<rect x="3" y="9" width="38" height="14" rx="1.5" opacity=".2"/><path d="M14 20l3-8 3 8M15 17.5h4M23 12v8h2a4 4 0 0 0 0-8z" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+ adrates:'<rect x="3" y="5" width="11" height="22" rx="2" opacity=".3"/><rect x="16.5" y="5" width="11" height="22" rx="2" opacity=".3"/><rect x="30" y="5" width="11" height="22" rx="2" opacity=".3"/><rect x="5" y="9" width="7" height="2.5" rx="1"/><rect x="18.5" y="9" width="7" height="2.5" rx="1"/><rect x="32" y="9" width="7" height="2.5" rx="1"/><rect x="5" y="21" width="7" height="3" rx="1.5"/><rect x="18.5" y="21" width="7" height="3" rx="1.5"/><rect x="32" y="21" width="7" height="3" rx="1.5"/>'
+});
+const NW=(title,dek,cat,author,role,read,body,o)=>({title,dek,cat,author,role,date:'',read,image:null,body,breaking:'no',top:'no',...o});
+const NEWS_STORIES=[
+ NW('City council approves the new waterfront park after two years of debate','The six-acre park adds a playground, a boardwalk and a free summer concert stage. Construction starts in March.','Local','Maya Torres','City Hall reporter',4,'After two years of public meetings, the city council voted 6 to 1 on Tuesday night to approve the waterfront park plan.\n\nThe design keeps the old pier and adds a boardwalk, a playground, shade trees and a small stage for free summer concerts. Parking stays on the north lot.\n\n“This is the most people we have ever heard from on one project,” the council president said before the vote. More than 900 residents sent comments.\n\nConstruction starts in March and the first section should open next summer. The city will post updates and a map of detours on its website.',{breaking:'yes',top:'yes'}),
+ NW('Storm watch: heavy rain and wind expected Thursday night','Up to three inches of rain could fall overnight. Here is what to know before you head out.','Weather','Newsroom staff','',2,'Forecasters issued a storm watch for Thursday from 6pm until Friday morning.\n\nExpect two to three inches of rain, gusts up to 45 mph and flooding on low roads near the river. Secure outdoor furniture and keep phones charged.\n\nWe will update this story through the night.',{breaking:'yes'}),
+ NW('Three new restaurants are opening downtown this fall','A taco counter, a ramen bar and a family bakery are moving into Main Street storefronts.','Business','Daniel Okafor','Business editor',3,'Downtown is getting busier. Three new restaurants have signed leases on Main Street and plan to open before the holidays.\n\nThe owners say foot traffic has grown since the farmers market moved to the square, and rents are still lower than in nearby towns.\n\nAll three are hiring now. Details are in the downtown business association newsletter.'),
+ NW('Tigers clinch the regional title with a last-second field goal','A 42-yard kick sends the home team to the state semifinals for the first time since 2011.','Sports','Priya Shah','Sports reporter',3,'With four seconds left and the score tied, the Tigers lined up for a 42-yard field goal. It sailed through.\n\nThe win sends the team to the state semifinals for the first time since 2011. The coach credited a defense that held its opponent scoreless in the second half.\n\nThe semifinal is next Friday at 7pm. Tickets go on sale Monday at the school office.',{breaking:'yes'}),
+ NW('The best breakfast sandwiches in {city}, ranked','We ate 14 of them in one week so you do not have to. Number one is worth the line.','Food','Ben Whitaker','Food writer',6,'Our food writer spent a week tasting every breakfast sandwich we could find, judging the bread, the egg and how well it travels.\n\nThe winner is a bakery counter that griddles its own English muffins and adds a swipe of hot honey. Get there before 9am.\n\nThe full ranking, with prices and hours, is below.'),
+ NW('Your weekend guide: the farmers market, a jazz night and the fall fair','Seven things to do in and around {city} this weekend, most of them free.','Events','Maya Torres','City Hall reporter',4,'The fall fair opens Friday at noon with rides, a pie contest and the tractor parade on Saturday.\n\nThe farmers market runs Saturday from 8am to 1pm on the square. On Saturday night, the library hosts a free jazz trio on the lawn.\n\nKnow about an event we missed? Send it to us and we will add it to next week’s guide.'),
+ NW('Our view: the new bike lanes are working. Let’s finish the job.','Crashes are down and businesses on Elm Street are busier. The last mile should not wait.','Opinion','Editorial board','',5,'A year ago, the city painted protected bike lanes on Elm Street. The results are in: reported crashes are down by a third and shop owners say sales are up.\n\nThe last mile, from the high school to the river, is still unfinished. The council should fund it this spring.\n\nWe welcome letters from readers who agree or disagree.'),
+ NW('School board names a new superintendent','A longtime principal from the district will start in January, the board announced Monday.','Schools','Grace Lin','Education reporter',3,'The school board unanimously chose a longtime district principal as the next superintendent.\n\nShe has worked in the district for 18 years and says her first priorities are reading scores and keeping teachers.\n\nShe starts on January 6. The board will hold a welcome event for families in December.')];
+Object.assign(DEFAULTS,{
+ news:{heading:'Top stories',sub:'',items:NEWS_STORIES.map(clone)},
+ breaking:{label:'Breaking',from:'stories',speed:'normal',items:[{text:'Storm watch in effect Thursday night'},{text:'Council approves the waterfront park'},{text:'Tigers win the regional title'}]},
+ newsletter:{heading:'The morning briefing',sub:'The five local stories everyone is talking about, in your inbox by 6am. Free, every weekday.',perks:'Local news you will not find anywhere else\nThe best events for the weekend ahead\nUnsubscribe anytime with one click',button:'Subscribe free',note:'We never sell or share your email.',count:'12,400',image:null},
+ ads:{size:'728x90',src:'house',unit:'',image:null,link:'',advertiser:'',start:'',end:'',houseH:'Your ad here',houseSub:'Reach thousands of local readers every week.',houseBtn:'See ad prices'},
+ adrates:{heading:'Advertise with us',sub:'Put your business in front of local readers. Pick a spot, choose your dates and send a request. We reply within one business day.',stats:[{value:'48,000',label:'Visitors a month'},{value:'12,400',label:'Newsletter readers'},{value:'71%',label:'Read on a phone'}],button:'Request this spot',note:'Prices are per week. Ads must link to a real business. We reply with next steps and how to pay.'}
+});
+Object.assign(FIELDS,{
+ news:[['heading','Heading','text'],['sub','Supporting text','text'],['items','Stories','articles'],['@ads','Ads in your stories','adset']],
+ breaking:[['label','Label','text'],['from','Headlines','select',{stories:'My stories marked Breaking',custom:'Type my own'}],['items','Your own headlines','list',[['text','Headline','text']]],['speed','Scroll speed','select',{normal:'Normal',slow:'Slow',fast:'Fast'}]],
+ newsletter:[['heading','Heading','text'],['sub','Supporting text','textarea'],['perks','What readers get (one per line)','textarea'],['button','Button','text'],['note','Small print','text'],['count','Number of readers (optional)','text'],['image','Photo (for the “Beside a photo” layout)','image']],
+ ads:[['src','What shows here','select',{house:'“Advertise here” (sell it yourself)',direct:'An ad I sold (photo and link)',adsense:'Google AdSense'}],['size','Size','select',{'728x90':'Leaderboard 728 × 90','970x250':'Billboard 970 × 250','970x90':'Large leaderboard 970 × 90','300x250':'Medium rectangle 300 × 250','336x280':'Large rectangle 336 × 280','320x100':'Large mobile banner 320 × 100'}],['@slot','This ad','adslot'],['@set','Ad spaces on your whole site','adset']],
+ adrates:[['heading','Heading','text'],['sub','Supporting text','textarea'],['stats','Your audience','list',[['value','Number','text'],['label','Label','text']]],['button','Button','text'],['note','Small print','text'],['@rates','Prices and requests','adset']]
+});
+Object.assign(ITEM_BLANK,{news:NW('New story headline','A one or two sentence summary.','Local','Your name','',3,'Write the story here.\n\nLeave a blank line between paragraphs.'),breaking:{text:'New headline'}});
+
+/* news content follows the business name and city, and today's date */
+genData=(o=>function(type,F){if(!['news','breaking','newsletter','ads','adrates'].includes(type))return o.apply(this,arguments);
+ const d=JSON.parse(JSON.stringify(DEFAULTS[type]),(k,v)=>typeof v==='string'?fillT(v,F):v);
+ if(type==='news')d.items.forEach((x,i)=>{const t=new Date();t.setHours(0,0,0,0);t.setDate(t.getDate()-Math.floor(i/3));x.date=t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})});
+ return d})(genData);
+
+/* business type: news, magazine or blog */
+(()=>{const ind={label:'News, magazine or blog',goal:'call',tagline:'Local news for {city}',eyebrow:'News · {city}',hero:'Local news worth your morning',sub:'{name} covers local government, schools, business, sports and things to do, every day.',aboutH:'Local news, owned locally',about:'{name} is an independent newsroom that covers {city} and nearby towns. We are funded by readers and local advertisers, and we answer to no one else.',stats:[['48k','Readers a month'],['Daily','Local stories'],['Free','Morning newsletter']],servicesH:'What we cover',intro:'Have a tip? We read every message.',services:[['Local government','City council, budgets and elections.',''],['Schools','School board, sports and student news.',''],['Business','Openings, closings and who is hiring.',''],['Things to do','Events, food and the weekend guide.','']],slidesH:'Around {city}',slides:['On the waterfront','Friday night lights','The farmers market'],gallery:'Photos of the week',reviews:[['The only place I can find out what the council actually decided.','Rosa M.','Reader since 2019'],['The morning newsletter is the first thing I read every day.','Tom B.','Subscriber'],['Advertising here brought us more customers than social media ever did.','Kim’s Hardware','Local advertiser']],faq:[['How do I send a news tip?','Use the contact form or email the newsroom. We protect our sources.'],['How do I advertise?','See our ad prices and send a request. We reply within one business day.'],['Is the newsletter free?','Yes. It comes every weekday morning and you can unsubscribe anytime.']]};
+ const all={};Object.keys(INDUSTRIES).forEach(k=>{if(k==='other')all.news=ind;all[k]=INDUSTRIES[k]});if(!all.news)all.news=ind;
+ Object.keys(INDUSTRIES).forEach(k=>delete INDUSTRIES[k]);Object.assign(INDUSTRIES,all);
+ KITS.news={short:'News or magazine',icon:'news',sample:'The Harbor Ledger',theme:'gazette',styles:['magazine','classic','tech'],cta:'Get the newsletter',cta2:'Latest news',
+  contactH:'Send us a tip',contactSub:'Saw something we should cover? Tell us. We read every message and protect our sources.',contactBtn:'Send tip',
+  team:[['Maya Torres','City Hall reporter','Covers local government and elections.'],['Daniel Okafor','Business editor','Openings, closings and the local economy.'],['Priya Shah','Sports reporter','Friday nights and everything after.']],
+  ctaSec:{heading:'Put your business in front of local readers',sub:'Thousands of local readers see our pages every week. Ask about ad spots and sponsorships.',button:'See ad prices'},
+  layouts:{
+   daily:{name:'Daily newspaper',desc:'A breaking news ticker, a big lead story with the latest headlines beside it, and every topic below.',style:'magazine',theme:'gazette',home:['breaking:ticker','news:lead','ads:strip','news:cats','newsletter:band'],pages:[['News','news',['news:grid']],['Advertise','megaphone',['hero','adrates','faq']],['About','info',['about','team','contact']]]},
+   glossy:{name:'Glossy magazine',desc:'A cover story over a full photo, a feature grid and a newsletter beside a photo.',style:'luxe',theme:'glossy',home:['news:cover','news:grid','newsletter:split','social:feed'],pages:[['Features','news',['news:list']],['Advertise','megaphone',['hero','adrates']],['About','info',['about','team','contact']]]},
+   community:{name:'Community news',desc:'Friendly local news with a newsletter card, the latest stories and space for local sponsors.',style:'classic',theme:'bulletin',home:['news:lead','newsletter:card','news:list','ads:boxed','social:icons'],pages:[['Events','calendar',['news:grid']],['Advertise','megaphone',['hero','adrates','contact']],['About','info',['about','team','contact']]]},
+   digital:{name:'Digital newsroom',desc:'Dark mode, a live ticker and a fast list of the latest stories.',style:'tech',theme:'wire',home:['breaking:flash','news:list','news:grid','newsletter:band'],pages:[['Topics','news',['news:cats']],['Advertise','megaphone',['hero','adrates']],['Contact','phoneCall',['contact','faq']]]},
+   tabloid:{name:'Bold tabloid',desc:'Loud headlines, a scrolling ticker and a big cover story.',style:'loud',theme:'loud',home:['breaking:ticker','news:cover','news:grid','ads:strip','newsletter:band'],pages:[['Advertise','megaphone',['hero','adrates']],['Contact','phoneCall',['contact']]]},
+   blog:{name:'Blog',desc:'One writer, a clean list of posts, an about box and a signup.',style:'classic',theme:'paper',home:['hero:centered','news:list','about:right','newsletter:card'],pages:[['Posts','news',['news:grid']],['About','info',['about','contact']]]}}};
+ [['magazine','lead'],['luxe','cover'],['loud','cover'],['tech','list'],['portfolio','cover'],['retro','grid'],['playful','grid'],['classic','lead']].forEach(([k,v])=>{if(STYLES[k])STYLES[k].v.news=v});
+})();
+
+/* helpers */
+const NWF={};let NWV=null;
+const nwCats=items=>{const c=[];items.forEach(x=>{const k=String(x.cat||'').trim();if(k&&!c.includes(k))c.push(k)});return c};
+const nwAv=x=>`<span class="nw-av" aria-hidden="true">${esc(initials(x.author||'News'))}</span>`;
+const nwKick=x=>`<span class="nw-kick">${x.breaking==='yes'?`<i class="nw-brk">${ic('bolt',11)} Breaking</i>`:''}${esc(x.cat||'News')}</span>`;
+function nwBy(x,av){return `<p class="nw-by">${av?nwAv(x):''}<span>${x.author?`By <b>${esc(x.author)}</b>`:''}${x.date?`<i>·</i>${esc(x.date)}`:''}${+x.read?`<i>·</i>${+x.read} min read`:''}</span></p>`}
+const nwViewBtn=(s,k)=>EDIT?`<button type="button" class="nw-view" data-nwopen="${s.id}|${k}">${ic('eye',13)} Article page</button>`:'';
+const nwLeadIdx=items=>Math.max(0,items.findIndex(x=>x.top==='yes'));
+function nwCard(s,x,k,cls){const txt=cls==='nw-txt';
+ return `<article class="nw-card${cls?' '+cls:''}" data-nwcard="${s.id}|${k}"${JL('items',k)}>${txt?'':`<div class="nw-ph">${pic(x.image,IP(s,`items.${k}.image`),100+k*31,'Story photo')}</div>`}<div class="nw-tx">${nwKick(x)}<h3${T(s,`items.${k}.title`)}>${esc(x.title)}</h3>${x.dek&&cls!=='nw-sm'?`<p class="nw-dek"${T(s,`items.${k}.dek`)}>${esc(x.dek)}</p>`:''}${nwBy(x)}${nwViewBtn(s,k)}</div></article>`}
+const adsSlot=k=>{const A=state.ads;return A&&A.slots&&A.slots[k]&&A.slots[k].on?A.slots[k]:null};
+
+R.news=s=>{const d=s.data,v=s.variant,items=d.items||[],all=items.map((x,k)=>({x,k})),cats=nwCats(items);let f=NWF[s.id]||'All';if(f!=='All'&&!cats.includes(f))f='All';
+ const head=`<div class="sec-head nw-head"><h2${T(s,'heading')}>${esc(d.heading)}</h2>${d.sub||EDIT?`<p${T(s,'sub')}>${esc(d.sub)}</p>`:''}</div>`;
+ const chips=cats.length>1?`<div class="nw-chips" role="tablist" aria-label="Topics">${['All',...cats].map(c=>`<button type="button" role="tab" aria-selected="${f===c}" class="nw-chip${f===c?' on':''}" data-nwf="${s.id}|${esc(c)}">${esc(c)}</button>`).join('')}</div>`:'';
+ const addTile=EDIT?`<button type="button" class="nw-addtile" data-liadd="${s.id}|items">${ic('plus',20)}<b>Add a story</b><small>Headline, photo, writer and the full story</small></button>`:'';
+ const sideS=adsSlot('side'),side=sideS?adHtml(sideS,'300x250',{key:'side',name:'Sidebar box'}):'';
+ if(!all.length)return `<section class="nw-sec"><div class="wrap">${head}<p class="nw-empty">No stories yet.</p>${addTile}</div></section>`;
+ const L=all[nwLeadIdx(items)],rest=all.filter(o=>o!==L);
+ const big=(o,cls)=>`<article class="nw-main${cls?' '+cls:''}" data-nwcard="${s.id}|${o.k}"${JL('items',o.k)}><div class="nw-ph">${pic(o.x.image,IP(s,`items.${o.k}.image`),120+o.k*31,'Lead story photo')}</div><div class="nw-tx">${nwKick(o.x)}<h2 class="nw-h1"${T(s,`items.${o.k}.title`)}>${esc(o.x.title)}</h2>${o.x.dek||EDIT?`<p class="nw-dek"${T(s,`items.${o.k}.dek`)}>${esc(o.x.dek)}</p>`:''}${nwBy(o.x,true)}${nwViewBtn(s,o.k)}</div></article>`;
+ const latest=(list,title,num)=>`<h3 class="nw-side-h">${title}</h3><ol class="nw-latest${num?' num':''}">${list.map((o,i)=>`<li data-nwcard="${s.id}|${o.k}"${JL('items',o.k)}>${num?`<b class="nw-n">${i+1}</b>`:`<time>${esc(o.x.date||'')}</time>`}<span${T(s,`items.${o.k}.title`)}>${esc(o.x.title)}</span></li>`).join('')}</ol>`;
+ let body;
+ if(v==='lead'){body=`<div class="nw-lead">${big(L)}<div class="nw-second">${rest.slice(0,2).map(o=>nwCard(s,o.x,o.k,'nw-sm')).join('')}</div><aside class="nw-side">${latest(rest.slice(2,8),'Latest')}${side}</aside></div>${addTile?`<div class="nw-addrow">${addTile}</div>`:''}`}
+ else if(v==='cover'){body=`${big(L,'nw-coverstory')}<div class="nw-row3">${rest.slice(0,3).map(o=>nwCard(s,o.x,o.k)).join('')}</div>${addTile?`<div class="nw-addrow">${addTile}</div>`:''}`}
+ else if(v==='cats'){const groups=cats.length?cats.slice(0,4):['News'];
+  body=`<div class="nw-cats">${groups.map(c=>{const g=all.filter(o=>(String(o.x.cat||'').trim()||'News')===c);return `<div class="nw-col"><h3 class="nw-col-h">${esc(c)}</h3>${g[0]?nwCard(s,g[0].x,g[0].k,'nw-sm'):''}${g.slice(1,4).map(o=>nwCard(s,o.x,o.k,'nw-txt')).join('')}</div>`}).join('')}</div>${addTile?`<div class="nw-addrow">${addTile}</div>`:''}`}
+ else{const list=all.filter(({x})=>f==='All'||String(x.cat||'').trim()===f);
+  if(v==='list')body=`${chips}<div class="nw-listwrap"><div class="nw-rows">${list.map(o=>nwCard(s,o.x,o.k,'nw-rowc')).join('')}${addTile}</div><aside class="nw-side">${latest(all.slice(0,5),'Most read',true)}${side}</aside></div>`;
+  else{const A=state.ads,feed=adsSlot('feed'),every=Math.max(2,+(A&&A.every)||4);let cards='';
+   list.forEach((o,i)=>{cards+=nwCard(s,o.x,o.k);if(feed&&(i+1)%every===0&&i<list.length-1)cards+=`<div class="nw-card nw-adcard">${adHtml(feed,'fluid',{key:'feed',name:'Between stories'})}</div>`});
+   body=`${chips}<div class="nw-grid">${cards}${addTile}</div>`}}
+ return `<section class="nw-sec nwv-${v}"><div class="wrap">${head}${body}</div></section>`};
+
+R.breaking=s=>{const d=s.data,n=firstOf('news')||(state.pages||[]).flatMap(p=>p.sections||[]).find(x=>x.type==='news');
+ let list=[];if(d.from!=='custom'&&n){const it=(n.data.items||[]).map((x,k)=>({t:x.title,k}));const br=it.filter(o=>n.data.items[o.k].breaking==='yes');list=(br.length?br:it.slice(0,4)).map(o=>({t:o.t,sid:n.id,k:o.k}))}
+ if(!list.length)list=(d.items||[]).map(x=>({t:x.text})).filter(x=>String(x.t||'').trim());
+ const one=o=>`<span${o.sid&&!EDIT?` data-nwopen="${o.sid}|${o.k}" role="link" tabindex="0"`:''}>${esc(o.t)}</span>`;
+ const lab=`<b class="nw-tlab"${T(s,'label')}>${ic('bolt',13)}${esc(d.label||'Breaking')}</b>`;
+ if(s.variant==='flash')return `<section class="nw-tick nw-flash"><div class="wrap nw-tick-in">${lab}<div class="nw-flash-l">${list.map(one).join('<i>•</i>')}</div></div></section>`;
+ const sp={slow:60,normal:38,fast:22}[d.speed]||38,row=list.map(o=>one(o)+'<i>•</i>').join('');
+ return `<section class="nw-tick" style="--nw-sp:${sp}s">${lab}<div class="nw-track"><div class="nw-run">${row}${row}</div><div class="nw-run" aria-hidden="true">${row}${row}</div></div></section>`};
+
+R.newsletter=s=>{const d=s.data,v=s.variant,perks=String(d.perks||'').split('\n').map(x=>x.trim()).filter(Boolean);
+ const form=`<form class="nw-nl-f" data-nwsub="${s.id}"><label class="sr-only" for="nl-${s.id}">Email address</label><input id="nl-${s.id}" name="email" type="email" required placeholder="you@example.com" autocomplete="email"><button type="submit" class="sbtn" data-btn="${s.id}|button">${esc(d.button||'Subscribe')}</button></form>`;
+ const copy=`<div class="nw-nl-c">${d.count?`<p class="eyebrow">${ic('mail',14)} Join ${esc(d.count)} readers</p>`:''}<h2${T(s,'heading')}>${esc(d.heading)}</h2>${d.sub||EDIT?`<p class="nw-nl-sub"${T(s,'sub')}>${esc(d.sub)}</p>`:''}${perks.length?`<ul class="nw-perks">${perks.map(p=>`<li>${ic('check',15)}<span>${esc(p)}</span></li>`).join('')}</ul>`:''}${form}${d.note||EDIT?`<small class="nw-nl-note"${T(s,'note')}>${esc(d.note)}</small>`:''}</div>`;
+ if(v==='split')return `<section class="nw-nl nw-nl-split"><div class="wrap grid2">${pic(d.image,IP(s,'image'),150,'Photo')}${copy}</div></section>`;
+ return `<section class="nw-nl nw-nl-${v==='card'?'card':'band'}"><div class="wrap">${v==='card'?`<div class="nw-nl-box">${copy}</div>`:copy}</div></section>`};
+
+/* article page */
+function nwRoot(){let r=$('#nwRoot');if(!r){r=document.createElement('div');r.id='nwRoot';document.body.appendChild(r)}return r}
+function nwClose(){NWV=null;const r=$('#nwRoot');if(r){r.innerHTML='';r.className=''}document.body.classList.remove('nw-open')}
+function nwSec(id){const s=sec(id);if(s)return s;const f=state.pages&&findSecAny(id);return f?f.s:null}
+function nwPaint(){if(!NWV){nwClose();return}const r=nwRoot();r.className='nw-root';r.dataset.look=state.brand.look||'standard';r.setAttribute('style',siteVars(state.brand));document.body.classList.add('nw-open');
+ r.innerHTML=NWV.view==='book'?adBookHtml():nwArticle();const sc=r.querySelector('.nw-scroll');if(sc)sc.scrollTop=0;const f=r.querySelector('[data-nwfocus]');if(f)f.focus({preventScroll:true})}
+function nwOpen(sid,k){const s=nwSec(sid);if(!s||!(s.data.items||[])[k])return;NWV={view:'article',sid,k};nwPaint()}
+function nwArticle(){const s=nwSec(NWV.sid);if(!s)return'';const items=s.data.items||[],x=items[NWV.k];if(!x)return'';
+ const paras=String(x.body||'').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean),inA=adsSlot('article'),sideA=adsSlot('side');
+ const body=paras.map((p,i)=>`<p>${lines(p)}</p>${i===1&&inA?`<div class="nw-inad">${adHtml(inA,'300x250',{key:'article',name:'Inside articles'})}</div>`:''}`).join('');
+ const rel=items.map((y,k)=>({y,k})).filter(o=>o.k!==NWV.k).sort((a,b)=>(b.y.cat===x.cat)-(a.y.cat===x.cat)).slice(0,3);
+ const nl=firstOf('newsletter')||(state.pages||[]).flatMap(p=>p.sections||[]).find(z=>z.type==='newsletter');const nd=nl?nl.data:DEFAULTS.newsletter;
+ const url=`https://${slug(state.brand.name)}.${admin.domain||'thinkwebpros.com'}/news/${slug(x.title).slice(0,60)}`;
+ const prev=NWV.k>0?NWV.k-1:null,next=NWV.k<items.length-1?NWV.k+1:null;
+ return `<div class="nw-bg" data-nwclose></div><div class="nw-page" role="dialog" aria-modal="true" aria-label="${esc(x.title)}"><div class="nw-bar"><b>${esc(state.brand.name)}</b><button type="button" class="nw-x" data-nwclose aria-label="Close article" data-nwfocus>${ic('x',20)}</button></div><div class="nw-scroll"><div class="nw-art${sideA?' w-side':''}"><article>
+  ${nwKick(x)}<h1>${esc(x.title)}</h1>${x.dek?`<p class="nw-art-dek">${esc(x.dek)}</p>`:''}
+  <div class="nw-art-by">${nwAv(x)}<div><b>${esc(x.author||state.brand.name)}</b>${x.role?`<small>${esc(x.role)}</small>`:''}<small>${[x.date,+x.read?x.read+' min read':''].filter(Boolean).map(esc).join(' · ')}</small></div><span class="nw-share"><button type="button" data-nwshare="${esc(url)}" aria-label="Copy link">${ic('share',16)} Share</button><a href="mailto:?subject=${encodeURIComponent(x.title)}&amp;body=${encodeURIComponent(url)}" aria-label="Email this story">${ic('mail',16)}</a></span></div>
+  ${x.image?`<figure class="nw-art-ph">${mediaHtml(x.image)}</figure>`:''}
+  <div class="nw-art-body">${body||'<p class="muted">This story has no text yet.</p>'}</div>
+  <div class="nw-art-auth">${nwAv(x)}<div><b>${esc(x.author||state.brand.name)}</b><small>${esc(x.role||'Writer')} at ${esc(state.brand.name)}</small></div></div>
+  <form class="nw-art-nl" data-nwsub="${nl?nl.id:''}"><div><b>${esc(nd.heading)}</b><small>${esc(fillT(nd.sub,{name:state.brand.name,city:''}))}</small></div><input name="email" type="email" required placeholder="you@example.com" aria-label="Email address"><button type="submit" class="sbtn sm">${esc(nd.button||'Subscribe')}</button></form>
+  <nav class="nw-pn">${prev!=null?`<button type="button" data-nwgo="${prev}">${ic('l',15)} <span>${esc(items[prev].title)}</span></button>`:'<span></span>'}${next!=null?`<button type="button" data-nwgo="${next}"><span>${esc(items[next].title)}</span> ${ic('r',15)}</button>`:''}</nav>
+  ${rel.length?`<div class="nw-rel"><h3>More stories</h3><div class="nw-rel-g">${rel.map(o=>`<button type="button" data-nwgo="${o.k}">${o.y.image?`<span class="nw-rel-ph">${mediaHtml(o.y.image,true)}</span>`:''}${nwKick(o.y)}<b>${esc(o.y.title)}</b></button>`).join('')}</div></div>`:''}
+ </article>${sideA?`<aside class="nw-art-side">${adHtml(sideA,'300x250',{key:'side',name:'Sidebar box'})}</aside>`:''}</div></div></div>`}
+
+/* ---------- ad spaces for any site: suggested placements, Google AdSense, ads you sell, and requests ----------
+   Site-wide ad settings live in state.ads and are saved with the design; advertiser requests live in
+   state.adRequests, next to the owner's messages. AdSense never loads in the studio or the preview: slots show
+   a labeled stand-in, so owners never click their own ads (Google bans accounts for that) and the studio's
+   security policy stays closed to ad networks. The live site gets Google's code and an ads.txt file. */
+const AD_SLOTS={
+ top:{name:'Top banner',where:'Below the menu on every page',size:'728x90',phone:'320x50',why:'Seen first on every page. Usually the best-paying spot.',rate:'$150',news:false},
+ side:{name:'Sidebar box',where:'Beside the headlines and next to every article',size:'300x250',why:'The most common ad size, so it fills fast with Google and advertisers.',rate:'$90',news:true},
+ feed:{name:'Between stories',where:'A card in the story grid every few stories',size:'fluid',why:'Looks like the stories around it, so readers notice it.',rate:'$120',news:true},
+ article:{name:'Inside articles',where:'After the second paragraph of every article',size:'300x250',why:'Readers who reach it are paying attention.',rate:'$75',news:true},
+ foot:{name:'Footer banner',where:'Above the footer on every page',size:'728x90',phone:'320x100',why:'Low-key, fine for any business site.',rate:'$40',news:false},
+ sticky:{name:'Phone sticky banner',where:'Pinned to the bottom of the screen on phones',size:'320x50',why:'Most visitors read on a phone. Readers can close it.',rate:'$100',news:false}};
+const SLOT0={on:false,src:'house',unit:'',image:null,link:'',advertiser:'',start:'',end:''};
+const AD_SRC={house:'Advertise here',direct:'Ad I sold',adsense:'Google AdSense'};
+const RATES0=()=>[...Object.entries(AD_SLOTS).map(([key,o])=>({key,price:o.rate,desc:o.where+'.'})),{key:'section',price:'$60',desc:'A wide banner between sections of the home page.'}];
+const rateName=k=>k==='section'?'Banner between sections':(AD_SLOTS[k]||{}).name||k;
+const adSizeLbl=z=>z==='fluid'?'In-feed card':z.replace('x',' × ');
+function adsW(){if(!state.ads)state.ads={pub:'',auto:'no',every:4,houseH:'Your ad here',houseSub:'Reach thousands of local readers every week.',houseBtn:'See ad prices',slots:{},rates:RATES0()};const A=state.ads;
+ A.slots=A.slots||{};Object.keys(AD_SLOTS).forEach(k=>{A.slots[k]={...SLOT0,...(A.slots[k]||{})}});if(!Array.isArray(A.rates))A.rates=RATES0();return A}
+const adsR=()=>state.ads?adsW():null;
+const pubId=v=>{const m=String(v||'').trim().match(/(?:ca-)?pub-(\d{10,20})/);return m?'ca-pub-'+m[1]:''};
+const isoToday=()=>isoD(new Date());
+function adRunning(c){if(c.src!=='direct'||!c.image)return false;const t=isoToday();return!(c.start&&t<c.start)&&!(c.end&&t>c.end)}
+function adStatus(c){if(c.src!=='direct')return'';if(!c.image)return'Needs the ad photo';const t=isoToday();if(c.start&&t<c.start)return'Starts '+dayLbl(fromIso(c.start));if(c.end&&t>c.end)return'Ended '+dayLbl(fromIso(c.end));return c.end?'Running until '+dayLbl(fromIso(c.end)):'Running'}
+const gMark='<svg class="ad-gm" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#FBBC05" d="M6.4 14a6 6 0 0 1 0-3.9V7.5H3.1a10 10 0 0 0 0 9z"/><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.5L6.4 10C7.2 7.8 9.4 6 12 6z"/></svg>';
+/* one ad slot. o: {key (global slot or section id), name, phone (smaller size on phones), path (image target), house {h,sub,btn}} */
+function adHtml(c,z,o){o=o||{};const A=adsR()||{},fix=z!=='fluid',[w,h]=fix?z.split('x'):[0,0],[pw,ph]=o.phone?o.phone.split('x'):[w,h];
+ const H=o.house||{h:A.houseH||'Your ad here',sub:A.houseSub||'Reach local readers every week.',btn:A.houseBtn||'See ad prices'};
+ let inner,kind=c.src;
+ if(c.src==='direct'&&(EDIT||adRunning(c))){inner=c.image?`<a class="ad-img"${EDIT?'':` href="${esc(normUrl(c.link)||'#')}" target="_blank" rel="sponsored noopener"`} aria-label="${esc(c.advertiser||'Advertisement')}">${mediaHtml(c.image,true)}</a>`:pic(null,o.path,140,'Upload the ad');if(EDIT&&!adRunning(c))inner+=`<span class="ad-off">${esc(adStatus(c))}</span>`}
+ else if(c.src==='adsense'){const p=pubId(A.pub);inner=`<div class="ad-g">${gMark}<b>Google ad</b><small>${p?(c.unit?'Ad unit '+esc(c.unit):A.auto==='yes'?'Auto ads':'Add an ad unit ID'):'Add your AdSense publisher ID'}</small><small class="ad-g2">Real ads show on your live site</small></div>`}
+ else{kind='house';inner=`<div class="ad-house"><b>${esc(H.h)}</b><small>${esc(H.sub)}</small><span class="sbtn sm" role="button" tabindex="0"${EDIT?'':` data-adbook="${esc(o.key||'')}"`}>${esc(H.btn)}</span></div>`}
+ const tag=EDIT?`<span class="ad-tag">${ic('adbox',12)} ${esc(o.name||'Ad space')} · ${esc(AD_SRC[c.src]||'')} · ${esc(adSizeLbl(z))}</span>`:'';
+ return `<div class="ad-slot ad-k-${kind}${fix?'':' ad-fluid'}${o.phone?' ad-swap':''}" style="${fix?`--aw:${w};--ah:${h};--pw:${pw};--ph:${ph}`:''}"${EDIT&&o.global?` data-adslot="${esc(o.key)}" title="Click to change this ad space"`:''}>${tag}<span class="ad-lab">Advertisement</span><div class="ad-box">${inner}</div></div>`}
+
+R.ads=s=>{const d=s.data;const H={h:d.houseH,sub:d.houseSub,btn:d.houseBtn};
+ return `<section class="ad-sec ad-sec-${s.variant==='boxed'?'boxed':'strip'}"><div class="wrap">${adHtml(d,d.size||'728x90',{key:'section',name:'Ad space',path:IP(s,'image'),house:H,phone:/^(728|970)/.test(d.size||'728x90')?'320x100':''})}</div></section>`};
+
+function adRatesVis(){const A=adsR();const live=state.sections.concat(...(state.pages||[]).map(p=>p.sections||[]));const hasSec=live.some(x=>x.type==='ads'&&!x.hidden);
+ const rates=(A?A.rates:RATES0());const on=rates.filter(r=>r.key==='section'?hasSec:A&&A.slots[r.key]&&A.slots[r.key].on);return{rates,on:on.length?on:rates.filter(r=>['top','side','foot'].includes(r.key))}}
+R.adrates=s=>{const d=s.data,v=s.variant,{rates,on}=adRatesVis();const show=EDIT?rates:on;
+ const card=r=>{const off=!on.includes(r);const sz=r.key==='section'?'728x90':AD_SLOTS[r.key]?AD_SLOTS[r.key].size:'';return {r,off,sz}};
+ const btn=r=>EDIT?`<span class="sbtn sm${r.off?' ghost':''}">${esc(d.button||'Request this spot')}</span>`:`<button type="button" class="sbtn sm" data-adbook="${esc(r.r.key)}">${esc(d.button||'Request this spot')}</button>`;
+ const list=show.map(card);
+ const stats=(d.stats||[]).length?`<div class="stats ad-stats">${d.stats.map((x,i)=>`<div${PK(`stats.${i}`)}><b${T(s,`stats.${i}.value`)}>${esc(x.value)}</b><span${T(s,`stats.${i}.label`)}>${esc(x.label)}</span></div>`).join('')}</div>`:'';
+ const offNote=r=>r.off&&EDIT?`<small class="ad-offnote">Not on your site yet. Turn it on in Ad spaces.</small>`:'';
+ const rows=v==='table'?`<div class="ad-table" role="table">${list.map(r=>`<div class="ad-tr${r.off?' off':''}" role="row"><span role="cell"><b>${esc(rateName(r.r.key))}</b><small>${esc(r.r.desc||'')}</small>${offNote(r)}</span><span role="cell" class="ad-sz">${esc(r.sz?adSizeLbl(r.sz):'')}</span><span role="cell" class="ad-pr"><b>${esc(r.r.price)}</b><small>/week</small></span><span role="cell">${btn(r)}</span></div>`).join('')}</div>`
+  :`<div class="ad-cards">${list.map(r=>`<div class="svc ad-card${r.off?' off':''}"><span class="ad-mock ad-mock-${esc(r.r.key)}" aria-hidden="true"><i></i></span><h3>${esc(rateName(r.r.key))}</h3><p class="muted">${esc(r.r.desc||'')}</p><small class="ad-sz">${esc(r.sz?adSizeLbl(r.sz):'')}</small><b class="ad-pr">${esc(r.r.price)}<small>/week</small></b>${offNote(r)}${btn(r)}</div>`).join('')}</div>`;
+ return `<section class="ad-rates ad-rates-${v}"><div class="wrap"><div class="sec-head center"><h2${T(s,'heading')}>${esc(d.heading)}</h2>${d.sub||EDIT?`<p${T(s,'sub')}>${esc(d.sub)}</p>`:''}</div>${stats}${rows}${d.note||EDIT?`<p class="ad-note"${T(s,'note')}>${esc(d.note)}</p>`:''}</div></section>`};
+
+/* site-wide slots: top and footer banners, and the sticky phone banner */
+let AD_STICKY_X=false;
+renderSite=(o=>function(edit){let h=o.apply(this,arguments);const A=adsR();if(!A)return h;const S=A.slots;EDIT=!!edit;
+ const band=(k,cls)=>S[k].on?`<div class="ad-band ${cls}"><div class="wrap">${adHtml(S[k],AD_SLOTS[k].size,{key:k,name:AD_SLOTS[k].name,phone:AD_SLOTS[k].phone,path:'ads:slots.'+k+'.image',global:true})}</div></div>`:'';
+ const top=band('top','ad-top'),foot=band('foot','ad-foot');
+ const st=S.sticky.on&&(edit||!AD_STICKY_X)?`<div class="ad-sticky"><div class="ad-sticky-in">${adHtml(S.sticky,'320x50',{key:'sticky',name:'Phone sticky banner',path:'ads:slots.sticky.image',global:true})}<button type="button" class="ad-stx" data-adstx aria-label="Close ad">${ic('x',13)}</button></div></div>`:'';
+ EDIT=false;
+ if(top)h=h.replace('<div class="smain">','<div class="smain">'+top);
+ if(foot)h=h.replace('<footer class="foot"',foot+'<footer class="foot"');
+ return h+st})(renderSite);
+
+/* booking: an advertiser asks for a spot. It lands in the owner's messages and Ad spaces > Requests. */
+function adBookOpen(key){NWV={view:'book',key:key||'',f:{weeks:4,start:isoD(new Date(Date.now()+3*864e5))}};nwPaint()}
+function adBookHtml(){const{on}=adRatesVis(),F=NWV.f;const key=on.some(r=>r.key===NWV.key)?NWV.key:(on[0]||{}).key;F.place=F.place&&on.some(r=>r.key===F.place)?F.place:key;
+ const r=on.find(x=>x.key===F.place)||{},tot=num$(r.price)*(+F.weeks||1),as=state.sections.concat(...(state.pages||[]).map(p=>p.sections||[])).find(x=>x.type==='adrates');
+ const close=`<button type="button" class="nw-x" data-nwclose aria-label="Close" data-nwfocus>${ic('x',20)}</button>`;
+ if(NWV.done)return `<div class="nw-bg" data-nwclose></div><div class="nw-page nw-book" role="dialog" aria-modal="true" aria-label="Request sent"><div class="nw-bar"><b>Advertise with ${esc(state.brand.name)}</b>${close}</div><div class="nw-scroll"><div class="nw-done">${ic('check',30)}<h2>Request sent</h2><p>Thanks, ${esc((NWV.done.name||'').split(' ')[0]||'friend')}. ${esc(state.brand.name)} will reply to ${esc(NWV.done.email)} within one business day with next steps and how to pay.</p><p class="muted">Nothing is charged until your ad is approved.</p><button type="button" class="sbtn" data-nwclose>Done</button></div></div></div>`;
+ return `<div class="nw-bg" data-nwclose></div><div class="nw-page nw-book" role="dialog" aria-modal="true" aria-label="Request an ad spot"><div class="nw-bar"><b>Advertise with ${esc(state.brand.name)}</b>${close}</div><form class="nw-scroll nw-bk" id="adBookForm">
+  <div class="nw-bk-h"><h2>Request an ad spot</h2><p class="muted">${esc(as?as.data.sub:DEFAULTS.adrates.sub)}</p></div>
+  <fieldset class="nw-bk-spots"><legend>Where</legend>${on.map(x=>`<label class="${F.place===x.key?'on':''}"><input type="radio" name="place" value="${esc(x.key)}" data-adbk="place" ${F.place===x.key?'checked':''}><span><b>${esc(rateName(x.key))}</b><small>${esc(x.desc||'')}</small></span><em>${esc(x.price)}<small>/wk</small></em></label>`).join('')}</fieldset>
+  <div class="nw-bk-2"><label>Start date<input type="date" required data-adbk="start" min="${isoToday()}" value="${esc(F.start||'')}"></label><label>Weeks<select data-adbk="weeks">${[1,2,4,8,12,26,52].map(n=>`<option value="${n}"${+F.weeks===n?' selected':''}>${n} week${n>1?'s':''}</option>`).join('')}</select></label></div>
+  <div class="nw-bk-2"><label>Your name<input required data-adbk="name" autocomplete="name" value="${esc(F.name||'')}"></label><label>Business<input required data-adbk="biz" autocomplete="organization" value="${esc(F.biz||'')}"></label></div>
+  <div class="nw-bk-2"><label>Email<input required type="email" data-adbk="email" autocomplete="email" value="${esc(F.email||'')}"></label><label>Phone<input type="tel" data-adbk="phone" autocomplete="tel" value="${esc(F.phone||'')}"></label></div>
+  <label>Where should the ad link to?<input data-adbk="link" placeholder="yourbusiness.com" value="${esc(F.link||'')}"></label>
+  <label class="nw-bk-file">Your ad (optional)<input type="file" accept="image/*" data-adbkimg><small>${F.image?'Ad attached. Pick another to replace it.':'A JPG or PNG sized for the spot. You can also send it later.'}</small></label>
+  <label>Anything else?<textarea rows="2" data-adbk="msg" placeholder="A sale you want to promote, the dates that matter, questions">${esc(F.msg||'')}</textarea></label>
+  <div class="nw-bk-tot"><span>${esc(rateName(F.place||''))} · ${+F.weeks||1} week${(+F.weeks||1)>1?'s':''}</span><b>${money(tot)}</b></div>
+  <p class="nw-bk-pay">${ic('info',14)} You are not charged now. ${esc(state.brand.name)} reviews your request and sends payment details once it is approved.</p>
+  <button type="submit" class="sbtn">Send request</button></form></div>`}
+function adBookSend(){const F=NWV.f;const nm=String(F.name||'').trim(),em=String(F.email||'').trim(),bz=String(F.biz||'').trim();if(!nm||!bz||!/^\S+@\S+\.\S+$/.test(em)||!F.start){toast('Add your name, business, a valid email and a start date');return}
+ const{on}=adRatesVis(),r=on.find(x=>x.key===F.place)||{},weeks=+F.weeks||1;
+ const q={id:uid(),at:Date.now(),name:nm,biz:bz,email:em,phone:F.phone||'',place:F.place,start:F.start,weeks,link:F.link||'',image:F.image||null,msg:F.msg||'',price:r.price||'',total:num$(r.price)*weeks,status:'new',paid:false};
+ state.adRequests=state.adRequests||[];state.adRequests.unshift(q);
+ state.leads=state.leads||[];state.leads.unshift({id:uid(),name:`${nm} (${bz})`,email:em,msg:`Ad request: ${rateName(q.place)} for ${weeks} week${weeks>1?'s':''} from ${dayLbl(fromIso(q.start))}, ${money(q.total)}.${q.link?' Links to '+q.link+'.':''}${q.msg?' Note: '+q.msg:''} Review it in Ad spaces > Requests.`,at:Date.now(),read:false,adreq:q.id});
+ save();NWV.done={name:nm,email:em};nwPaint()}
+
+/* newsletter signups */
+function nwSubscribe(form){const em=String(new FormData(form).get('email')||'').trim();if(!/^\S+@\S+\.\S+$/.test(em)){toast('Add a valid email address');return}
+ state.subscribers=state.subscribers||[];if(!state.subscribers.some(x=>x.email===em))state.subscribers.push({email:em,at:Date.now()});
+ state.leads=state.leads||[];state.leads.unshift({id:uid(),name:'New newsletter subscriber',email:em,msg:`${em} signed up for your newsletter. You have ${state.subscribers.length} subscriber${state.subscribers.length===1?'':'s'}.`,at:Date.now(),read:false});
+ form.reset();save();toast('You are subscribed. The owner sees new subscribers in the dashboard.',{label:'Open dashboard',fn:()=>{nwClose();setTab('dashboard')}})}
+
+/* ---------- studio: story editor, ad slot fields and the Ad spaces window ---------- */
+fieldHtml=(o=>function(s,f,prefix){const t=f[2];
+ if(t==='articles')return nwEditor(s);
+ if(t==='adslot')return adSlotFields(s);
+ if(t==='adset')return adSetSummary(s);
+ if(t==='date'){const path=prefix?prefix+'.'+f[0]:f[0];return `<label class="fld"><span>${f[1]}</span><input type="date" data-sf="${s.id}|${path}" value="${esc(getPath(s.data,path)||'')}"></label>`}
+ return o.apply(this,arguments)})(fieldHtml);
+function nwEditor(s){const arr=s.data.items||[];
+ return `<div class="fld nw-ed"><span>Stories · ${arr.length}</span><p class="hint">Click a story on the page to jump to it here. The first story set as Top story leads the page.</p>${arr.map((x,i)=>{const F=(k,l,t,sub)=>fieldHtml(s,[k,l,t,sub],`items.${i}`);
+  return `<div class="li nw-eli" data-nwi="${i}"><div class="li-h"><b>${esc(x.title||'Story '+(i+1))}</b><span class="row" style="gap:2px"><button type="button" class="iconbtn" data-nwopen="${s.id}|${i}" title="See the article page" aria-label="See the article page">${ic('eye',14)}</button><button type="button" class="iconbtn" data-limove="${s.id}|items|${i}|-1" ${i===0?'disabled':''} aria-label="Move up">${ic('up',14)}</button><button type="button" class="iconbtn" data-limove="${s.id}|items|${i}|1" ${i===arr.length-1?'disabled':''} aria-label="Move down">${ic('down',14)}</button><button type="button" class="iconbtn" data-lidel="${s.id}|items|${i}" aria-label="Remove">${ic('trash',14)}</button></span></div>
+   ${F('title','Headline','text')}${F('dek','Summary','textarea')}<div class="sp-ed2">${F('cat','Topic','text')}${F('date','Date','text')}</div><div class="sp-ed2">${F('author','Writer','text')}${F('role','Writer’s title','text')}</div>${F('image','Photo','image')}${F('body','The story (leave a blank line between paragraphs)','textarea')}<div class="sp-ed3">${F('read','Minutes to read','number')}${F('top','Top story','select',{no:'No',yes:'Yes'})}${F('breaking','Breaking','select',{no:'No',yes:'Yes'})}</div></div>`}).join('')}<button type="button" class="btn sm" data-liadd="${s.id}|items" style="justify-self:start">${ic('plus',13)} Add a story</button></div>`}
+function adSlotFields(s){const d=s.data,F=(k,l,t,sub)=>fieldHtml(s,[k,l,t,sub],'');
+ if(d.src==='adsense'){const p=pubId((adsR()||{}).pub);return `<div class="fld ad-fl">${F('unit','AdSense ad unit ID','text')}<p class="hint">In AdSense, open Ads › By ad unit, make a display ad and copy the number after data-ad-slot, like 1234567890. ${p?`Publisher ID ${esc(p)} is set.`:'Add your publisher ID in Ad spaces first.'}</p><button type="button" class="btn sm" data-adsopen="google">${gMark} AdSense setup</button></div>`}
+ if(d.src==='direct')return `<div class="fld ad-fl">${F('image','The ad','image')}<div class="sp-ed2">${F('advertiser','Advertiser','text')}${F('link','Links to','text')}</div><div class="sp-ed2">${F('start','Starts','date')}${F('end','Ends','date')}</div><p class="hint">${esc(adStatus(d)||'')}. Before it starts and after it ends, visitors see your “Advertise here” box instead.</p></div>`;
+ return `<div class="fld ad-fl">${F('houseH','Heading','text')}${F('houseSub','Text','text')}${F('houseBtn','Button','text')}<p class="hint">The button opens a form where businesses ask for this spot. Requests land in your messages and in Ad spaces › Requests.</p></div>`}
+function adSetSummary(s){const A=adsR(),on=A?Object.keys(AD_SLOTS).filter(k=>A.slots[k].on):[],nq=(state.adRequests||[]).filter(r=>r.status==='new').length;
+ return `<div class="fld ad-sum"><span>${s.type==='news'?'Ads in your stories':s.type==='adrates'?'Prices and requests':'Ad spaces on your whole site'}</span><p class="hint">${on.length?`On: ${on.map(k=>AD_SLOTS[k].name).join(', ')}.`:'No site-wide ad spaces yet. We suggest a few that fit your site.'}${nq?` <b>${nq} new request${nq>1?'s':''}.</b>`:''}</p><div class="row" style="gap:6px;flex-wrap:wrap"><button type="button" class="btn sm" data-adsopen="${s.type==='adrates'?'rates':'spots'}">${ic('adbox',14)} Open Ad spaces</button>${nq?`<button type="button" class="btn sm" data-adsopen="requests">Requests (${nq})</button>`:''}</div></div>`}
+
+/* the Ad spaces window: placements, AdSense, prices and requests */
+let ADT='spots';
+function adsOpen(tab){if(tab)ADT=tab;adsPaint()}
+function adsPaint(){const A=adsW(),T0=ADT,nq=(state.adRequests||[]).filter(r=>r.status==='new').length;const old=$('#adsModal .modal-b'),sc=old?old.scrollTop:0;
+ const tabs=[['spots','Ad spaces'],['google','Google AdSense'],['rates','Prices'],['requests','Requests'+(nq?` (${nq})`:'')]];
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal wide ad-modal" id="adsModal" role="dialog" aria-label="Ad spaces"><div class="modal-h"><div><h2>${ic('adbox',22)} Ad spaces</h2><p class="muted">Earn money from your site with Google ads, ads you sell yourself, or both.</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+  <div class="ad-tabs" role="tablist">${tabs.map(([k,l])=>`<button type="button" role="tab" aria-selected="${T0===k}" class="${T0===k?'on':''}" data-adtab="${k}">${l}</button>`).join('')}</div><div class="modal-b">${T0==='google'?adsGoogleHtml(A):T0==='rates'?adsRatesHtml(A):T0==='requests'?adsReqHtml(A):adsSpotsHtml(A)}</div></div></div>`;
+ const nb=$('#adsModal .modal-b');if(nb&&old)nb.scrollTop=sc}
+const adg=(path,label,type,opt,extra)=>{const v=getPath(state.ads,path);const id='adg-'+path.replace(/\./g,'-');
+ if(type==='select')return `<label class="fld"><span>${label}</span><select id="${id}" data-adg="${path}">${Object.entries(opt).map(([k,l])=>`<option value="${k}"${String(v)===k?' selected':''}>${esc(l)}</option>`).join('')}</select></label>`;
+ if(type==='image')return `<div class="fld"><span>${label}</span>${imgField('ads:'+path,v)}</div>`;
+ return `<label class="fld"><span>${label}</span><input id="${id}" type="${type||'text'}" data-adg="${path}" value="${esc(v??'')}"${extra||''}></label>`};
+function adsSpotsHtml(A){const news=state.sections.some(x=>x.type==='news')||(state.pages||[]).some(p=>(p.sections||[]).some(x=>x.type==='news'));
+ const secs=state.sections.filter(x=>x.type==='ads');
+ const rec=k=>news||!AD_SLOTS[k].news;
+ return `<div class="ad-sugg"><div><b>${ic('spark',15)} Suggested for ${news?'a news site':'your site'}</b><p class="muted">${news?'News sites earn the most with a top banner, a sidebar box, ads between stories and inside articles, plus a sticky banner on phones.':'For a business site, keep it light: a footer banner, the phone sticky banner and one banner between sections.'}</p></div><button type="button" class="btn pri sm" data-adsugg>Use the suggested spaces</button></div>
+  <div class="ad-spots">${Object.entries(AD_SLOTS).filter(([k])=>rec(k)||A.slots[k].on).map(([k,o])=>{const c=A.slots[k];return `<div class="ad-spot${c.on?' on':''}"><div class="ad-spot-h"><label class="ad-sw"><input type="checkbox" data-adg="slots.${k}.on" ${c.on?'checked':''}><span></span></label><span class="ad-mock ad-mock-${k}" aria-hidden="true"><i></i></span><div><b>${esc(o.name)}</b><small>${esc(o.where)} · ${esc(adSizeLbl(o.size))}${o.phone?`, ${esc(adSizeLbl(o.phone))} on phones`:''}</small><small class="ad-why">${esc(o.why)}</small></div></div>
+   ${c.on?`<div class="ad-spot-b"><div class="ad-seg" role="radiogroup" aria-label="What shows in ${esc(o.name)}">${Object.entries(AD_SRC).map(([sk,l])=>`<button type="button" role="radio" aria-checked="${c.src===sk}" class="${c.src===sk?'on':''}" data-adsrc="${k}|${sk}">${l}</button>`).join('')}</div>
+    ${c.src==='adsense'?`<div class="sp-ed2">${adg(`slots.${k}.unit`,'Ad unit ID','text',null,' inputmode="numeric" placeholder="1234567890"')}<p class="hint" style="align-self:end">${pubId(A.pub)?'':'Add your publisher ID on the Google AdSense tab. '}Leave empty if you use Auto ads.</p></div>`
+    :c.src==='direct'?`<div class="ad-direct">${adg(`slots.${k}.image`,'The ad','image')}<div class="sp-ed2">${adg(`slots.${k}.advertiser`,'Advertiser','text')}${adg(`slots.${k}.link`,'Links to','text',null,' placeholder="theirbusiness.com"')}</div><div class="sp-ed2">${adg(`slots.${k}.start`,'Starts','date')}${adg(`slots.${k}.end`,'Ends','date')}</div><p class="hint">${esc(adStatus(c))}. Outside these dates visitors see “Advertise here”.</p></div>`
+    :`<p class="hint">Shows “${esc(A.houseH)}” with a button that opens your ad request form. Change the words on the Prices tab.</p>`}${k==='sticky'?`<p class="hint">${ic('phone',13)} Shows on phones only. Switch the preview to Phone to see it. Visitors can close it.</p>`:''}</div>`:''}</div>`}).join('')}</div>
+  ${news?`<div class="ad-every">${adg('every','Ad between stories after every','select',{3:'3 stories',4:'4 stories',6:'6 stories',8:'8 stories'})}</div>`:''}
+  <div class="ad-secs"><b>Ad space sections</b><p class="muted">${secs.length?`This page has ${secs.length} ad space section${secs.length>1?'s':''}. Click one on the page to change it.`:'Put a banner anywhere on a page, like between two sections on your home page.'}</p><button type="button" class="btn sm" data-adaddsec>${ic('plus',13)} Add an ad space section</button></div>`}
+function adsGoogleHtml(A){const p=pubId(A.pub),dom=slug(state.brand.name)+'.'+(admin.domain||'thinkwebpros.com'),pub=p||'ca-pub-XXXXXXXXXXXXXXXX';
+ const head=`<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${pub}" crossorigin="anonymous"></script>`;
+ const txt=`google.com, ${pub.replace('ca-','')}, DIRECT, f08c47fec0942fa0`;
+ const units=Object.entries(A.slots).filter(([,c])=>c.on&&c.src==='adsense');
+ return `<ol class="ad-steps">
+  <li><b>Sign up for Google AdSense</b><p class="muted">Go to <a href="https://adsense.google.com/start/" target="_blank" rel="noopener">adsense.google.com</a> and sign up with your site address. Google pays you for ads shown on your site, usually monthly once you pass $100.</p></li>
+  <li><b>Paste your publisher ID</b>${adg('pub','Publisher ID','text',null,' placeholder="ca-pub-1234567890123456" spellcheck="false"')}<p class="hint">${A.pub&&!p?'<span class="ad-bad">That does not look like a publisher ID. It starts with pub- or ca-pub- followed by 16 numbers.</span>':p?`${ic('check',13)} Looks right.`:'In AdSense: Account › Settings › Account information.'}</p></li>
+  <li><b>ads.txt</b><p class="muted">Google checks for this file before it shows ads. When your site goes live we put this line at <code>${esc(dom)}/ads.txt</code> for you.</p><div class="ad-code"><code>${esc(txt)}</code><button type="button" class="btn sm" data-adcopy="${esc(txt)}">Copy</button></div></li>
+  <li><b>Wait for Google’s review</b><p class="muted">Google reviews new sites before ads show. It can take a few days to a few weeks. Sites need real content, a privacy policy, and a consent message for visitors from Europe and the UK (AdSense has one built in).</p></li>
+  <li><b>Choose where ads go</b>${adg('auto','Placement','select',{no:'I pick the spots (ad units)',yes:'Auto ads (Google picks the spots)'})}<p class="muted">${A.auto==='yes'?'Google places ads on its own. Spots set to Google AdSense still show where you put them.':'Make a display ad unit in AdSense for each spot set to Google AdSense and paste its ID in that spot.'} ${units.length?`Spots using AdSense: ${units.map(([k])=>AD_SLOTS[k].name).join(', ')}.`:'No spots use AdSense yet. Set one on the Ad spaces tab.'}</p></li></ol>
+  <details class="sp-more"><summary>The code we add to your live site</summary><div class="ad-code"><code>${esc(head)}</code><button type="button" class="btn sm" data-adcopy="${esc(head)}">Copy</button></div><p class="hint">Ads never load inside the studio or the preview, so you can’t click your own ads by accident. Google closes accounts for that.</p></details>`}
+function adsRatesHtml(A){const used=new Set(Object.keys(AD_SLOTS).filter(k=>A.slots[k].on));if(state.sections.some(x=>x.type==='ads'))used.add('section');
+ return `<p class="muted">Prices show on your “Advertise with us” section and in the request form. Only the spots on your site are offered.</p><div class="ad-ratesed">${A.rates.map((r,i)=>`<div class="ad-rate${used.has(r.key)?'':' off'}"><div><b>${esc(rateName(r.key))}</b><small>${used.has(r.key)?'On your site':'Not on your site'}</small></div>${adg(`rates.${i}.price`,'Price a week','text')}${adg(`rates.${i}.desc`,'Description','text')}</div>`).join('')}</div>
+  <h3 class="ad-h3">The “Advertise here” box</h3><div class="sp-ed3">${adg('houseH','Heading','text')}${adg('houseSub','Text','text')}${adg('houseBtn','Button','text')}</div>
+  ${(state.sections.concat(...(state.pages||[]).map(p=>p.sections||[]))).some(x=>x.type==='adrates')?'':`<div class="ad-secs"><b>Add an “Advertise with us” page</b><p class="muted">A page with your audience numbers, these prices and a request button for each spot.</p><button type="button" class="btn sm" data-adaddpage>${ic('plus',13)} Add the page</button></div>`}`}
+function adsReqHtml(A){const L=state.adRequests||[];const tgt=[...Object.keys(AD_SLOTS).map(k=>[k,AD_SLOTS[k].name]),...state.sections.filter(x=>x.type==='ads').map((x,i)=>['sec:'+x.id,'Ad space section '+(i+1)])];
+ if(!L.length)return `<div class="ad-empty">${ic('megaphone',28)}<b>No requests yet</b><p class="muted">When a business asks for an ad spot through your site, it shows here and in your messages. Try it: in Full screen, click an “Advertise here” button.</p></div>`;
+ return `<p class="muted">Approve a request to put the ad on your site for its dates. Advertisers can’t pay on your site yet: send them an invoice or payment link, then mark it paid.</p><div class="ad-reqs">${L.map(q=>{const end=new Date(fromIso(q.start).getTime()+(q.weeks*7-1)*864e5);const def=q.place==='section'?(tgt.find(t=>t[0].startsWith('sec:'))||['top'])[0]:q.place;
+  return `<div class="ad-req st-${esc(q.status)}"><div class="ad-req-h">${q.image?`<span class="ad-req-ph">${mediaHtml(q.image,true)}</span>`:''}<div><b>${esc(q.biz)}</b><small>${esc(q.name)} · <a href="mailto:${esc(q.email)}">${esc(q.email)}</a>${q.phone?' · '+esc(q.phone):''}</small><small>${esc(rateName(q.place))} · ${dayLbl(fromIso(q.start))} to ${dayLbl(end)} · ${q.weeks} week${q.weeks>1?'s':''} · <b>${money(q.total)}</b></small>${q.link?`<small>Links to ${esc(q.link)}</small>`:''}${q.msg?`<small>“${esc(q.msg)}”</small>`:''}</div><span class="ad-st">${q.status==='new'?'New':q.status==='approved'?'Approved':'Declined'}${q.paid?' · Paid':''}</span></div>
+   <div class="ad-req-a">${q.status==='new'?`<label class="ad-req-to">Put it in<select data-adreqto="${q.id}">${tgt.map(([k,l])=>`<option value="${k}"${k===def?' selected':''}>${esc(l)}</option>`).join('')}</select></label><button type="button" class="btn pri sm" data-adreq="${q.id}|approve">Approve and place</button><button type="button" class="btn sm" data-adreq="${q.id}|decline">Decline</button>`:''}${q.status==='approved'?`<button type="button" class="btn sm" data-adreq="${q.id}|paid">${q.paid?'Mark unpaid':'Mark paid'}</button>`:''}<button type="button" class="iconbtn" data-adreq="${q.id}|delete" aria-label="Delete request">${ic('trash',14)}</button></div></div>`}).join('')}</div>`}
+function adsApprove(id){const q=(state.adRequests||[]).find(r=>r.id===id);if(!q)return;const sel=$(`[data-adreqto="${id}"]`),to=sel?sel.value:q.place;snap();const A=adsW();
+ const end=isoD(new Date(fromIso(q.start).getTime()+(q.weeks*7-1)*864e5)),cfg={src:'direct',image:q.image||null,link:q.link,advertiser:q.biz,start:q.start,end};
+ if(to.startsWith('sec:')){const s=sec(to.slice(4));if(s)Object.assign(s.data,cfg)}else if(A.slots[to])Object.assign(A.slots[to],cfg,{on:true});
+ q.status='approved';q.placed=to;save();hard();adsPaint();toast(q.image?`Approved. ${q.biz}’s ad runs from ${dayLbl(fromIso(q.start))}.`:`Approved. Upload ${q.biz}’s ad photo on the Ad spaces tab.`)}
+function adsSuggest(){snap();const A=adsW(),news=state.sections.some(x=>x.type==='news')||(state.pages||[]).some(p=>(p.sections||[]).some(x=>x.type==='news'));
+ const keys=news?['top','side','feed','article','foot','sticky']:['foot','sticky'];keys.forEach(k=>{A.slots[k].on=true});
+ if(!news&&!state.sections.some(x=>x.type==='ads')){const s=smartSection('ads');state.sections.splice(Math.min(2,state.sections.length),0,s)}
+ save();hard();adsPaint();toast(news?'Turned on 6 ad spaces. Each one shows “Advertise here” until you choose Google or sell it.':'Added a banner between sections and turned on the footer and phone banners.')}
+function adsAddSec(){snap();const s=smartSection('ads');const at=Math.min(2,state.sections.length);state.sections.splice(at,0,s);state.selected=s.id;state.rightTab='section';closeModal();hard();toast('Added an ad space. Drag it to move it.')}
+function adsAddPage(){snap();syncPage();const F=fillF({...state.biz});const sk=state.brand.style;const pg={id:uid(),name:'Advertise',nav:true,icon:'megaphone',sections:[subHero('Advertise',F,sk),kitSection('adrates',F,sk),kitSection('faq',F,sk)]};
+ if(!state.pages||!state.pages.length){toast('Add pages first under Pages & menu');return}state.pages.push(pg);save();hard();adsPaint();toast('Added an Advertise page to your menu.')}
+
+/* dashboard: ad requests, sold ads and newsletter readers */
+W.ads=function(){const A=adsR(),L=state.adRequests||[],nq=L.filter(r=>r.status==='new').length,subs=(state.subscribers||[]).length;
+ const sold=A?Object.values(A.slots).filter(c=>c.on&&adRunning(c)).length+state.sections.filter(x=>x.type==='ads'&&adRunning(x.data)).length:0;
+ const paid=L.filter(r=>r.paid).reduce((a,r)=>a+r.total,0);
+ if(!A&&!L.length&&!state.sections.some(x=>['ads','adrates','news'].includes(x.type)))return{html:`<div class="w"><div class="w-h"><h3>Ads &amp; sponsors</h3></div><p class="mut">Earn money from your site with Google ads or by selling ad spots to local businesses.</p><button type="button" class="od-btn gold" data-adsopen="spots">See suggested ad spaces</button></div>`};
+ return{html:`<div class="w"><div class="w-h"><h3>Ads &amp; sponsors</h3><small>${nq} new</small></div><div class="wk"><div><b>${sold}</b><span>Sold ads running</span></div><div><b>${money(paid)}</b><span>Paid by advertisers</span></div><div><b>${subs}</b><span>Newsletter readers</span></div></div>${L.slice(0,3).map(q=>`<div class="w-row"><span class="t"><b>${esc(q.biz)}</b><span>${esc(rateName(q.place))} · ${q.weeks} wk · ${money(q.total)}</span><span>${q.status==='new'?'New request':q.status==='approved'?'Approved'+(q.paid?', paid':''):'Declined'} · ${ago(q.at)}</span></span></div>`).join('')||'<p class="mut">No ad requests yet. They land here when a business asks for a spot.</p>'}<button type="button" class="od-btn ghost" data-adsopen="${nq?'requests':'spots'}">Open Ad spaces</button></div>`}};
+
+/* main menu */
+appMenuHtml=(o=>function(){return o.apply(this,arguments).replace('<div class="obm-sep"></div>',obItem('data-adsopen="spots"','adbox','Ad spaces','Google AdSense and selling ads')+'<div class="obm-sep"></div>')})(appMenuHtml);
+
+/* images for site-wide slots */
+setImage=(o=>function(target,val){if(String(target).startsWith('ads:')){snap();adsW();setPath(state.ads,target.slice(4),val);save();hard();if($('#adsModal'))adsPaint();return}return o.apply(this,arguments)})(setImage);
+
+/* events */
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;const q=s=>t.closest(s);let el;
+ if(el=q('[data-adsopen]')){e.preventDefault();adsOpen(el.dataset.adsopen||'spots');return}
+ if((el=q('#site.edit [data-adslot]'))&&!q('[data-img]')){e.preventDefault();e.stopPropagation();adsOpen('spots');return}
+ if(el=q('[data-adbook]')){e.preventDefault();adBookOpen(el.dataset.adbook);return}
+ if(q('[data-adstx]')){e.preventDefault();AD_STICKY_X=true;renderSites();return}
+ if(el=q('[data-nwf]')){const[id,c]=el.dataset.nwf.split('|');NWF[id]=c;renderSites();return}
+ if(el=q('[data-nwopen]')){e.preventDefault();e.stopPropagation();const[id,k]=el.dataset.nwopen.split('|');nwOpen(id,+k);return}
+ if((el=q('[data-nwcard]'))&&!q('#site.edit')&&!q('button,a,input,select,textarea,form')&&q('.site,#site,#miniSite')){const[id,k]=el.dataset.nwcard.split('|');nwOpen(id,+k);return}
+ if(el=q('[data-adtab]')){ADT=el.dataset.adtab;adsPaint();$('#adsModal .modal-b').scrollTop=0;return}
+ if(el=q('[data-adsrc]')){const[k,v]=el.dataset.adsrc.split('|');snap();adsW().slots[k].src=v;save();hard();adsPaint();return}
+ if(q('[data-adsugg]')){adsSuggest();return}
+ if(q('[data-adaddsec]')){adsAddSec();return}
+ if(q('[data-adaddpage]')){adsAddPage();return}
+ if(el=q('[data-adcopy]')){const v=el.dataset.adcopy;const ok=()=>toast('Copied');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(ok,()=>toast(v));else toast(v);return}
+ if(el=q('[data-adreq]')){const[id,act]=el.dataset.adreq.split('|');const L=state.adRequests||[],r=L.find(x=>x.id===id);if(!r)return;
+  if(act==='approve'){adsApprove(id);return}if(act==='decline')r.status='declined';if(act==='paid')r.paid=!r.paid;if(act==='delete')L.splice(L.indexOf(r),1);save();adsPaint();if(state.tab==='dashboard')hard();return}
+ if(!q('#nwRoot'))return;
+ if(q('[data-nwclose]')){nwClose();return}
+ if(!NWV)return;
+ if(el=q('[data-nwgo]')){NWV.k=+el.dataset.nwgo;nwPaint();return}
+ if(el=q('[data-nwshare]')){const v=el.dataset.nwshare,ok=()=>toast('Story link copied. It opens this story once your site is live.');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(ok,()=>toast(v));else toast(v);return}},true);
+document.addEventListener('keydown',e=>{const el=e.target instanceof Element&&e.target.closest('[data-nwopen][role="link"]');if(el&&(e.key==='Enter'||e.key===' ')){e.preventDefault();const[id,k]=el.dataset.nwopen.split('|');nwOpen(id,+k)}});
+addEventListener('keydown',e=>{if(NWV&&e.key==='Escape'){e.preventDefault();e.stopPropagation();nwClose()}},true);
+document.addEventListener('focusin',e=>{const t=e.target;if(t.dataset&&t.dataset.adg&&snapped!==t){snapped=t;snap()}});
+document.addEventListener('input',e=>{const t=e.target;if(!(t instanceof Element))return;
+ if(t.dataset.adg&&t.type!=='checkbox'&&t.tagName!=='SELECT'){adsW();setPath(state.ads,t.dataset.adg,t.value);soft();if(t.dataset.adg==='pub'){const h=t.closest('li')&&t.closest('li').querySelector('.hint');if(h){const p=pubId(t.value);h.innerHTML=t.value&&!p?'<span class="ad-bad">That does not look like a publisher ID. It starts with pub- or ca-pub- followed by 16 numbers.</span>':p?`${ic('check',13)} Looks right.`:'In AdSense: Account › Settings › Account information.'}}return}
+ if(NWV&&t.dataset.adbk&&t.type!=='radio'&&t.tagName!=='SELECT'){NWV.f[t.dataset.adbk]=t.value;return}});
+document.addEventListener('change',e=>{const t=e.target;if(!(t instanceof Element))return;
+ if(t.dataset.adg&&(t.type==='checkbox'||t.tagName==='SELECT')){snap();adsW();const v=t.type==='checkbox'?t.checked:t.value;setPath(state.ads,t.dataset.adg,t.dataset.adg==='every'?+v:v);save();hard();adsPaint();return}
+ if(NWV&&t.dataset.adbk){NWV.f[t.dataset.adbk]=t.value;if(t.type==='radio'||t.tagName==='SELECT')nwPaint();return}
+ if(NWV&&t.matches('[data-adbkimg]')){const f=t.files&&t.files[0];if(!f)return;readImage(f,1400).then(v=>{NWV.f.image=v;toast('Ad attached');const sm=t.parentElement.querySelector('small');if(sm)sm.textContent='Ad attached. Pick another to replace it.'},err=>toast(err.message))}});
+document.addEventListener('submit',e=>{const f=e.target;if(!(f instanceof Element))return;
+ if(f.id==='adBookForm'){e.preventDefault();e.stopImmediatePropagation();adBookSend();return}
+ if(f.matches('[data-nwsub]')){e.preventDefault();e.stopImmediatePropagation();if(f.closest('#site.edit')){toast('Sign-ups work in Full screen and on your live site.');return}nwSubscribe(f)}},true);
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
