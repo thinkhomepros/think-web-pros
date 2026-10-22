@@ -2088,3 +2088,39 @@ body.full-on .device[data-device=phone]:not(.fitted){max-width:none!important;bo
 .pn-box details.bgx>summary{pointer-events:none;padding:10px 0 4px}
 .pn-box details.bgx>summary::after{display:none}
 .dk-slide .pn-box details.bgx>summary{display:flex}
+
+/* ---------- quick edit: the text bar's size/font/bold/italic/align, and the card, section and page bar ---------- */
+#qebar{position:fixed;z-index:1100;display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:4px;background:#1C1D22;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.3);max-width:calc(100vw - 16px)}
+#txtbar{flex-wrap:wrap;align-items:center;max-width:calc(100vw - 16px)}
+#qebar[hidden]{display:none}
+#qebar button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#fff;font:600 12px/1 'Figtree',system-ui,sans-serif;padding:7px 9px;border-radius:8px;cursor:pointer;min-height:34px}
+#qebar button:hover,#txtbar button.on,#qebar button.on{background:#3A3B42}
+#txtbar button:disabled{opacity:.4;cursor:default}
+#qebar .tb-a{font:800 15px/1 'Figtree',system-ui,sans-serif;border-bottom:4px solid;padding:0 2px 1px}
+#txtbar .tb-sep,#qebar .tb-sep{width:1px;align-self:stretch;margin:4px 2px;background:#3A3B42}
+#txtbar .tb-v{color:#C9CBD3;font:600 11.5px/1 'Figtree',system-ui,sans-serif;min-width:34px;text-align:center}
+#txtbar .tb-sm{font-size:10px}#txtbar .tb-lg{font-size:15px}
+#txtbar .tb-fl{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12.5px}
+#qebar .qe-name{color:#C9CBD3;font:600 11.5px/1.1 'Figtree',system-ui,sans-serif;padding:0 6px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#qebar .qe-sw{width:16px;height:16px;border-radius:5px;border:1px solid rgba(255,255,255,.5);background:#fff}
+#qebar .qe-tex{background:repeating-linear-gradient(45deg,#777 0 2px,#ddd 2px 5px)}
+#qebar .qe-x{padding:7px}
+#qeFill,#qeTx{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;border:0;padding:0}
+/* drop-downs hang under the bar (over it when the bar sits at the bottom of a phone) */
+#txtbar .tb-drop,#qebar .tb-drop{position:absolute;left:0;top:calc(100% + 6px);background:#1C1D22;border-radius:12px;box-shadow:0 10px 26px rgba(0,0,0,.35);padding:6px;max-height:min(320px,50vh);overflow:auto;display:grid;gap:2px;min-width:200px}
+#txtbar .tb-drop button{justify-content:flex-start;font-size:15px;font-weight:500;padding:8px 10px}
+#qebar .qe-texd{grid-template-columns:repeat(auto-fill,minmax(64px,1fr));width:min(360px,calc(100vw - 32px))}
+#qebar .qe-texd button{flex-direction:column;gap:4px;padding:6px 4px;font-weight:500}
+#qebar .qe-texd .tex-sw{width:40px;height:30px;border-radius:6px;background-color:#eee;border:1px solid #444}
+#qebar .qe-texd small{font-size:10.5px;color:#C9CBD3}
+#qebar .qe-shape{gap:8px;padding:10px;width:min(330px,calc(100vw - 32px))}
+#qebar .qe-row{display:grid;gap:4px}#qebar .qe-row small{color:#C9CBD3;font:600 11px/1 'Figtree',system-ui,sans-serif}
+#qebar .qe-row .seg{display:flex;background:#2A2B31;border-radius:9px;padding:2px}
+#qebar .qe-row .seg button{flex:1;justify-content:center;min-height:30px;padding:6px 4px;font-size:11.5px}
+#qebar .qe-row .seg button.on{background:#fff;color:#1C1D22}
+#qebar.qe-dock{left:8px;right:8px;bottom:calc(10px + env(safe-area-inset-bottom));top:auto;justify-content:center}
+#qebar.qe-dock .tb-drop{top:auto;bottom:calc(100% + 6px)}
+@media (max-width:560px){#txtbar .tb-l,#qebar .tb-l,#qebar .qe-name,#txtbar .tb-sep,#qebar .tb-sep{display:none}#txtbar button,#qebar button{padding:7px 7px}#txtbar .tb-fl{max-width:64px}#txtbar .tb-v{min-width:30px}}
+body.full-on #qebar{display:none}
+#qebar.qe-dock.qe-up{bottom:auto}
+#qebar.qe-dock.qe-up .tb-drop{bottom:auto;top:calc(100% + 6px)}
