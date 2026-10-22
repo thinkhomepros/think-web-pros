@@ -159,6 +159,13 @@ window.TWP_HELP = (function () {
       keys: 'storage browser device lost cleared another computer account sync',
       body: '<p>For now your designs are saved in this browser on this device. They stay put when you close the tab, but clearing your browser data or switching devices will not bring them along. When you check out, your design is sent to us with your order, so your finished site does not depend on this browser.</p>' },
 
+    { id: 'import-products', cat: 'sections', title: 'Import products from Shopify, Etsy, Square and more',
+      keys: 'import products shopify etsy square woocommerce wix squarespace big cartel csv spreadsheet move store transfer inventory',
+      body: '<p>Open the <b>Online store</b> section and choose <b>Import from Shopify, Etsy, Square…</b> above your products<span data-only="pc">, or open <b>Designs</b> and choose <b>Import products</b></span>. Pick the store you use now and follow the steps to download its product file, then choose that file. Names, descriptions, photos, prices, sale prices, sizes and colors, and stock come along.</p><p>Shopify, Big Cartel and WooCommerce stores can also be read straight from their link, with no file. Etsy needs the file: in Shop Manager open <b>Settings</b>, <b>Options</b>, <b>Download Data</b>. Any spreadsheet saved as CSV works too if it has a Name and a Price column.</p><p>You see the products before anything changes, and <b>Undo</b> takes the import back.</p>' },
+    { id: 'apps-links', cat: 'sections', title: 'Link or embed DoorDash, Calendly, Instagram and other apps',
+      keys: 'apps links embed doordash uber eats grubhub calendly square appointments acuity booksy vagaro opentable resy google reviews yelp instagram tiktok youtube spotify google forms typeform etsy shopify amazon',
+      body: '<p>Add the <b>Apps &amp; links</b> section from Sections. For each app, pick it from the list and paste the link to your page on that app. <b>Buttons</b> and <b>Cards</b> show a button for each one.</p><p>With the <b>Embedded</b> layout, Calendly, Square Appointments and Acuity booking, YouTube videos, Instagram and TikTok posts, Spotify, and Google Forms, Typeform and Jotform show right on your page. You can paste the app\'s embed code instead of a link.</p>' },
+
     /* plans */
     { id: 'plans', cat: 'launch', title: 'Choose a plan',
       keys: 'plans pricing price cost starter growth pro monthly yearly buy purchase pay',

@@ -61,6 +61,7 @@ Limits to know before taking real orders: orders are saved to the function's tem
 | GET | `/api/reports` | Admin list without screenshots. The studio shows it under Admin › Problem reports (enter `ADMIN_TOKEN` there). |
 | GET | `/api/reports/:id` | One report with its screenshot. |
 | PATCH | `/api/reports/:id` | `{ status }`: `New`, `In progress` or `Fixed`. |
+| POST | `/api/import/store` | `{ url }` → `{ source, products }`: reads a store's public product list (Shopify and Big Cartel `/products.json`, WooCommerce Store API, or schema.org Product data on the page) for the studio's product import. Public https addresses only, 10 per 10 minutes per visitor. Product CSV files are read in the browser by `web/js/import.js`. |
 
 ## Security
 
