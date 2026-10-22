@@ -2084,10 +2084,10 @@ function hdrPopHtml(){const ph=state.device==='phone',k=ph?'m':'d',hc=state.bran
  </div>`}
 function openHdrPop(){ask0();const el=document.createElement('div');el.id='btnPop';el.className='bp hdr-pop';el.setAttribute('role','dialog');el.setAttribute('aria-label','Logo and menu');el.innerHTML=hdrPopHtml();document.body.appendChild(el);hpTrack(el);placeHdrPop()}
 /* narrow bottom pane: the chips show which slide you're on and jump between them */
-function hpTrack(el){const tr=el.querySelector('.hp-track');if(!tr)return;const mark=()=>{const x=tr.scrollLeft;let best=null,bd=1e9;tr.querySelectorAll('.hp-slide').forEach(s=>{const d=Math.abs(s.offsetLeft-tr.offsetLeft-16-x);if(d<bd){bd=d;best=s}});if(!best)return;el.querySelectorAll('[data-hpgo]').forEach(b=>{const on=best.classList.contains(b.dataset.hpgo);b.classList.toggle('on',on);b.setAttribute('aria-selected',on)})};
+function hpTrack(el){const tr=el.querySelector('.hp-track');if(!tr)return;const mark=()=>{const on=el.querySelector('[data-hpgo].on'),best=dkNear(tr,on&&tr.querySelector('.'+on.dataset.hpgo));if(!best)return;el.querySelectorAll('[data-hpgo]').forEach(b=>{const on=best.classList.contains(b.dataset.hpgo);b.classList.toggle('on',on);b.setAttribute('aria-selected',on)})};
  tr.addEventListener('scroll',()=>{clearTimeout(tr._t);tr._t=setTimeout(mark,60)},{passive:true});mark()}
 function placeHdrPop(){const el=$('#btnPop.hdr-pop');if(!el)return;if(innerWidth<=560){el.classList.add('sheet');return}const pb=$('#pagebar');const top=pb?pb.getBoundingClientRect().bottom+10:120;el.style.top=Math.max(8,Math.min(top,innerHeight-el.offsetHeight-8))+'px';el.style.left=Math.max(8,innerWidth-el.offsetWidth-16)+'px'}
-function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){const tr=el.querySelector('.hp-track'),x=tr?tr.scrollLeft:0;el.innerHTML=hdrPopHtml();const t2=el.querySelector('.hp-track');if(t2)t2.scrollLeft=x;hpTrack(el);placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
+function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){const tr=el.querySelector('.hp-track'),x=tr?tr.scrollLeft:0,y=tr?tr.scrollTop:0;el.innerHTML=hdrPopHtml();const t2=el.querySelector('.hp-track');if(t2){t2.scrollLeft=x;t2.scrollTop=y}hpTrack(el);placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
 function setDevice(d){state.device=d;MOPEN=false;$('#device').dataset.device=d;$$('#deviceSeg button').forEach(b=>b.classList.toggle('on',b.dataset.device===d));save();hard();fitDevice()}
 
 /* ---------- device models: real screen sizes and frames for each kind of computer, tablet and phone ---------- */
@@ -2137,7 +2137,7 @@ addEventListener('resize',()=>{clearTimeout(fitDevice._t);fitDevice._t=setTimeou
 
 document.addEventListener('click',e=>{const T0=e.target;if(!(T0 instanceof Element))return;const q=s=>T0.closest(s);let el;
  if(q('[data-hdredit]')){e.preventDefault();e.stopPropagation();openHdrPop();return}
- if(el=q('[data-hpgo]')){e.stopPropagation();const p=el.closest('#btnPop'),tr=p&&p.querySelector('.hp-track'),s=tr&&tr.querySelector('.'+el.dataset.hpgo);if(s)tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});return}
+ if(el=q('[data-hpgo]')){e.stopPropagation();const p=el.closest('#btnPop'),tr=p&&p.querySelector('.hp-track'),s=tr&&tr.querySelector('.'+el.dataset.hpgo);if(s){dkTo(tr,s,true);p.querySelectorAll('[data-hpgo]').forEach(b=>{b.classList.toggle('on',b===el);b.setAttribute('aria-selected',b===el)})}return}
  if(el=q('[data-hdrdev]')){e.stopPropagation();setDevice(el.dataset.hdrdev);refreshHdrPop();return}
  if(el=q('[data-logod]')){e.stopPropagation();snap();const v=el.dataset.logod;state.brand.header=v==='center'?'center':(state.brand.header==='call'?'call':'left');hard();refreshHdrPop();return}
  if(el=q('[data-logom]')){e.stopPropagation();snap();state.brand.logoM=el.dataset.logom;hard();refreshHdrPop();return}
@@ -2294,10 +2294,23 @@ function dockify(){const ins=$('#inspector');if(!ins||ins.querySelector(':scope>
  const hd=$('#fInsp .insp-tabs');let nav=hd.querySelector('.dk-nav');if(!nav){nav=document.createElement('div');nav.className='dk-nav';hd.insertBefore(nav,hd.lastElementChild)}
  nav.innerHTML=`<button type="button" class="iconbtn dk-arr" data-dkstep="-1" aria-label="Previous">${ic('left',16)}</button><div class="dk-chips" role="tablist">${slides.map(s=>`<button type="button" role="tab" data-dkgo="${s.dataset.dk}">${esc(s.getAttribute('aria-label'))}</button>`).join('')}</div><button type="button" class="iconbtn dk-arr" data-dkstep="1" aria-label="Next">${ic('right',16)}</button>`;
  tr.addEventListener('scroll',()=>{if(DK_LOCK)return;clearTimeout(tr._t);tr._t=setTimeout(()=>{dkMark(dkNearest(tr))},60)},{passive:true});
- const target=DKKEY&&tr.querySelector(`[data-dk="${DKKEY}"]`);if(target){tr.scrollLeft=target.offsetLeft-tr.offsetLeft-16}dkMark(target?DKKEY:slides[0].dataset.dk)}
-function dkNearest(tr){const x=tr.scrollLeft;let best=null,bd=1e9;tr.querySelectorAll('.dk-slide').forEach(s=>{const d=Math.abs(s.offsetLeft-tr.offsetLeft-16-x);if(d<bd){bd=d;best=s.dataset.dk}});return best}
+ const target=DKKEY&&tr.querySelector(`[data-dk="${DKKEY}"]`);if(target)dkTo(tr,target);dkMark(target?DKKEY:slides[0].dataset.dk)}
+/* slide tracks scroll sideways on phones and down, row by row, on computers */
+function dkDown(tr){return getComputedStyle(tr).scrollSnapType.startsWith('y')}
+function dkAt(tr,s){const a=tr.getBoundingClientRect(),b=s.getBoundingClientRect(),cs=getComputedStyle(tr);return{left:tr.scrollLeft+b.left-a.left-(parseFloat(cs.scrollPaddingLeft)||0),top:tr.scrollTop+b.top-a.top-(parseFloat(cs.scrollPaddingTop)||0)}}
+function dkTo(tr,s,smooth){const p=dkAt(tr,s),d=dkDown(tr);tr.scrollTo({left:d?0:p.left,top:d?p.top:0,behavior:smooth?'smooth':'auto'})}
+/* the slide in view; on a row of several, keep the one already picked when it is in that row */
+function dkNear(tr,cur){const d=dkDown(tr),end=d&&tr.scrollTop+tr.clientHeight>=tr.scrollHeight-2;const ps=[...tr.children].map(s=>({s,v:d?dkAt(tr,s).top:dkAt(tr,s).left}));if(!ps.length)return null;
+ const seen=end?ps.map(p=>p.v).filter(v=>v<=tr.scrollTop+tr.clientHeight-40):[],x=seen.length?Math.max(...seen):d?tr.scrollTop:tr.scrollLeft;let best=null,bd=1e9;
+ for(const p of ps){const v=Math.abs(p.v-x);if(v<bd-1){bd=v;best=p.s}else if(v<bd+1&&p.s===cur)best=cur}return best}
+function dkNearest(tr){const s=dkNear(tr,DKKEY&&tr.querySelector(`[data-dk="${DKKEY}"]`));return s&&s.dataset.dk}
 function dkMark(k){DKKEY=k;$$('#fInsp .dk-chips [data-dkgo]').forEach(b=>{const on=b.dataset.dkgo===k;b.classList.toggle('on',on);b.setAttribute('aria-selected',on);if(on){const c=b.parentElement;const l=b.offsetLeft-c.offsetLeft;if(l<c.scrollLeft||l+b.offsetWidth>c.scrollLeft+c.clientWidth)c.scrollTo({left:l-24,behavior:'smooth'})}})}
-function dkGo(k){const tr=$('#inspector .dk-track'),s=tr&&tr.querySelector(`[data-dk="${k}"]`);if(!s)return;DK_LOCK=true;tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});dkMark(k);setTimeout(()=>{DK_LOCK=false},450)}
+function dkGo(k){const tr=$('#inspector .dk-track'),s=tr&&tr.querySelector(`[data-dk="${k}"]`);if(!s)return;DK_LOCK=true;dkTo(tr,s,true);dkMark(k);setTimeout(()=>{DK_LOCK=false},600)}
+/* computer panes: one turn of the mouse wheel, or one swipe on a trackpad, moves one row; a card that scrolls inside gets the wheel first */
+document.addEventListener('wheel',e=>{const tr=e.target instanceof Element&&e.target.closest('.dk-track,.hp-track');if(!tr||e.ctrlKey||Math.abs(e.deltaY)<=Math.abs(e.deltaX)||!dkDown(tr))return;const dy=e.deltaY*(e.deltaMode===1?40:e.deltaMode===2?400:1);
+ for(let el=e.target;el&&el!==tr;el=el.parentElement){if(el.scrollHeight>el.clientHeight+1&&/auto|scroll/.test(getComputedStyle(el).overflowY)&&(dy>0?el.scrollTop+el.clientHeight<el.scrollHeight-1:el.scrollTop>0))return}
+ e.preventDefault();clearTimeout(tr._wq);tr._wq=setTimeout(()=>{tr._wl=false;tr._wa=0},200);if(tr._wl)return;tr._wa=(tr._wa||0)+dy;if(Math.abs(tr._wa)<30)return;tr._wl=true;
+ const y=tr.scrollTop,rows=[...new Set([...tr.children].map(s=>Math.round(dkAt(tr,s).top)))].sort((a,b)=>a-b),to=dy>0?rows.find(r=>r>y+2):rows.reverse().find(r=>r<y-2);if(to!=null)tr.scrollTo({top:to,behavior:'smooth'})},{passive:false});
 /* keep the picked section in view above the dock */
 function dockReveal(){const s=$(`#site .sec[data-sec="${state.selected}"]`),cv=$('#canvas'),p=$('#fInsp');if(!s||!cv||!p)return;const r=s.getBoundingClientRect(),c=cv.getBoundingClientRect(),bottom=document.body.classList.contains('dock-side')?c.bottom:p.getBoundingClientRect().top;
  const ft=$('.dv-shell.framed')?(state.device==='phone'&&devModel().os==='ios'?60:96)*devZ():0;if(r.top<c.top+ft+8||r.top>bottom-80)cv.scrollBy({top:(r.top-c.top-ft-12)/devZ(),behavior:'smooth'})}
@@ -2357,7 +2370,7 @@ function dockMount(ins,slides){const tr=document.createElement('div');tr.classNa
  const hd=$('#fInsp .insp-tabs');let nav=hd.querySelector('.dk-nav');if(!nav){nav=document.createElement('div');nav.className='dk-nav';hd.insertBefore(nav,hd.lastElementChild)}
  nav.innerHTML=`<button type="button" class="iconbtn dk-arr" data-dkstep="-1" aria-label="Previous">${ic('left',16)}</button><div class="dk-chips" role="tablist">${slides.map(s=>`<button type="button" role="tab" data-dkgo="${s.dataset.dk}">${esc(s.getAttribute('aria-label'))}</button>`).join('')}</div><button type="button" class="iconbtn dk-arr" data-dkstep="1" aria-label="Next">${ic('right',16)}</button>`;
  tr.addEventListener('scroll',()=>{if(DK_LOCK)return;clearTimeout(tr._t);tr._t=setTimeout(()=>{dkMark(dkNearest(tr))},60)},{passive:true});
- const k=DKK[state.rightTab],target=k&&tr.querySelector(`[data-dk="${k}"]`);if(target)tr.scrollLeft=target.offsetLeft-tr.offsetLeft-16;dkMark(target?k:slides[0].dataset.dk)}
+ const k=DKK[state.rightTab],target=k&&tr.querySelector(`[data-dk="${k}"]`);if(target)dkTo(tr,target);dkMark(target?k:slides[0].dataset.dk)}
 const DKK={};
 dkMark=(o=>function(k){o(k);DKK[state.rightTab]=k})(dkMark);
 dockOn=()=>state.tab==='builder'&&state.inspOpen;
@@ -2371,7 +2384,7 @@ pagesMgr=(o=>function(){o.apply(this,arguments);const m=$('#pgMgr');if(!m||state
   if(k.matches('.row')&&k.querySelector('[data-closemodal]')){m.querySelector('.modal-h').appendChild(k);k.className='pm-done';continue}
   (cur||(cur=dkSlide('pages','Pages',[],'filePlus'),slides.push(cur),cur)).appendChild(k)}
  const tr=document.createElement('div');tr.className='dk-track';slides.forEach(s=>tr.appendChild(s));m.appendChild(tr);
- const k=DKK.pm;const t=k&&tr.querySelector(`[data-dk="${k}"]`);if(t)tr.scrollLeft=t.offsetLeft-tr.offsetLeft-16;tr.addEventListener('scroll',()=>{DKK.pm=dkNearest(tr)},{passive:true})})(pagesMgr);
+ const k=DKK.pm;const t=k&&tr.querySelector(`[data-dk="${k}"]`);if(t)dkTo(tr,t);tr.addEventListener('scroll',()=>{DKK.pm=dkNearest(tr)},{passive:true})})(pagesMgr);
 
 /* ---------- AI logo maker: wait for the live AI, recover from odd replies, and outside AI tools ---------- */
 let SAMPLE_P=null,lmNoted=false;
