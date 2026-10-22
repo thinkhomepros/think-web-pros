@@ -2,13 +2,14 @@ import path from 'node:path';
 import { createAi } from './ai.js';
 import { createApp } from './app.js';
 import { paymentsFromEnv } from './env.js';
+import { securityFromEnv } from './security.js';
 import { storeFromEnv } from './store.js';
 
 const port = Number(process.env.PORT) || 3000;
 const ai = createAi();
 const store = storeFromEnv(process.env, path.resolve('data'));
 const payments = paymentsFromEnv();
-const app = createApp({ ai, store, adminToken: process.env.ADMIN_TOKEN, payments, publicUrl: process.env.PUBLIC_URL });
+const app = createApp({ ai, store, adminToken: process.env.ADMIN_TOKEN, payments, publicUrl: process.env.PUBLIC_URL, ...securityFromEnv() });
 
 app.listen(port, () => {
   console.log(`Think Web Pros Studio running at http://localhost:${port}`);
