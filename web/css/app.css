@@ -1895,3 +1895,4 @@ body.dock-side .modal-bg.dock-bg{justify-content:flex-end;align-items:stretch;pa
 body.dock-side .modal.dock-modal{width:var(--dkw);height:auto;border-radius:16px 0 0 0;box-shadow:-10px 0 40px rgba(20,22,26,.2);animation:dkside .2s ease}
 body.dock-side .dock-modal .modal-h{flex-wrap:wrap}
 body.one-bar.dock-side #btnPop{left:auto!important;right:0;top:var(--dktop,58px)!important;bottom:0;translate:none;width:var(--dkw);max-height:none;border-radius:16px 0 0 0}
+body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
