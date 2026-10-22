@@ -274,9 +274,13 @@ footer{padding:48px 0 40px;color:var(--muted);font-size:15px}
 footer .wrap{display:flex;flex-wrap:wrap;gap:16px 32px;align-items:center;justify-content:space-between}
 footer nav{display:flex;flex-wrap:wrap;gap:8px 20px}
 footer a{text-decoration:none}
+.foot-report{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+.foot-report:hover{color:var(--ink)}
 footer a:hover{color:var(--ink)}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
 </style>
+<link rel="stylesheet" href="/css/report.css">
+<script src="/js/report.js"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -577,10 +581,12 @@ footer a:hover{color:var(--ink)}
       <a href="#features">Features</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
+      <button type="button" class="foot-report" data-report>Report a problem</button>
     </nav>
     <span>&copy; <span id="yr">2026</span> Think Web Pros. Websites for small businesses.</span>
   </div>
 </footer>
+<script src="/js/platform.js" defer></script>
 <script src="/js/site.js" defer></script>
 </body>
 </html>
