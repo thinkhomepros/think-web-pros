@@ -2949,7 +2949,11 @@ function optList(str){return String(str||'').split(',').map(v=>v.trim()).filter(
 function pOpts(x){const o=[];if(hasV(x.opt1)&&hasV(x.opt1v))o.push({name:x.opt1,vals:optList(x.opt1v)});if(hasV(x.opt2)&&hasV(x.opt2v))o.push({name:x.opt2,vals:optList(x.opt2v)});return o}
 function salePct(x){const p=num$(x.price),c=num$(x.compare);return c>p&&p>0?Math.round((1-p/c)*100):0}
 function inCart(sid,k){return CART.filter(l=>l.sid===sid&&l.k===k).reduce((n,l)=>n+l.qty,0)}
-function leftOf(s,x,k){const n=hasV(x.stock)?+x.stock:hasV(x.daily)?+x.daily:Infinity;return isFinite(n)?Math.max(0,n-inCart(s.id,k)):Infinity}
+const vsum=x=>{const v=x.vstock&&typeof x.vstock==='object'?Object.values(x.vstock).filter(n=>n!==''&&n!=null):[];return v.length?v.reduce((a,b)=>a+(+b||0),0):null};
+const vKey=(x,sel)=>pOpts(x).map((g,i)=>(g.vals[(sel||[])[i]||0]||{}).label||'').join(' / ');
+function leftV(s,x,k,sel){return leftVK(s,x,k,vKey(x,sel))}
+function leftVK(s,x,k,vk){if(x.vstock&&x.vstock[vk]!==undefined&&x.vstock[vk]!==''){const used=CART.filter(l=>l.sid===s.id&&l.k===k&&l.vk===vk).reduce((n,l)=>n+l.qty,0);return Math.max(0,+x.vstock[vk]-used)}return leftOf(s,x,k)}
+function leftOf(s,x,k){const vs=vsum(x);const n=vs!=null?vs:hasV(x.stock)?+x.stock:hasV(x.daily)?+x.daily:Infinity;return isFinite(n)?Math.max(0,n-inCart(s.id,k)):Infinity}
 function stockNote(x,L){if(!isFinite(L))return'';const day=!hasV(x.stock)&&hasV(x.daily);if(L<=0)return day?'Sold out for today':'Sold out';if(L<=5)return `Only ${L} left${day?' today':''}`;return day?`${L} left today`:''}
 function unitPrice(x,sel,plan,d){const o=pOpts(x);let p=num$(x.price);
  if(x.kind==='gift'&&o[0]){const v=o[0].vals[(sel||[])[0]||0];if(v&&num$(v.label))p=num$(v.label)}
@@ -2993,10 +2997,12 @@ function spPaint(keepScroll){if(!SPV){spClose();return}const r=spRoot(),pane=r.q
  r.className='sp-root'+(keepScroll?' sp-still':'');r.dataset.look=state.brand.look||'standard';r.setAttribute('style',siteVars(state.brand));document.body.classList.add('sp-open');
  r.innerHTML=SPV.view==='product'?spProduct():spCartView();
  const np=r.querySelector('.sp-scroll');if(np&&keepScroll)np.scrollTop=st;else{const f=r.querySelector('[data-spfocus]');if(f)f.focus({preventScroll:true})}}
-function spOpen(sid,k){const s=spSec(sid);if(!s)return;spNorm(s);SPV={view:'product',sid,k,sel:[0,0],qty:1,plan:'once',every:'Every week',box:{},img:0,gift:{to:'',from:'',msg:''}};spPaint()}
+function spFirstSel(s,x,k){const g=pOpts(x);if(!x.vstock||!g.length)return[0,0];const a=g[0].vals.length,b=g[1]?g[1].vals.length:1;
+ for(let i=0;i<a;i++)for(let j=0;j<b;j++){const sel=[i,j];if(leftV(s,x,k,sel)>0)return sel}return[0,0]}
+function spOpen(sid,k){const s=spSec(sid);if(!s)return;spNorm(s);SPV={view:'product',sid,k,sel:spFirstSel(s,s.data.items[k]||{},k),qty:1,plan:'once',every:'Every week',box:{},img:0,gift:{to:'',from:'',msg:''}};spPaint()}
 function spOpenCart(){SPV={view:'cart',step:'cart',f:SPV&&SPV.f||{}};spPaint()}
 function spProduct(){const s=spSec(SPV.sid);if(!s)return'';const d=s.data,x=d.items[SPV.k];if(!x)return'';
- const L=leftOf(s,x,SPV.k),imgs=[x.image,...(x.images||[])].filter(Boolean),cur=imgs[Math.min(SPV.img,imgs.length-1)],o=pOpts(x),price=unitPrice(x,SPV.sel,SPV.plan,d),note=stockNote(x,L);
+ const L=leftV(s,x,SPV.k,SPV.sel),imgs=[x.image,...(x.images||[])].filter(Boolean),cur=imgs[Math.min(SPV.img,imgs.length-1)],o=pOpts(x),price=unitPrice(x,SPV.sel,SPV.plan,d),note=stockNote(x,L);
  const tst=(firstOf('testimonials')||{data:{items:[]}}).data.items.filter(t=>!t.hidden).slice(0,2);
  let extra='';
  if(x.kind==='box'){const c=spBoxPool(d,SPV.k,x),n=Object.values(SPV.box).reduce((a,b)=>a+b,0),need=+x.boxSize||6;
@@ -3009,7 +3015,7 @@ function spProduct(){const s=spSec(SPV.sid);if(!s)return'';const d=s.data,x=d.it
    <div class="sp-price big"><b>${money(price,2)}</b>${salePct(x)&&SPV.plan!=='sub'?`<s>${esc(x.compare)}</s><i class="sp-b sale">Save ${salePct(x)}%</i>`:''}</div>
    ${note?`<p class="sp-stock${L<=0?' out':L<=5?' low':''}">${note}</p>`:''}
    ${x.desc?`<p class="sp-desc">${lines(x.desc)}</p>`:''}
-   ${o.map((g,i)=>`<div class="sp-opt"><b>${esc(g.name)}: <span>${esc((g.vals[SPV.sel[i]||0]||{}).label||'')}</span></b><div class="sp-vals" role="radiogroup" aria-label="${esc(g.name)}">${g.vals.map((v,j)=>`<button type="button" role="radio" aria-checked="${(SPV.sel[i]||0)===j}" class="${(SPV.sel[i]||0)===j?'on':''}" data-spopt="${i}|${j}">${esc(v.label)}${v.add?` <small>+${money(v.add)}</small>`:''}</button>`).join('')}</div></div>`).join('')}
+   ${o.map((g,i)=>`<div class="sp-opt"><b>${esc(g.name)}: <span>${esc((g.vals[SPV.sel[i]||0]||{}).label||'')}</span></b><div class="sp-vals" role="radiogroup" aria-label="${esc(g.name)}">${g.vals.map((v,j)=>`<button type="button" role="radio" aria-checked="${(SPV.sel[i]||0)===j}" class="${(SPV.sel[i]||0)===j?'on':''}${(()=>{const t=[...SPV.sel];t[i]=j;return leftV(s,x,SPV.k,t)<=0?' out':''})()}" data-spopt="${i}|${j}">${esc(v.label)}${v.add?` <small>+${money(v.add)}</small>`:''}</button>`).join('')}</div></div>`).join('')}
    ${extra}
    ${subOn?`<div class="sp-plan" role="radiogroup" aria-label="Purchase options"><button type="button" role="radio" aria-checked="${SPV.plan==='once'}" class="${SPV.plan==='once'?'on':''}" data-spplan="once"><b>One-time purchase</b><span>${money(unitPrice(x,SPV.sel,'once',d),2)}</span></button><button type="button" role="radio" aria-checked="${SPV.plan==='sub'}" class="${SPV.plan==='sub'?'on':''}" data-spplan="sub"><b>${ic('repeat',14)} Subscribe and save ${+d.subOff||0}%</b><span>${money(unitPrice(x,SPV.sel,'sub',d),2)}</span></button>${SPV.plan==='sub'?`<label class="sp-every">Deliver<select data-spevery>${['Every week','Every 2 weeks','Every month'].map(e=>`<option${SPV.every===e?' selected':''}>${e}</option>`).join('')}</select></label>`:''}</div>`:''}
    ${x.preorder==='yes'?`<p class="sp-note">${ic('calendar',15)} Preorder: needs ${+x.lead||0} day${+x.lead===1?'':'s'} notice. You pick the date in your cart.</p>`:''}
@@ -3070,13 +3076,13 @@ function spAddLine(s,k,opt){const x=s.data.items[k],o=pOpts(x),sel=opt.sel||[],p
  if(x.kind==='gift'&&opt.gift){if(opt.gift.to)parts.push('To '+opt.gift.to);if(opt.gift.msg)parts.push('“'+opt.gift.msg+'”')}
  const line={sid:s.id,k,name:x.name,opts:parts.filter(Boolean).join(' · '),unit:unitPrice(x,sel,plan,d),qty:opt.qty||1,sub:plan==='sub',every:plan==='sub'?(opt.every||'Every week'):'',pre:x.preorder==='yes',lead:+x.lead||0,fixed:x.kind!=='item'};
  const same=CART.find(l=>!l.fixed&&l.sid===line.sid&&l.k===k&&l.opts===line.opts&&l.sub===line.sub&&l.every===line.every);
- const L=leftOf(s,x,k);if(isFinite(L)&&line.qty>L){toast(L?`Only ${L} left`:'Sold out');return false}
+ line.vk=vKey(x,sel);const L=leftV(s,x,k,sel);if(isFinite(L)&&line.qty>L){toast(L?`Only ${L} left`:'Sold out');return false}
  if(same)same.qty+=line.qty;else CART.push(line);cartSave();renderSites();
  toast(`Added ${x.name} to your cart`,{label:'View cart',fn:spOpenCart});return true}
 function spPlace(){const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.name||'').trim(),em=(F.email||'').trim();if(!nm||!/^\S+@\S+\.\S+$/.test(em)){toast('Add your name and a valid email');return}
  state.shopOrders=state.shopOrders||[];const no=1001+state.shopOrders.length;const when=t.m==='ship'?'':`${dayLbl(fromIso(F.date))} at ${slotLbl(F.slot)}`;
- const o={no,at:Date.now(),name:nm,email:em,phone:F.phone||'',addr:F.addr||'',method:t.m,date:F.date||'',slot:F.slot||'',when,note:F.note||'',code:F.code||'',pay:F.pay||'card',lines:CART.map(l=>({name:l.name,opts:l.opts,qty:l.qty,unit:l.unit,sub:l.sub,every:l.every})),subtotal:t.sub,discount:t.disc,fee:t.fee,total:Math.round(t.total*100)/100,status:'new',demo:true};
- state.shopOrders.push(o);
+ const o={no,at:Date.now(),name:nm,email:em,phone:F.phone||'',addr:F.addr||'',method:t.m,date:F.date||'',slot:F.slot||'',when,note:F.note||'',code:F.code||'',pay:F.pay||'card',lines:CART.map(l=>({name:l.name,opts:l.opts,qty:l.qty,unit:l.unit,sub:l.sub,every:l.every,sid:l.sid,k:l.k,vk:l.vk||''})),subtotal:t.sub,discount:t.disc,fee:t.fee,total:Math.round(t.total*100)/100,status:'new',demo:true};
+ state.shopOrders.push(o);stockMove(o,-1);
  state.leads=state.leads||[];state.leads.unshift({id:uid(),name:nm,email:em,msg:`Order #${no}: ${o.lines.map(l=>`${l.qty}× ${l.name}${l.opts?' ('+l.opts+')':''}`).join(', ')}. ${t.m==='ship'?'Ship to '+o.addr:t.m==='delivery'?'Deliver '+when+' to '+o.addr:'Pickup '+when}. Total ${money(o.total,2)}${o.pay==='later'?', paying at pickup':''}.${o.note?' Note: '+o.note:''}`,at:Date.now(),read:false,order:no});
  CART=[];cartSave();SPV.step='done';SPV.done=o;save();renderSites();spPaint()}
 
@@ -3102,7 +3108,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element
  if(q('[data-spaddp]')){const s=spSec(SPV.sid);if(s&&spAddLine(s,SPV.k,SPV))spClose();return}
  if(q('[data-spshare]')){const s=spSec(SPV.sid),x=s.data.items[SPV.k];const url=`https://${slug(state.brand.name)}.${admin.domain||'thinkwebpros.com'}/shop/${slug(x.name)}`;
   const done=()=>toast('Product link copied. It opens this product once your site is live.');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(done,()=>toast(url));else toast(url);return}
- if(el=q('[data-spline]')){const[i,dl]=el.dataset.spline.split('|').map(Number);const l=CART[i];if(!l)return;if(dl>0){const s=spSec(l.sid),x=s&&s.data.items[l.k];const L=s&&x?leftOf(s,x,l.k):Infinity;if(L<=0){toast('No more in stock');return}}l.qty+=dl;if(l.qty<=0)CART.splice(i,1);cartSave();renderSites();spPaint(true);return}
+ if(el=q('[data-spline]')){const[i,dl]=el.dataset.spline.split('|').map(Number);const l=CART[i];if(!l)return;if(dl>0){const s=spSec(l.sid),x=s&&s.data.items[l.k];const L=s&&x?leftVK(s,x,l.k,l.vk||''):Infinity;if(L<=0){toast('No more in stock');return}}l.qty+=dl;if(l.qty<=0)CART.splice(i,1);cartSave();renderSites();spPaint(true);return}
  if(el=q('[data-sprm]')){CART.splice(+el.dataset.sprm,1);cartSave();renderSites();spPaint(true);return}
  if(el=q('[data-spm]')){SPV.f.method=el.dataset.spm;spPaint(true);return}
  if(el=q('[data-spdate]')){SPV.f.date=el.dataset.spdate;SPV.f.slot='';spPaint(true);return}
@@ -3154,6 +3160,148 @@ defaultAdmin=(o=>function(){const a=o.apply(this,arguments);addCommerce(a);retur
 renderPlans=(o=>function(){o.apply(this,arguments);const t=curTier(),ec=tierById('commerce');if(!ec||ec.id!=='commerce'||t.id==='commerce'||!state.cart.addons.includes('store'))return;
  const c=cartCalc(),store=addonById('store'),dom=addonById('domain');const now=t.monthly+(store?store.price:0)+(state.cart.addons.includes('domain')&&!(t.includes||[]).includes('domain')&&dom?dom.price:0),save=now-ec.monthly;
  const box=$('#v-plans .summary .sum-tot');if(box&&save>0)box.insertAdjacentHTML('afterend',`<div class="limit-note sp-nudge"><span>Selling online? The E-commerce plan includes your store and domain for ${money(ec.monthly)}/mo, ${money(save)}/mo less than ${esc(t.name)} with the store add-on.</span><button type="button" class="btn sm" data-settier="commerce">Switch to E-commerce</button></div>`)})(renderPlans);
+
+
+/* ---------- store control panel in the owner dashboard: orders, inventory, bake list, discounts, customers ----------
+   Orders come from state.shopOrders (placed through the preview checkout, or sample orders). Inventory edits write
+   straight into the shop sections' products, on every page, so the storefront updates as stock changes. */
+let STV=null,STF='all',STQ='',STD='',STCOL='';const STSEL=new Set();
+const ST_TABS=[['overview','Overview'],['orders','Orders'],['inventory','Inventory'],['production','Bake & pickup list'],['discounts','Discounts & gift cards'],['customers','Customers']];
+const ORD_ST={new:'New',preparing:'Preparing',ready:'Ready',shipped:'Shipped',done:'Completed',cancelled:'Cancelled'};
+function shopSecs(){const out=[],seen=new Set(),add=s=>{if(s&&s.type==='shop'&&!seen.has(s.id)){seen.add(s.id);spNorm(s);out.push(s)}};if(state.pages){syncPage();state.pages.forEach(p=>(p.sections||[]).forEach(add))}state.sections.forEach(add);return out}
+const allProds=()=>shopSecs().flatMap(s=>s.data.items.map((x,k)=>({s,x,k})));
+function findProd(sid,k,name){const s=spSec(sid);if(s&&s.data.items[k]&&s.data.items[k].name===name)return{s,x:s.data.items[k],k};return allProds().find(p=>p.x.name===name)||null}
+function stockMove(o,dir){if(o.sample)return;(o.lines||[]).forEach(l=>{const f=findProd(l.sid,l.k,l.name);if(!f)return;const x=f.x;
+ if(l.vk&&x.vstock&&hasV(x.vstock[l.vk]))x.vstock[l.vk]=Math.max(0,+x.vstock[l.vk]+dir*l.qty);else if(hasV(x.stock))x.stock=Math.max(0,+x.stock+dir*l.qty)})}
+const shopOrders=()=>state.shopOrders||(state.shopOrders=[]);
+const liveO=o=>o.status!=='cancelled';
+const lowAt=()=>+(state.storeLow??5);
+const stockOf=x=>{const v=vsum(x);return v!=null?v:hasV(x.stock)?+x.stock:null};
+const combos=x=>{const o=pOpts(x);if(!o.length)return[];return o.reduce((acc,g)=>acc.flatMap(a=>g.vals.map(v=>a.concat(v.label))),[[]]).map(a=>a.join(' / '))};
+function csvDownload(name,rows){const cell=v=>{const t=String(v??'');return /[",\n]/.test(t)?'"'+t.replace(/"/g,'""')+'"':t};const blob=new Blob([rows.map(r=>r.map(cell).join(',')).join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function csvParse(t){const rows=[];let r=[],c='',q=false;for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}else if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);rows.push(r);r=[];c=''}else c+=ch}if(c!==''||r.length){r.push(c);rows.push(r)}return rows.filter(x=>x.some(v=>v.trim()!==''))}
+const INV_COLS=['name','collection','price','compare','stock','daily','badge','kind','desc','opt1','opt1v','opt2','opt2v','preorder','lead'];
+const stPill=x=>{const n=stockOf(x);if(n==null)return hasV(x.daily)?`<span class="stp-pill">${esc(x.daily)}/day</span>`:'<span class="stp-pill mut">Not tracked</span>';return n<=0?'<span class="stp-pill bad">Sold out</span>':n<=lowAt()?`<span class="stp-pill warn">Low · ${n}</span>`:`<span class="stp-pill ok">${n} in stock</span>`};
+const stBtn=(o)=>{const nx=o.status==='new'?['preparing','Start preparing']:o.status==='preparing'?(o.method==='ship'?['shipped','Mark shipped']:['ready',o.method==='delivery'?'Out for delivery':'Ready for pickup']):o.status==='ready'||o.status==='shipped'?['done','Complete']:null;return nx?`<button type="button" class="od-btn" data-ostep="${o.no}|${nx[0]}">${nx[1]}</button>`:''};
+const whenTxt=o=>o.method==='ship'?'Shipping':`${o.method==='delivery'?'Delivery':'Pickup'} ${o.when||''}`;
+
+function stOverview(){const O=shopOrders().filter(liveO),sales=O.reduce((a,o)=>a+o.total,0),items=O.reduce((a,o)=>a+o.lines.reduce((b,l)=>b+l.qty,0),0),nw=shopOrders().filter(o=>o.status==='new').length;
+ const top={};O.forEach(o=>o.lines.forEach(l=>{top[l.name]=top[l.name]||{q:0,r:0};top[l.name].q+=l.qty;top[l.name].r+=l.qty*l.unit}));const T=Object.entries(top).sort((a,b)=>b[1].r-a[1].r).slice(0,5),mx=T.length?T[0][1].r:1;
+ const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-13+i);const k=isoD(d);return O.filter(o=>isoD(new Date(o.at))===k).reduce((a,o)=>a+o.total,0)});
+ const low=allProds().filter(({x})=>{const n=stockOf(x);return n!=null&&n<=lowAt()});const today=isoD(new Date()),up=O.filter(o=>o.date&&o.date>=today&&!['done'].includes(o.status)).sort((a,b)=>(a.date+a.slot).localeCompare(b.date+b.slot));
+ return `<div class="stp-kpis">${[[money(sales,0),'Sales'],[O.length,'Orders'],[money(O.length?sales/O.length:0,2),'Average order'],[items,'Items sold'],[nw,'New orders']].map(([v,l])=>`<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+ <div class="stp-2"><div class="w"><div class="w-h"><h3>Sales, last 14 days</h3></div>${days.some(Boolean)?areaChart(days.map(v=>Math.round(v)),560,140,'var(--p)','color-mix(in srgb,var(--p) 14%,transparent)',[(()=>{const d=new Date();d.setDate(d.getDate()-13);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'})})(),'Today']):'<p class="mut">No sales yet. Orders from your store show up here.</p>'}</div>
+  <div class="w"><div class="w-h"><h3>Top products</h3></div>${T.length?T.map(([n,v])=>`<div class="stp-bar"><span>${esc(n)}</span><i style="width:${Math.max(6,v.r/mx*100)}%"></i><b>${money(v.r,0)}</b><small>${v.q} sold</small></div>`).join(''):'<p class="mut">Your best sellers will show here.</p>'}</div></div>
+ <div class="stp-2"><div class="w"><div class="w-h"><h3>Coming up</h3><small>${up.length} pickup${up.length===1?'':'s'} and deliveries</small></div>${up.slice(0,5).map(o=>`<div class="w-row"><span class="t"><b>#${o.no} · ${esc(o.name)}</b><span>${esc(whenTxt(o))} · ${o.lines.map(l=>l.qty+'× '+l.name).join(', ')}</span></span><span class="stp-st st-${o.status}">${ORD_ST[o.status]}</span></div>`).join('')||'<p class="mut">Nothing scheduled.</p>'}${up.length?`<button type="button" class="od-btn ghost" data-stv="production">Open the bake &amp; pickup list</button>`:''}</div>
+  <div class="w"><div class="w-h"><h3>Low stock</h3><small>Alert at ${lowAt()} or fewer</small></div>${low.slice(0,6).map(({x})=>`<div class="w-row"><span class="t"><b>${esc(x.name)}</b><span>${esc(x.collection||'')}</span></span>${stPill(x)}</div>`).join('')||'<p class="mut">Everything is well stocked.</p>'}${low.length?`<button type="button" class="od-btn ghost" data-stv="inventory">Restock in Inventory</button>`:''}</div></div>`}
+function stOrders(){const all=[...shopOrders()].sort((a,b)=>b.at-a.at),cnt=k=>k==='all'?all.length:all.filter(o=>o.status===k).length,q=STQ.toLowerCase();
+ const L=all.filter(o=>(STF==='all'||o.status===STF)&&(!q||[o.no,o.name,o.email,o.lines.map(l=>l.name).join(' ')].join(' ').toLowerCase().includes(q)));
+ return `<div class="stp-tools"><div class="stp-chips">${['all',...Object.keys(ORD_ST)].map(k=>`<button type="button" class="${STF===k?'on':''}" data-stf="${k}">${k==='all'?'All':ORD_ST[k]} <small>${cnt(k)}</small></button>`).join('')}</div><input type="search" data-stq placeholder="Search orders" value="${esc(STQ)}" aria-label="Search orders"><button type="button" class="od-btn ghost" data-stcsv="orders">Export CSV</button></div>
+ ${L.length?L.map(o=>`<details class="stp-ord"${o.status==='new'?' open':''}><summary><b>#${o.no}</b><span class="t"><b>${esc(o.name)}</b><span>${esc(whenTxt(o))}</span></span><span class="num">${money(o.total,2)}</span><span class="stp-st st-${o.status}">${ORD_ST[o.status]}</span></summary>
+  <div class="stp-ordb"><div class="stp-lines">${o.lines.map(l=>`<div><b>${l.qty}×</b> ${esc(l.name)}${l.opts?`<small>${esc(l.opts)}</small>`:''}${l.sub?`<small>${ic('repeat',11)} Subscription · ${esc(l.every)}</small>`:''}<span>${money(l.unit*l.qty,2)}</span></div>`).join('')}<div class="tot"><span>Subtotal ${money(o.subtotal,2)}${o.discount?` · Discount −${money(o.discount,2)}${o.code?' ('+esc(o.code)+')':''}`:''}${o.fee?` · ${o.method==='ship'?'Shipping':'Delivery'} ${money(o.fee,2)}`:''}</span><b>${money(o.total,2)}</b></div></div>
+  <div class="stp-cust"><span>${ic('mail',13)} ${esc(o.email)}</span>${o.phone?`<span>${ic('phoneCall',13)} ${esc(o.phone)}</span>`:''}${o.addr?`<span>${ic('pin',13)} ${esc(o.addr)}</span>`:''}<span>${ic('card',13)} ${o.pay==='later'?'Pays at pickup':o.pay==='paypal'?'PayPal or Venmo':'Card'}${o.sample?' · <i class="badge ex">Sample</i>':o.demo?' · <i class="badge ex">Preview order</i>':''}</span>${o.note?`<span>${ic('chat',13)} “${esc(o.note)}”</span>`:''}<span class="mut">Placed ${ago(o.at)}</span></div>
+  <div class="stp-acts">${stBtn(o)}<label>Status <select data-ostat="${o.no}">${Object.entries(ORD_ST).map(([k,l])=>`<option value="${k}"${o.status===k?' selected':''}>${l}</option>`).join('')}</select></label></div></div></details>`).join(''):`<p class="stp-empty">${all.length?'No orders match.':'No orders yet. Place a test order from the preview (Full screen, add to cart, check out) or add sample orders.'}</p>`}`}
+function stInventory(){const P=allProds(),cols=[...new Set(P.map(p=>String(p.x.collection||'').trim()).filter(Boolean))],q=STQ.toLowerCase();
+ const L=P.filter(({x})=>(!STCOL||String(x.collection||'').trim()===STCOL)&&(!q||String(x.name).toLowerCase().includes(q)));const n=STSEL.size;
+ return `<div class="stp-tools"><input type="search" data-stq placeholder="Search products" value="${esc(STQ)}" aria-label="Search products"><select data-stcol aria-label="Collection"><option value="">All collections</option>${cols.map(c=>`<option${STCOL===c?' selected':''}>${esc(c)}</option>`).join('')}</select><label class="stp-low">Low-stock alert at <input type="number" min="0" data-stlow value="${lowAt()}"></label><button type="button" class="od-btn ghost" data-stcsv="inventory">Export CSV</button><label class="od-btn ghost stp-file">Import CSV<input type="file" accept=".csv,text/csv" hidden data-stimport></label></div>
+ ${n?`<div class="stp-bulk"><b>${n} selected</b><input type="number" data-stbulkn placeholder="Amount" aria-label="Amount"><button type="button" class="od-btn" data-stbulk="add">Add stock</button><button type="button" class="od-btn" data-stbulk="set">Set stock</button><button type="button" class="od-btn ghost" data-stbulk="sale">Sale % off</button><button type="button" class="od-btn ghost" data-stbulk="nosale">End sale</button><button type="button" class="od-btn ghost" data-stbulk="out">Mark sold out</button><button type="button" class="od-btn ghost" data-stbulk="clear">Clear</button></div>`:''}
+ <div class="stp-inv"><div class="stp-ih"><label><input type="checkbox" data-stall ${n&&n===L.length?'checked':''} aria-label="Select all"></label><span>Product</span><span>Price</span><span>Was</span><span>Stock</span><span>Status</span></div>
+ ${L.map(({s,x,k})=>{const id=s.id+'|'+k,cb=combos(x),vs=x.vstock&&Object.keys(x.vstock).length;return `<div class="stp-ir"><label><input type="checkbox" data-stsel="${id}" ${STSEL.has(id)?'checked':''} aria-label="Select ${esc(x.name)}"></label>
+  <div class="stp-ip"><span class="stp-th">${x.image?mediaHtml(x.image,true):ic('bag',16)}</span><span><input data-inv="${id}|name" value="${esc(x.name)}" aria-label="Name"><small>${esc(x.collection||'No collection')}${x.kind!=='item'?' · '+(x.kind==='box'?'Build-a-box':'Gift card'):''}${x.preorder==='yes'?' · Preorder':''}</small></span></div>
+  <label class="stp-f"><small>Price</small><input data-inv="${id}|price" value="${esc(x.price)}"></label><label class="stp-f"><small>Was</small><input data-inv="${id}|compare" value="${esc(x.compare)}" placeholder="—"></label>
+  <label class="stp-f"><small>Stock</small>${vs?`<span class="stp-vsum">${stockOf(x)} across ${Object.keys(x.vstock).length}</span>`:`<input type="number" min="0" data-inv="${id}|stock" value="${esc(x.stock)}" placeholder="—">`}</label>
+  <span class="stp-st">${stPill(x)}</span>
+  ${cb.length>1?`<details class="stp-var" data-stvar="${id}"${STVOPEN.has(id)?' open':''}><summary>${vs?'Stock by '+pOpts(x).map(g=>g.name.toLowerCase()).join(' and '):'Track stock by '+pOpts(x).map(g=>g.name.toLowerCase()).join(' and ')}</summary><div class="stp-vg">${cb.map(c=>`<label><span>${esc(c)}</span><input type="number" min="0" data-vst="${id}|${esc(c)}" value="${esc(x.vstock&&x.vstock[c]!=null?x.vstock[c]:'')}" placeholder="—"></label>`).join('')}</div>${vs?`<button type="button" class="od-btn ghost" data-vstoff="${id}">Stop tracking by ${esc(pOpts(x)[0].name.toLowerCase())}</button>`:'<p class="mut">Fill in counts and shoppers see which sizes or flavors are sold out.</p>'}</details>`:''}</div>`}).join('')}</div>
+ <p class="mut">Leave stock empty for things you do not count. Sold-out products can't be added to a cart. Orders take stock off; cancelling an order puts it back.</p>`}
+function stProduction(){const today=new Date();today.setHours(0,0,0,0);const days=[];for(let i=0;days.length<8&&i<30;i++){const d=new Date(today);d.setDate(d.getDate()+i);if(spOpenDay(d)||i===0)days.push(d)}
+ if(!STD)STD=isoD(days[0]);const O=shopOrders().filter(o=>liveO(o)&&o.date===STD&&o.method!=='ship').sort((a,b)=>String(a.slot).localeCompare(String(b.slot)));
+ const make={};O.forEach(o=>o.lines.forEach(l=>{const key=l.name+(l.opts?' · '+l.opts:'');make[key]=(make[key]||0)+l.qty}));const slots={};O.forEach(o=>(slots[o.slot||'Any time']=slots[o.slot||'Any time']||[]).push(o));
+ return `<div class="stp-tools"><div class="stp-days">${days.map(d=>{const k=isoD(d),n=shopOrders().filter(o=>liveO(o)&&o.date===k&&o.method!=='ship').length;return `<button type="button" class="${k===STD?'on':''}" data-std="${k}"><small>${k===isoD(today)?'Today':d.toLocaleDateString('en-US',{weekday:'short'})}</small><b>${d.getDate()}</b>${n?`<i>${n}</i>`:''}</button>`}).join('')}</div><button type="button" class="od-btn ghost" data-stprint>Print</button></div>
+ <div class="stp-print"><h3>${dayLbl(fromIso(STD))} · ${O.length} order${O.length===1?'':'s'}</h3><div class="stp-2"><div class="w"><div class="w-h"><h3>What to make</h3></div>${Object.keys(make).length?Object.entries(make).sort((a,b)=>b[1]-a[1]).map(([n,q])=>`<div class="w-row"><span class="t"><b>${esc(n)}</b></span><b class="num">× ${q}</b></div>`).join(''):'<p class="mut">No orders for this day yet.</p>'}</div>
+ <div class="w"><div class="w-h"><h3>Pickup and delivery schedule</h3></div>${Object.entries(slots).map(([t,os])=>`<div class="stp-slot"><b>${esc(slotLbl(t))}</b>${os.map(o=>`<div class="w-row"><span class="t"><b>#${o.no} · ${esc(o.name)}${o.method==='delivery'?' · Delivery':''}</b><span>${o.lines.map(l=>l.qty+'× '+l.name).join(', ')}${o.note?' · “'+esc(o.note)+'”':''}</span></span><span class="stp-st st-${o.status}">${ORD_ST[o.status]}</span>${stBtn(o)}</div>`).join('')}</div>`).join('')||'<p class="mut">Nothing scheduled.</p>'}</div></div></div>`}
+function stCodes(){const s=shopSecs()[0];if(!s)return[];return String(s.data.codes||'').split(/\n|,/).map(r=>{const[a,b]=r.split('=').map(x=>(x||'').trim());if(!a)return null;return{code:a.toUpperCase(),type:/free\s*ship/i.test(b||'')?'ship':/%/.test(b||'')?'pct':'amt',val:num$(b)}}).filter(Boolean)}
+function stCodesSave(list){const s=shopSecs()[0];if(!s)return;snap();s.data.codes=list.filter(c=>c.code).map(c=>`${c.code.toUpperCase().replace(/\s+/g,'')} = ${c.type==='ship'?'free shipping':c.type==='pct'?(+c.val||0)+'%':'$'+(+c.val||0)}`).join('\n');save();soft()}
+function stDiscounts(){const C=stCodes(),O=shopOrders().filter(liveO);const gifts=[];O.forEach(o=>o.lines.forEach((l,i)=>{const f=allProds().find(p=>p.x.name===l.name);if(f&&f.x.kind==='gift'){for(let j=0;j<l.qty;j++)gifts.push({o,l,code:`GIFT-${o.no}-${i+1}${l.qty>1?'-'+(j+1):''}`})}}));
+ return `<div class="stp-2"><div class="w"><div class="w-h"><h3>Discount codes</h3><small>Shoppers type these in the cart</small></div>
+  <div class="stp-codes">${C.map((c,i)=>`<div class="stp-code"><input data-stcode="${i}|code" value="${esc(c.code)}" aria-label="Code"><select data-stcode="${i}|type" aria-label="Type"><option value="pct"${c.type==='pct'?' selected':''}>% off</option><option value="amt"${c.type==='amt'?' selected':''}>$ off</option><option value="ship"${c.type==='ship'?' selected':''}>Free shipping</option></select>${c.type==='ship'?'<span></span>':`<input type="number" min="0" data-stcode="${i}|val" value="${c.val}" aria-label="Amount">`}<small>${O.filter(o=>o.code===c.code).length} used</small><button type="button" class="iconbtn" data-stcodedel="${i}" aria-label="Delete code">${ic('trash',14)}</button></div>`).join('')||'<p class="mut">No codes yet.</p>'}</div>
+  <button type="button" class="od-btn ghost" data-stcodeadd>${ic('plus',13)} Add a code</button></div>
+ <div class="w"><div class="w-h"><h3>Gift cards sold</h3><small>${money(gifts.reduce((a,g)=>a+g.l.unit,0),2)} outstanding</small></div>${gifts.map(g=>`<div class="w-row"><span class="t"><b>${esc(g.code)} · ${money(g.l.unit,2)}</b><span>${esc(g.l.opts||'')} · bought by ${esc(g.o.name)} ${ago(g.o.at)}</span></span><span class="stp-pill ok">Active</span></div>`).join('')||`<p class="mut">${allProds().some(p=>p.x.kind==='gift')?'Gift cards you sell show up here with their codes.':'Add a product and set its type to Gift card to sell them.'}</p>`}</div></div>`}
+function stCustomers(){const m={};shopOrders().filter(liveO).forEach(o=>{const k=o.email.toLowerCase();const c=m[k]=m[k]||{name:o.name,email:o.email,phone:o.phone,n:0,spent:0,last:0,sub:false};c.n++;c.spent+=o.total;c.last=Math.max(c.last,o.at);if(o.phone)c.phone=o.phone;if(o.lines.some(l=>l.sub))c.sub=true});
+ const L=Object.values(m).sort((a,b)=>b.spent-a.spent);
+ return `<div class="stp-tools"><span class="mut">${L.length} customer${L.length===1?'':'s'} · ${L.filter(c=>c.n>1).length} came back</span><button type="button" class="od-btn ghost" data-stcsv="customers">Export CSV</button></div>
+ ${L.length?`<div class="stp-tbl"><div class="stp-tr h"><span>Customer</span><span>Orders</span><span>Spent</span><span>Last order</span></div>${L.map(c=>`<div class="stp-tr"><span class="t"><b>${esc(c.name)}${c.sub?' <i class="stp-pill ok">Subscriber</i>':''}${c.n>1?' <i class="stp-pill">Repeat</i>':''}</b><span>${esc(c.email)}${c.phone?' · '+esc(c.phone):''}</span></span><span>${c.n}</span><span class="num">${money(c.spent,2)}</span><span>${ago(c.last)}</span></div>`).join('')}</div>`:'<p class="stp-empty">Customers show up here after their first order.</p>'}`}
+function storePanel(){const nw=shopOrders().filter(o=>o.status==='new').length;
+ return `<div class="stp"><div class="od-top"><div><h2>Store</h2><p>Orders, stock and pickups for ${esc(state.brand.name)}.</p></div><div class="row">${shopOrders().some(o=>o.sample)?'<button type="button" class="od-btn ghost" data-stsample="0">Remove sample orders</button>':'<button type="button" class="od-btn ghost" data-stsample="1">Add sample orders</button>'}<button type="button" class="od-btn" data-tab="builder">${ic('edit',14)} Edit products</button></div></div>
+ <div class="stp-tabs" role="tablist">${ST_TABS.map(([k,l])=>`<button type="button" role="tab" aria-selected="${STV===k}" class="${STV===k?'on':''}" data-stv="${k}">${l}${k==='orders'&&nw?` <i>${nw}</i>`:''}</button>`).join('')}</div>
+ <div class="stp-body">${{overview:stOverview,orders:stOrders,inventory:stInventory,production:stProduction,discounts:stDiscounts,customers:stCustomers}[STV]()}</div>
+ <p class="stp-demo">${ic('info',13)} Until your store is live, orders here come from test checkouts in your preview and sample data. Real orders and payments land here the same way once it launches.</p></div>`}
+function stSample(on){state.shopOrders=shopOrders().filter(o=>!o.sample);if(!on){save();return}
+ const P=allProds().filter(p=>p.x.kind==='item');if(!P.length){toast('Add products first');return}const d=shopSecs()[0].data,ms=spMethods(d).map(m=>m[0]);const names=[['Jamie Lee','jamie@example.com'],['Priya Shah','priya@example.com'],['Marcus Hill','marcus@example.com'],['Ana Lopez','ana@example.com'],['Sam Carter','sam@example.com'],['Jamie Lee','jamie@example.com'],['Kelly Nguyen','kelly@example.com'],['Tom Alvarez','tom@example.com']];
+ const now=new Date();let no=1001+state.shopOrders.length+50;
+ names.forEach(([nm,em],i)=>{const back=i<4,d0=new Date(now);d0.setHours(0,0,0,0);d0.setDate(d0.getDate()+(back?-(i*3+1):(i-4)));const m=ms[i%ms.length]||'pickup';
+  const lines=[P[i%P.length],P[(i*3+1)%P.length]].filter((p,j,a)=>j===0||p!==a[0]).map((p,j)=>({name:p.x.name,opts:pOpts(p.x).map(g=>g.name+': '+g.vals[0].label).join(' · '),qty:1+((i+j)%3),unit:unitPrice(p.x,[],'once',d),sub:false,every:'',sid:p.s.id,k:p.k,vk:''}));
+  const sub=lines.reduce((a,l)=>a+l.unit*l.qty,0),fee=m==='delivery'?num$(d.deliveryFee):m==='ship'?(num$(d.freeOver)&&sub>=num$(d.freeOver)?0:num$(d.shipFee)):0;const slot=['08:00','09:00','10:00','11:00'][i%4];
+  state.shopOrders.push({no:no++,at:back?d0.getTime()+9*36e5:Date.now()-i*36e5,name:nm,email:em,phone:'(555) 010-'+String(1000+i*7).slice(-4),addr:m==='pickup'?'':'12 Elm St',method:m,date:m==='ship'?'':isoD(d0),slot:m==='ship'?'':slot,when:m==='ship'?'':`${dayLbl(d0)} at ${slotLbl(slot)}`,note:i===5?'Happy birthday, Maya!':'',code:i===2?'':'',pay:i%3===2?'paypal':'card',lines,subtotal:sub,discount:0,fee,total:Math.round((sub+fee)*100)/100,status:back?(m==='ship'?'shipped':'done'):(i===4?'preparing':'new'),sample:true})});save()}
+
+WIDGETS.store='Online store';
+W.store=()=>{if(!shopSecs().length)return{html:lockedW('Online store','Add the Online store section to sell products, take preorders and manage stock here.',`<button type="button" class="od-btn" data-tab="builder">Add a store</button>`)};
+ const O=shopOrders().filter(liveO),nw=shopOrders().filter(o=>o.status==='new').length,sales=O.reduce((a,o)=>a+o.total,0),low=allProds().filter(({x})=>{const n=stockOf(x);return n!=null&&n<=lowAt()});
+ return{html:`<div class="w"><div class="w-h"><h3>Online store</h3><small>${nw} new order${nw===1?'':'s'}</small></div><div class="wk"><div><b>${money(sales,0)}</b><span>Sales</span></div><div><b>${O.length}</b><span>Orders</span></div><div><b>${low.length}</b><span>Low stock</span></div></div>${low.slice(0,3).map(({x})=>`<div class="w-row"><span class="t"><b>${esc(x.name)}</b></span>${stPill(x)}</div>`).join('')}<button type="button" class="od-btn" data-stv="overview" style="justify-self:start">${ic('bag',14)} Open the store panel</button></div>`}};
+if(!state.dash.order.includes('store'))state.dash.order.splice(1,0,'store');
+renderDashboard=(o=>function(){o.apply(this,arguments);const nav=$('#v-dashboard .od-nav');if(!nav)return;const has=shopSecs().length;
+ nav.querySelectorAll('span').forEach(sp=>{if(/^Orders/.test(sp.textContent.trim()))sp.remove()});const first=nav.querySelector('span');
+ if(first){first.outerHTML=`<button type="button" class="od-navb${STV&&has?'':' on'}" data-stv="">Overview</button>`}
+ if(has){const nw=shopOrders().filter(o=>o.status==='new').length;nav.firstElementChild.insertAdjacentHTML('afterend',`<button type="button" class="od-navb${STV?' on':''}" data-stv="overview">Store${nw?`<i>${nw}</i>`:''}</button>`)}
+ if(STV&&has){const m=$('#v-dashboard .od-main');if(m)m.innerHTML=storePanel()}})(renderDashboard);
+const stRe=()=>{if(state.tab==='dashboard')renderDashboard()};
+const STVOPEN=new Set();document.addEventListener('toggle',e=>{const d=e.target;if(d instanceof Element&&d.matches('details[data-stvar]'))d.open?STVOPEN.add(d.dataset.stvar):STVOPEN.delete(d.dataset.stvar)},true);
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;const q=s=>t.closest(s);let el;
+ if(el=q('[data-stv]')){STV=el.dataset.stv||null;STQ='';STSEL.clear();if(state.tab!=='dashboard')setTab('dashboard');else stRe();const m=$('#v-dashboard .dmain');if(m)m.scrollTop=0;return}
+ if(!q('#v-dashboard'))return;
+ if(el=q('[data-stf]')){STF=el.dataset.stf;stRe();return}
+ if(el=q('[data-std]')){STD=el.dataset.std;stRe();return}
+ if(q('[data-stprint]')){document.body.classList.add('stp-printing');window.print();setTimeout(()=>document.body.classList.remove('stp-printing'),500);return}
+ if(el=q('[data-ostep]')){const[no,st]=el.dataset.ostep.split('|');ordStatus(+no,st);return}
+ if(el=q('[data-stsample]')){stSample(el.dataset.stsample==='1');stRe();toast(el.dataset.stsample==='1'?'Sample orders added. They are marked Sample and do not change your stock.':'Sample orders removed');return}
+ if(el=q('[data-stcsv]')){const k=el.dataset.stcsv;
+  if(k==='orders')csvDownload('orders.csv',[['Order','Date','Status','Name','Email','Phone','Method','When','Address','Items','Subtotal','Discount','Fee','Total','Code','Payment','Note'],...shopOrders().map(o=>[o.no,new Date(o.at).toISOString().slice(0,10),ORD_ST[o.status],o.name,o.email,o.phone,o.method,o.when,o.addr,o.lines.map(l=>`${l.qty}x ${l.name}${l.opts?' ('+l.opts+')':''}`).join('; '),o.subtotal,o.discount,o.fee,o.total,o.code,o.pay,o.note])]);
+  if(k==='inventory')csvDownload('products.csv',[INV_COLS,...allProds().map(({x})=>INV_COLS.map(c=>x[c]))]);
+  if(k==='customers'){const m={};shopOrders().filter(liveO).forEach(o=>{const c=m[o.email]=m[o.email]||[o.name,o.email,o.phone,0,0];c[3]++;c[4]+=o.total});csvDownload('customers.csv',[['Name','Email','Phone','Orders','Spent'],...Object.values(m)])}
+  return}
+ if(el=q('[data-stbulk]')){const a=el.dataset.stbulk;if(a==='clear'){STSEL.clear();stRe();return}const n=+($('[data-stbulkn]')||{}).value;if(['add','set','sale'].includes(a)&&!(n>=0&&$('[data-stbulkn]').value!=='')){toast('Type an amount first');return}snap();
+  [...STSEL].forEach(id=>{const[sid,k]=id.split('|');const s=spSec(sid),x=s&&s.data.items[+k];if(!x)return;
+   if(a==='add'){if(x.vstock&&Object.keys(x.vstock).length)Object.keys(x.vstock).forEach(v=>x.vstock[v]=(+x.vstock[v]||0)+n);else x.stock=(+x.stock||0)+n}
+   if(a==='set'){if(x.vstock&&Object.keys(x.vstock).length)Object.keys(x.vstock).forEach(v=>x.vstock[v]=n);else x.stock=n}
+   if(a==='out'){if(x.vstock&&Object.keys(x.vstock).length)Object.keys(x.vstock).forEach(v=>x.vstock[v]=0);else x.stock=0}
+   if(a==='sale'&&n>0&&n<100){const base=num$(x.compare)>num$(x.price)?num$(x.compare):num$(x.price);x.compare='$'+(+base.toFixed(2));x.price='$'+(+(base*(1-n/100)).toFixed(2))}
+   if(a==='nosale'&&num$(x.compare)>num$(x.price)){x.price=x.compare;x.compare=''}});
+  save();soft();stRe();toast('Updated '+STSEL.size+' product'+(STSEL.size===1?'':'s'));return}
+ if(el=q('[data-vstoff]')){const[sid,k]=el.dataset.vstoff.split('|');const x=spSec(sid).data.items[+k];snap();x.stock=vsum(x)??'';delete x.vstock;save();soft();stRe();return}
+ if(q('[data-stcodeadd]')){const C=stCodes();C.push({code:'NEWCODE'+(C.length+1),type:'pct',val:10});stCodesSave(C);stRe();return}
+ if(el=q('[data-stcodedel]')){const C=stCodes();C.splice(+el.dataset.stcodedel,1);stCodesSave(C);stRe();return}});
+function ordStatus(no,st){const o=shopOrders().find(x=>x.no===no);if(!o||o.status===st)return;snap();if(st==='cancelled')stockMove(o,1);else if(o.status==='cancelled')stockMove(o,-1);o.status=st;save();soft();stRe();toast(`Order #${no}: ${ORD_ST[st]}`)}
+document.addEventListener('focusin',e=>{const t=e.target;if(t instanceof Element&&t.matches('[data-inv],[data-vst]'))snap()});
+document.addEventListener('input',e=>{const t=e.target;if(!(t instanceof Element)||!t.closest('#v-dashboard'))return;
+ if(t.matches('[data-stq]')){STQ=t.value;const pos=t.selectionStart;stRe();const n=$('#v-dashboard [data-stq]');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(err){}}return}
+ if(t.matches('[data-inv]')){const[sid,k,f]=t.dataset.inv.split('|');const x=spSec(sid)?.data.items[+k];if(x){x[f]=t.value;save()}return}
+ if(t.matches('[data-vst]')){const p=t.dataset.vst.split('|');const x=spSec(p[0])?.data.items[+p[1]];if(x){x.vstock=x.vstock||{};x.vstock[p.slice(2).join('|')]=t.value===''?'':+t.value;save()}return}
+ if(t.matches('[data-stlow]')){state.storeLow=t.value===''?5:+t.value;save();return}});
+document.addEventListener('change',e=>{const t=e.target;if(!(t instanceof Element)||!t.closest('#v-dashboard'))return;
+ if(t.matches('[data-inv],[data-vst]')){soft();
+  /* update the row in place so Tab moves on to the next field instead of losing focus to a repaint */
+  const row=t.closest('.stp-ir'),id=row&&row.querySelector('[data-stsel]')?.dataset.stsel,[sid,k]=(id||'').split('|'),x=sid&&spSec(sid)?.data.items[+k];
+  const vs=x&&x.vstock&&Object.keys(x.vstock).length;
+  if(!x||(t.matches('[data-vst]')&&!!vs!==!!row.querySelector('.stp-vsum'))){stRe();return}
+  row.querySelector('.stp-st').innerHTML=stPill(x);const sm=row.querySelector('.stp-vsum');if(sm)sm.textContent=`${stockOf(x)} across ${Object.keys(x.vstock).length}`;return}
+ if(t.matches('[data-stlow]')){soft();stRe();return}
+ if(t.matches('[data-ostat]')){ordStatus(+t.dataset.ostat,t.value);return}
+ if(t.matches('[data-stcol]')){STCOL=t.value;stRe();return}
+ if(t.matches('[data-stsel]')){const id=t.dataset.stsel;t.checked?STSEL.add(id):STSEL.delete(id);stRe();return}
+ if(t.matches('[data-stall]')){const P=allProds().filter(({x})=>(!STCOL||String(x.collection||'').trim()===STCOL)&&(!STQ||String(x.name).toLowerCase().includes(STQ.toLowerCase())));if(t.checked)P.forEach(({s,k})=>STSEL.add(s.id+'|'+k));else STSEL.clear();stRe();return}
+ if(t.matches('[data-stcode]')){const[i,f]=t.dataset.stcode.split('|');const C=stCodes();if(C[+i]){C[+i][f]=f==='val'?+t.value:t.value;stCodesSave(C);stRe()}return}
+ if(t.matches('[data-stimport]')){const f=t.files[0];t.value='';if(!f)return;f.text().then(txt=>{const rows=csvParse(txt);if(rows.length<2){toast('That file has no products');return}const h=rows[0].map(x=>x.trim().toLowerCase());if(!h.includes('name')){toast('The first row needs a "name" column');return}
+  const s=shopSecs()[0];if(!s){toast('Add the Online store section first');return}snap();let up=0,add=0;rows.slice(1).forEach(r=>{const o={};h.forEach((c,i)=>{if(INV_COLS.includes(c))o[c]=(r[i]??'').trim()});if(!o.name)return;const f=allProds().find(p=>p.x.name.toLowerCase()===o.name.toLowerCase());
+   if(f){Object.assign(f.x,o);up++}else{s.data.items.push(PB(o));add++}});save();soft();stRe();toast(`${up} updated, ${add} added`)})}});
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
