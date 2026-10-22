@@ -59,6 +59,8 @@ body.help-open .help-btn{background:var(--accent-soft);border-color:var(--accent
 }
 
 /* ---------- tutorial: dimmed studio with a spotlight on the real control ---------- */
+/* edit panes, menus and pop-ups step aside while the tour runs and come back when it ends */
+body.tour-open #fInsp,body.tour-open #fLib,body.tour-open #btnPop,body.tour-open .modal-bg,body.tour-open .ob-menu,body.tour-open #coach{visibility:hidden!important}
 .ct{position:fixed;inset:0;z-index:1500;opacity:0;transition:opacity .22s ease}
 .ct.in{opacity:1}
 .ct-block{position:absolute;inset:0}
