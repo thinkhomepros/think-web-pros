@@ -2069,3 +2069,22 @@ body.full-on .device[data-device=phone]:not(.fitted){max-width:none!important;bo
 .full-exit:hover,.full-exit:focus-visible{background:rgba(20,22,26,.92);opacity:1}
 .full-exit.idle{opacity:.35}
 @media (max-width:600px){ .full-exit{top:auto;right:auto;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:44px;height:44px;padding:0;justify-content:center} .full-exit span{display:none} }
+
+/* ---------- card style: one card or panel inside a section styled on its own ---------- */
+.site .pnx.bgx-t::after{border-radius:inherit}
+.site .pnx.bgx-t{position:relative;isolation:isolate}
+/* rows and plain boxes have no padding of their own, so give them room once they get a fill or border */
+.site :is(.menu-row,.mn-row,.faq-it,.stats>div,.map-info,.ba-fig,.ba-side,.pr-row,.ct-box,.cform).pnx-fill{padding:14px 16px;border-radius:var(--r)}
+.site .faq-it.pnx-fill{margin-bottom:10px}
+.site.edit .sec.sel .pnx:hover{outline:1px dashed color-mix(in srgb,var(--accent) 65%,transparent);outline-offset:3px}
+.site.edit .sec.sel .pnx.pn-on{outline:2px solid var(--accent);outline-offset:3px}
+.pn-box>.bgx-in>.bgx{margin:4px 0 0}
+.pn-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pn-chips button{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;padding:6px 11px;font:600 12px/1.1 inherit;font-family:inherit;cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pn-chips button.set{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.pn-chips button.set::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin-left:6px;vertical-align:middle}
+.pn-chips button.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+/* the card background sits inside Card style, always open, with its title as a plain heading */
+.pn-box details.bgx>summary{pointer-events:none;padding:10px 0 4px}
+.pn-box details.bgx>summary::after{display:none}
+.dk-slide .pn-box details.bgx>summary{display:flex}
