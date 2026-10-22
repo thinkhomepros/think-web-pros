@@ -2502,6 +2502,9 @@ let DK_SIDE=null;
 function dockSide(){const b=document.body,cv=$('#canvas'),side=devFramed();b.classList.toggle('dock-side',side);
  if(side&&cv){let t=0;[$('.prevbar'),$('#pagebar')].forEach(x=>{if(x&&x.offsetParent)t=Math.max(t,x.getBoundingClientRect().bottom)});b.style.setProperty('--dktop',Math.max(0,Math.round(t))+'px')}
  const k=[side,b.classList.contains('dock-on'),state.libOpen,!!$('.dock-modal'),!!$('#btnPop')].join('|');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
+/* the pane and its slide holder only scroll inside their slides; a browser jump to a focused switch could still shift them out of
+   view (a hidden checkbox in the Background slide did, leaving a blank sheet on phones), so put them back at once */
+addEventListener('scroll',e=>{const t=e.target;if(!(t instanceof Element)||!(t.id==='fInsp'||t.id==='inspector'))return;const cs=getComputedStyle(t);if(cs.overflowY==='hidden'&&t.scrollTop)t.scrollTop=0;if(cs.overflowX==='hidden'&&t.scrollLeft)t.scrollLeft=0},true);
 function dkSlide(key,title,nodes,icon){const s=document.createElement('section');s.className='dk-slide';s.dataset.dk=key;s.setAttribute('aria-label',title);s.innerHTML=`<h4>${icon?ic(icon,14):''}${esc(title)}</h4>`;nodes.forEach(n=>s.appendChild(n));return s}
 function dockify(){const ins=$('#inspector');if(!ins||ins.querySelector(':scope>.dk-track'))return;const kids=[...ins.children];if(!kids.length)return;
  const slides=[];let words=[],wn=0,last=null;const used={};const key=k=>{used[k]=(used[k]||0)+1;return used[k]>1?k+used[k]:k};
