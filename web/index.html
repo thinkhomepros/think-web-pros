@@ -83,6 +83,11 @@
             { "@type": "UnitPriceSpecification", "price": "1199", "priceCurrency": "USD", "name": "One-time design" },
             { "@type": "UnitPriceSpecification", "price": "79", "priceCurrency": "USD", "unitCode": "MON", "name": "Monthly plan" }
           ] },
+        { "@type": "Offer", "name": "E-commerce", "url": "https://thinkwebpros.com/#ecommerce", "priceCurrency": "USD", "price": "499", "description": "One-time design fee of $499, then $59 per month. Online store with unlimited products, sizes, colors and flavors, stock counts, pickup, local delivery, shipping and preorders, discount codes, gift cards, build-a-box, your own domain and email. No added fees from Think Web Pros on sales; standard card processing applies.",
+          "priceSpecification": [
+            { "@type": "UnitPriceSpecification", "price": "499", "priceCurrency": "USD", "name": "One-time design" },
+            { "@type": "UnitPriceSpecification", "price": "59", "priceCurrency": "USD", "unitCode": "MON", "name": "Monthly plan" }
+          ] },
         { "@type": "Offer", "name": "Custom", "url": "https://thinkwebpros.com/builder#quote", "priceCurrency": "USD", "description": "Priced per job for more elaborate designs: many pages, custom features and integrations, or a full rebrand, designed with the Think Web Pros team. Request a quote." }
       ]
     },
@@ -95,7 +100,7 @@
         { "@type": "Question", "name": "Do I need design or coding skills to use Think Web Pros?",
           "acceptedAnswer": { "@type": "Answer", "text": "No. You click any words on the page to type over them, tap a photo to upload your own, and pick a style from the Design panel. There is no code and nothing to install." } },
         { "@type": "Question", "name": "How much does a Think Web Pros website cost?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Designing is free. When you are happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan. For more elaborate designs, the Custom plan is priced per job: request a quote and the team replies with a price." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "Designing is free. When you are happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Selling online? The E-commerce plan is $499 plus $59 per month with the store, domain and selling tools included. Hosting and SSL are included in every plan. For more elaborate designs, the Custom plan is priced per job: request a quote and the team replies with a price." } },
         { "@type": "Question", "name": "How long do you keep my design?",
           "acceptedAnswer": { "@type": "Answer", "text": "Without a plan, saving is free for 1 hour from when you start a design. After that, saved copies are deleted and the open design can be edited for up to 24 hours before it is cleared. When you choose a plan, your designs are kept for as long as you have it. Design storage keeps saving on and keeps all your designs without a plan for $20 per month." } },
         { "@type": "Question", "name": "Can I use my own logo, or make one if I do not have one?",
@@ -251,6 +256,15 @@ section{padding:84px 0}
 .custom-plan li svg{color:var(--accent);flex:none}
 .custom-plan .btn{flex:none}
 .store-plan{border-style:solid;border-color:var(--line);padding-block:22px}
+.ecom-plan{border-style:solid;border-color:color-mix(in srgb,var(--accent) 45%,var(--line));display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
+.ecom-plan .price{display:flex;align-items:baseline;gap:6px;margin-top:6px}.ecom-plan .price b{font-size:34px;line-height:1}
+.ecom-compare{grid-column:1/-1;overflow-x:auto;margin-top:6px;min-width:0}
+@media (max-width:900px){.ecom-plan{grid-template-columns:minmax(0,1fr)}}
+.ecom-compare table{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+.ecom-compare th,.ecom-compare td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.ecom-compare thead th{font-size:13px;color:var(--ink-2)}
+.ecom-compare .us{background:var(--accent-soft);font-weight:600}
+.ecom-compare caption{caption-side:bottom;text-align:left;font-size:12px;color:var(--ink-2);padding-top:8px}
 @media (max-width:900px){.custom-plan{flex-direction:column;align-items:stretch;max-width:480px;margin-left:auto;margin-right:auto;padding:24px}}
 .addons{margin-top:28px;text-align:center;color:var(--muted);font-size:15.5px}
 .addons b{color:var(--ink)}
@@ -500,6 +514,36 @@ footer a:hover{color:var(--ink)}
           <a class="btn" href="/builder">Start with Pro</a>
         </article>
       </div>
+      <article class="custom-plan ecom-plan" id="ecommerce">
+        <div>
+          <div class="cp-head"><h3>E-commerce</h3><span class="cp-badge">For boutiques, bakeries and side hustles</span></div>
+          <div class="price"><b>$59</b><span>/month</span></div>
+          <p class="setup">+ $499 one-time design</p>
+          <p>Your own online store with your name on it, not a marketplace listing. Sell clothes in every size and color, take cake orders with a pickup day and time, and ship handmade goods anywhere. We set it up and load your first 50 products.</p>
+          <ul>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Unlimited products, sizes, colors and flavors</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Stock counts and "only 3 left" badges</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Pickup, local delivery, shipping and preorder dates</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Discount codes, gift cards and build-a-box</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Wishlists, reviews and your Instagram feed</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>No added fees from us on your sales</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Your own domain and email</li>
+          </ul>
+        </div>
+        <a class="btn pri" href="/builder">Build my store</a>
+        <div class="ecom-compare">
+          <table>
+            <caption>Public US pricing as of 2026. Card processing is charged by the payment company on every platform.</caption>
+            <thead><tr><th scope="col"></th><th scope="col" class="us">Think Web Pros E-commerce</th><th scope="col">Shopify Basic</th><th scope="col">Square Online Plus</th><th scope="col">Etsy</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Monthly</th><td class="us">$59</td><td>$39 ($29 billed yearly)</td><td>$49</td><td>$0</td></tr>
+              <tr><th scope="row">Fees on each sale</th><td class="us">Card processing only, 2.9% + 30¢</td><td>2.9% + 30¢</td><td>2.9% + 30¢</td><td>6.5% + 3% + 25¢, 20¢ per listing, up to 15% on Offsite Ads sales</td></tr>
+              <tr><th scope="row">Who builds it</th><td class="us">We design it with you and load your products</td><td>You, from a theme</td><td>You, from a template</td><td>A shop page on Etsy's marketplace</td></tr>
+              <tr><th scope="row">Your own brand and domain</th><td class="us">Included</td><td>Bought separately</td><td>Free for the first year</td><td>No</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
       <article class="custom-plan" id="custom">
         <div>
           <div class="cp-head"><h3>Custom</h3><span class="cp-badge">Priced per job</span></div>
@@ -520,7 +564,7 @@ footer a:hover{color:var(--ink)}
         </div>
         <a class="btn" href="/builder#storage">Keep my designs</a>
       </article>
-      <p class="addons">Add only what you need: <b>online booking</b> $15/mo, <b>online store</b> $29/mo, <b>custom domain &amp; email</b> $8/mo, <b>SEO boost</b> $49/mo, <b>live chat</b> $12/mo, and <b>point of sale</b> from $39/mo.</p>
+      <p class="addons">Add only what you need: <b>online booking</b> $15/mo, <b>online store</b> $29/mo (or the <a href="#ecommerce">E-commerce plan</a>), <b>custom domain &amp; email</b> $8/mo, <b>SEO boost</b> $49/mo, <b>live chat</b> $12/mo, and <b>point of sale</b> from $39/mo.</p>
     </div>
   </section>
 
@@ -541,7 +585,7 @@ footer a:hover{color:var(--ink)}
         </details>
         <details>
           <summary>How much does a Think Web Pros website cost?</summary>
-          <p>Designing is free. When you're happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan. For more elaborate designs, our Custom plan is priced per job: <a href="/builder#quote">request a quote</a> and we'll reply with a price.</p>
+          <p>Designing is free. When you're happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Selling online? The E-commerce plan is $499 plus $59 per month with the store, domain and selling tools included. Hosting and SSL are included in every plan. For more elaborate designs, our Custom plan is priced per job: <a href="/builder#quote">request a quote</a> and we'll reply with a price.</p>
         </details>
         <details>
           <summary>How long do you keep my design?</summary>
