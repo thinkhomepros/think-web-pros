@@ -823,7 +823,7 @@ const W={
  traffic(){const v=[212,240,198,260,310,295,330,301,345,390,362,410,398,446];return{wide:true,html:`<div class="w wide"><div class="w-h"><h3>Website visits</h3><span class="badge ex">Example data</span></div><div class="wk"><div><b>4,707</b><span>Visits, 14 days</span></div><div><b>183</b><span>Calls from site</span></div><div><b>64</b><span>Direction taps</span></div></div>${areaChart(v,560,150,'var(--p)','color-mix(in srgb,var(--p) 14%,transparent)',['Oct 6','Today'])}</div>`}},
  pos(){if(!hasPOS())return{html:lockedW('Register sales (POS)','Ring up sales in the shop and see them here next to your website orders. Stock syncs to your online store.',`<button type="button" class="od-btn gold" data-tab="plans">See POS plans</button>`)};
   const pp=posPlan(state.cart.pos);const tx=[['Latte, cardamom bun','$11.25','Tap · 9:41am'],['Country sourdough ×2','$18.00','Chip · 9:32am'],['Online order #2041','$46.50','Website · 9:15am'],['Half-dozen croissants','$21.00','Apple Pay · 8:58am']];
-  const low=(firstOf('shop')?.data.items||DEFAULTS.shop.items).filter(x=>+x.stock<=6).slice(0,3);
+  const low=(firstOf('shop')?.data.items||DEFAULTS.shop.items).filter(x=>String(x.stock??"").trim()!==""&&+x.stock<=6).slice(0,3);
   return{wide:true,html:`<div class="w wide"><div class="w-h"><h3>Register sales · ${esc(pp.name)}</h3><span class="badge ex">Example data</span></div><div class="wk"><div><b>$1,284</b><span>Sales today</span></div><div><b>71</b><span>Transactions</span></div><div><b>$18.08</b><span>Average ticket</span></div></div>${tx.map(t=>`<div class="w-row"><span class="t"><b>${t[0]}</b><span>${t[2]}</span></span><b class="num">${t[1]}</b></div>`).join('')}${low.length?`<p class="mut"><b>Low stock:</b> ${low.map(x=>esc(x.name)+' ('+x.stock+')').join(', ')}. Counts update your online store too.</p>`:''}</div>`}},
  payouts(){if(!hasMerchant())return{html:lockedW('Payments &amp; deposits','Accept cards in person and online with Think Web Pros merchant services. Deposits land in your bank next business day.',`<button type="button" class="od-btn gold" data-merchanton>Turn on card payments</button>`)};
   const pr=processing();return{html:`<div class="w"><div class="w-h"><h3>Payments &amp; deposits</h3><span class="badge ex">Example data</span></div><div class="w-row"><span class="t"><b>Next deposit</b><span>Tomorrow, to checking ••4417</span></span><b class="num">$1,236.40</b></div><div class="w-row"><span class="t"><b>This month's card sales</b><span>Estimated from your plan</span></span><b class="num">${money(+state.cart.volume)}</b></div><div class="w-row"><span class="t"><b>Processing fees</b><span>${pr.eff.toFixed(2)}% effective rate</span></span><b class="num">${money(pr.fees,2)}</b></div></div>`}},
@@ -2829,6 +2829,328 @@ document.addEventListener('keydown',e=>{if(FULL&&e.key==='Escape'&&!$('.pf-lb'))
 renderSites=(o=>function(){if(FULL&&state.tab==='builder'){paintSite($('#site'),false);renderUrl();return}return o.apply(this,arguments)})(renderSites);
 renderBuilder=(o=>function(){const r=o.apply(this,arguments);if(FULL){const s=$('#site');s.classList.remove('edit');paintSite(s,false)}return r})(renderBuilder);
 fitDevice=(o=>function(){o.apply(this,arguments);const d=$('#device');if(FULL&&d&&state.device==='desktop'&&innerWidth>=1024){d.style.zoom='';d.style.width='100%';d.style.maxWidth='none';d.classList.remove('fitted')}})(fitDevice);
+
+/* ---------- online store: storefront layouts, product pages, cart drawer and order-ahead checkout ----------
+   Products and store settings live in the shop section's data. A shopper's cart and wishlist live in their
+   browser (twp-cart-v1, twp-wish-v1). Orders placed here are demo orders: they land in the owner's messages
+   and state.shopOrders, and no card is charged until the shop's own payment account is connected. */
+Object.assign(P,{
+ heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+ share:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.9l7.6-3.8M8.2 13.1l7.6 3.8"/>',
+ gift:'<rect x="3.5" y="8" width="17" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8c-1.5-3-5-3.5-5-1.2C7 8 9.5 8 12 8zM12 8c1.5-3 5-3.5 5-1.2C17 8 14.5 8 12 8z"/>',
+ truck:'<path d="M3 6h11v10H3zM14 9h4l3 3v4h-7"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+ minus:'<path d="M5 12h14"/>',
+ tag:'<path d="M3 12V4h8l9 9-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+ box:'<path d="M3 8l9-4 9 4v9l-9 4-9-4zM3 8l9 4 9-4M12 12v9"/>',
+ hanger:'<path d="M12 7.5a2 2 0 1 1 2-2M12 7.5v1.2L3.5 15a1.3 1.3 0 0 0 .8 2.4h15.4a1.3 1.3 0 0 0 .8-2.4L12 8.7"/>',
+ repeat:'<path d="M4 11V9a3 3 0 0 1 3-3h12l-3-3M20 13v2a3 3 0 0 1-3 3H5l3 3"/>'
+});
+Object.assign(THEMES,{
+ linen:{name:'Linen',colors:{p:'#2B2724',a:'#B08D6E',bg:'#FBF8F3',sf:'#F1EBE2',tx:'#2B2724'},font:'cormorant',radius:2,btn:'square'},
+ frosting:{name:'Frosting',colors:{p:'#C2416B',a:'#3E9C8A',bg:'#FFF9FA',sf:'#FDE8EE',tx:'#3A2530'},font:'fredoka',radius:22,btn:'pill'},
+ market:{name:'Market',colors:{p:'#1F4E5F',a:'#E08E2B',bg:'#FFFDF8',sf:'#EEF4F2',tx:'#1C2B30'},font:'fraunces',radius:12,btn:'rounded'}
+});
+Object.assign(CATALOG.shop,{name:'Online store',desc:'Products, cart, pickup, delivery and shipping',variants:{grid:'Grid',featured:'Featured',list:'Order list',lookbook:'Lookbook',carousel:'Scrolling row'}});
+[['magazine','lookbook'],['portfolio','lookbook'],['luxe','featured'],['loud','carousel'],['retro','list']].forEach(([k,v])=>{if(STYLES[k])STYLES[k].v.shop=v});
+
+const BADGES={'':'No badge',new:'New',best:'Best seller',limited:'Limited edition',order:'Made to order',handmade:'Handmade',local:'Local',gf:'Gluten-free',vegan:'Vegan'};
+const YN={yes:'Yes',no:'No'};
+const STORE_SET={sub:'',pickup:'yes',payLater:'yes',delivery:'no',deliveryFee:'$5',deliveryArea:'Within 5 miles',shipping:'yes',shipFee:'$6',freeOver:'$75',notice:0,slots:'',codes:'WELCOME10 = 10%',subOff:10};
+const PB=o=>({name:'New product',price:'$10',compare:'',image:null,images:[],desc:'',collection:'',stock:'',daily:'',badge:'',kind:'item',opt1:'',opt1v:'',opt2:'',opt2v:'',preorder:'no',lead:0,sub:'no',rating:'',reviews:'',boxSize:6,boxFrom:'',...o});
+const STORES={
+ bakery:{set:{sub:'Order by 6pm for pickup tomorrow. Custom cakes need a few days.',delivery:'yes',deliveryFee:'$6',shipping:'no',notice:0,codes:'SWEET10 = 10%\nFIRSTBOX = $5'},products:[
+  PB({name:'Country sourdough',price:'$9',collection:'Bread',daily:24,badge:'best',desc:'36-hour ferment, a crackling crust and a soft, open crumb. Baked every morning.',opt1:'Slicing',opt1v:'Whole loaf, Sliced',sub:'yes',rating:4.9,reviews:128}),
+  PB({name:'Butter croissant',price:'$4.50',collection:'Pastries',daily:48,desc:'Laminated by hand over three days with cultured butter.',rating:4.8,reviews:64}),
+  PB({name:'Cardamom bun',price:'$5',collection:'Pastries',daily:36,badge:'best',desc:'Our most loved pastry: soft dough, cardamom sugar and a sticky glaze.',rating:5,reviews:86}),
+  PB({name:'Build a pastry box',price:'$24',collection:'Boxes & gifts',kind:'box',boxSize:6,boxFrom:'Pastries',badge:'new',desc:'Pick any 6 pastries. Great for the office, a brunch or a Saturday treat.'}),
+  PB({name:'Celebration cake',price:'$65',collection:'Cakes',preorder:'yes',lead:3,badge:'order',desc:'Three layers with Swiss buttercream. Tell us the name and message in the order notes.',opt1:'Size',opt1v:'6 inch serves 8, 8 inch serves 14 (+$20), 10 inch serves 24 (+$45)',opt2:'Flavor',opt2v:'Vanilla bean, Chocolate, Lemon, Red velvet',rating:4.9,reviews:41}),
+  PB({name:'Maine blueberry pie',price:'$28',compare:'$34',collection:'Cakes',daily:6,desc:'Wild Maine blueberries in an all-butter crust.'}),
+  PB({name:'Gift card',price:'$25',collection:'Boxes & gifts',kind:'gift',opt1:'Amount',opt1v:'$25, $50, $100',desc:'Sent by email with your note. Never expires.'})]},
+ retail:{set:{sub:'Free pickup in the shop. Free shipping on orders over $75.'},products:[
+  PB({name:'Stoneware mug',price:'$28',collection:'Kitchen',stock:4,badge:'handmade',desc:'Thrown by a local potter. Holds 12 oz. Dishwasher safe.',opt1:'Glaze',opt1v:'Oat, Moss, Midnight',rating:4.9,reviews:57}),
+  PB({name:'Linen throw',price:'$68',collection:'Home',stock:12,desc:'Stonewashed linen that gets softer every wash.',opt1:'Color',opt1v:'Natural, Clay, Charcoal'}),
+  PB({name:'Hand-poured candle',price:'$24',collection:'Home',stock:30,badge:'best',desc:'Soy wax, cotton wick, 50-hour burn.',opt1:'Scent',opt1v:'Cedar, Fig, Sea salt',sub:'yes',rating:4.8,reviews:112}),
+  PB({name:'Woven basket',price:'$42',compare:'$52',collection:'Home',stock:6}),
+  PB({name:'Local honey set',price:'$26',collection:'Gifts',stock:15,badge:'local',desc:'Three small jars from hives within 20 miles.'}),
+  PB({name:'Build a gift box',price:'$60',compare:'$72',collection:'Gifts',kind:'box',boxSize:3,boxFrom:'Home',desc:'Pick any 3 home goods and we wrap them in a gift box with a card.'}),
+  PB({name:'Gift card',price:'$25',collection:'Gifts',kind:'gift',opt1:'Amount',opt1v:'$25, $50, $100'})]},
+ boutique:{set:{sub:'Free shipping over $75 and free returns within 30 days.',payLater:'no'},products:[
+  PB({name:'Linen wrap dress',price:'$88',collection:'Dresses',stock:14,badge:'new',desc:'Breathable European linen with a tie waist and pockets. True to size.',opt1:'Size',opt1v:'XS, S, M, L, XL',opt2:'Color',opt2v:'Sand, Sage, Black',rating:4.8,reviews:42}),
+  PB({name:'Everyday cotton tee',price:'$32',compare:'$40',collection:'Tops',stock:40,desc:'Heavyweight organic cotton with a relaxed fit.',opt1:'Size',opt1v:'XS, S, M, L, XL',opt2:'Color',opt2v:'White, Black, Oat',rating:4.7,reviews:96}),
+  PB({name:'High-rise wide-leg jeans',price:'$98',collection:'Bottoms',stock:3,badge:'best',desc:'Rigid denim that softens with wear. 31 inch inseam.',opt1:'Waist',opt1v:'24, 26, 28, 30, 32'}),
+  PB({name:'Chunky knit cardigan',price:'$76',collection:'Tops',preorder:'yes',lead:14,desc:'Back in stock soon. Preorder now and it ships the day it lands.',opt1:'Size',opt1v:'S, M, L'}),
+  PB({name:'Gold hoop earrings',price:'$38',collection:'Accessories',stock:9,badge:'limited',desc:'14k gold-filled, lightweight and hypoallergenic.'}),
+  PB({name:'Silk scarf',price:'$45',compare:'$58',collection:'Accessories',stock:7}),
+  PB({name:'Gift card',price:'$25',collection:'Accessories',kind:'gift',opt1:'Amount',opt1v:'$25, $50, $100, $200'})]},
+ maker:{set:{sub:'Small batches, made by hand. Custom orders welcome.',codes:'WELCOME10 = 10%\nFREESHIP = free shipping'},products:[
+  PB({name:'Soy candle',price:'$24',collection:'Candles',stock:18,badge:'best',desc:'Hand-poured in small batches with cotton wicks and clean fragrance oils.',opt1:'Scent',opt1v:'Cedar & smoke, Lavender, Fig & cassis',opt2:'Size',opt2v:'8 oz, 12 oz (+$8)',sub:'yes',rating:4.9,reviews:210}),
+  PB({name:'Botanical art print',price:'$30',collection:'Prints',stock:25,desc:'Archival giclée print on cotton rag paper. Ships flat.',opt1:'Size',opt1v:'8x10, 11x14 (+$15), 16x20 (+$35)'}),
+  PB({name:'Custom name sign',price:'$65',collection:'Custom',preorder:'yes',lead:7,badge:'order',desc:'Hand-lettered on reclaimed wood. Put the name in the order notes.'}),
+  PB({name:'Beeswax taper candles',price:'$18',collection:'Candles',stock:20,desc:'A pair of hand-dipped beeswax tapers.',opt1:'Color',opt1v:'Natural, Sage, Blush'}),
+  PB({name:'Sticker pack',price:'$8',collection:'Small things',stock:120,desc:'Five weatherproof vinyl stickers.'}),
+  PB({name:'Stoneware mug',price:'$28',collection:'Small things',stock:2,badge:'handmade'}),
+  PB({name:'Candle trio box',price:'$60',compare:'$72',collection:'Candles',kind:'box',boxSize:3,boxFrom:'Candles',desc:'Pick any 3 candles. Wrapped and ready to give.'}),
+  PB({name:'Gift card',price:'$25',collection:'Small things',kind:'gift',opt1:'Amount',opt1v:'$25, $50, $100'})]}
+};
+const STORE_DEFAULT={heading:'Order online for pickup',...STORE_SET,...STORES.bakery.set,items:STORES.bakery.products.map(clone)};
+DEFAULTS.shop=clone(STORE_DEFAULT);
+FIELDS.shop=[['heading','Heading','text'],['sub','Supporting text','text'],['items','Products','products'],['@set','Checkout, pickup and delivery','storeset']];
+ITEM_BLANK.shop=PB({stock:10});
+
+/* business types for shops: boutique and side hustle, with store-first layouts */
+(()=>{const add={
+ boutique:{label:'Clothing boutique',goal:'order',tagline:'Clothing and accessories from {city}',eyebrow:'Boutique · {city}',hero:'Pieces you will wear on repeat',sub:'{name} picks clothing and accessories made to last. Shop online or try it on in store.',aboutH:'Small shop, carefully chosen',about:'{name} started with a love of well-made clothes and a closet full of favorites. Every piece in the shop is something we would wear ourselves.',stats:[['New','Arrivals every week'],['Free','Returns in 30 days'],['5★','Average review']],servicesH:'Shop the edit',intro:'New arrivals every Friday.',services:[['Dresses','Easy dresses for every day and every event.','From $68'],['Tops','Tees, knits and button-ups.','From $32'],['Accessories','Jewelry, scarves and bags.','From $24'],['Styling','Book a free 30-minute styling session.','Free']],slidesH:'This week in the shop',slides:['New arrivals','Styled by us','Visit the boutique'],gallery:'Around the boutique',reviews:[['The dress fit perfectly and shipped in two days. My new favorite shop.','Taylor R.','Online customer'],['They pulled three outfits for my trip and every one was a hit.','Monica S.','Styling client'],['Beautiful clothes and the kindest people.','Erin W.','Google review']],faq:[['How does sizing run?','Each product lists its fit. Most pieces run true to size.'],['What is your return policy?','Free returns within 30 days, unworn with tags.'],['Do you ship?','Yes, free over $75. Local pickup is always free.']]},
+ maker:{label:'Handmade goods or side hustle',goal:'order',tagline:'Handmade in {city}',eyebrow:'Handmade · {city}',hero:'Made by hand, made to be loved',sub:'{name} makes small-batch goods by hand. Order online, pick up locally or have it shipped.',aboutH:'From my kitchen table to your home',about:'{name} started as a weekend project and grew from there. Everything is still made by hand in small batches, one order at a time.',stats:[['100%','Made by hand'],['2-3 days','To ship'],['5★','Average review']],servicesH:'What I make',intro:'Small batches, restocked every week.',services:[['Candles','Hand-poured soy candles.','From $24'],['Prints','Archival art prints.','From $30'],['Custom orders','Names, colors and sizes made for you.','From $65'],['Gift boxes','Ready to give.','From $45']],slidesH:'Fresh from the studio',slides:['New this week','Made by hand','Custom orders'],gallery:'In the studio',reviews:[['Better than anything I have found on Etsy, and it arrived beautifully wrapped.','Ana P.','Online customer'],['I order the candle box every month as gifts.','Jules K.','Subscriber'],['The custom sign was perfect for our nursery.','Ben & Mia T.','Custom order']],faq:[['How long does shipping take?','Orders ship in 2 to 3 business days.'],['Do you take custom orders?','Yes. Pick the custom product or send a message.'],['Can I pick up locally?','Yes, choose pickup at checkout and we will text you when it is ready.']]}};
+ const all={};Object.keys(INDUSTRIES).forEach(k=>{all[k]=INDUSTRIES[k];if(k==='retail')Object.assign(all,add)});Object.keys(add).forEach(k=>{if(!all[k])all[k]=add[k]});
+ Object.keys(INDUSTRIES).forEach(k=>delete INDUSTRIES[k]);Object.assign(INDUSTRIES,all);
+ INDUSTRIES.retail.label='Gift, home or retail shop';
+ KITS.retail.short='Gift or home shop';
+ Object.assign(KITS,{
+  boutique:{short:'Clothing boutique',icon:'hanger',sample:'Juniper & Lace',theme:'linen',styles:['magazine','luxe','portfolio'],cta:'Shop new arrivals',cta2:'Our story',shopH:'Shop new arrivals',
+   layouts:{
+    lookbook:{name:'Shoppable lookbook',desc:'Tall editorial photos you can shop, your story and your Instagram feed.',style:'magazine',theme:'linen',home:['hero:poster','shop:lookbook','about:stacked','testimonials:carousel','social:feed'],pages:[['Shop','bag',['hero','shop:grid']],['Visit','pin',['map','contact','faq']]]},
+    storefront:{name:'Boutique storefront',desc:'A featured piece up top, the whole store with sizes and colors, and reviews.',style:'luxe',theme:'blush',home:['hero:arch','shop:featured','testimonials','social:feed','faq'],pages:[['Shop','bag',['hero','shop:grid']],['Visit','pin',['map','contact']]]},
+    drop:{name:'New drop',desc:'Bold and loud for limited releases, with a scrolling row of new pieces.',style:'loud',theme:'studio',home:['hero:marquee','shop:carousel','about','social:feed','faq'],pages:[['Shop all','bag',['hero','shop:grid']],['Contact','phoneCall',['contact','faq']]]},
+    minimal:{name:'Clean and minimal',desc:'Lots of white space, the store front and center, and easy returns.',style:'classic',theme:'linen',home:['hero:centered','shop:grid','about:right','faq:two','contact:centered'],pages:[['Shop','bag',['hero','shop:grid']]]}}},
+  maker:{short:'Handmade & side hustle',icon:'heart',sample:'Little Ember Co.',theme:'market',styles:['playful','classic','magazine'],cta:'Shop the collection',cta2:'Custom orders',shopH:'Shop the collection',
+   layouts:{
+    maker:{name:'Maker shop',desc:'Your products with reviews and a feed, like an Etsy shop with your own name on it.',style:'playful',theme:'market',home:['hero:bubble','shop:grid','about','testimonials','social:feed','faq'],pages:[['Shop','bag',['hero','shop']],['Custom orders','gift',['hero','contact','faq']]]},
+    gifts:{name:'Gift shop',desc:'Soft and pretty, with build-your-own gift boxes and gift cards.',style:'luxe',theme:'frosting',home:['hero:arch','shop:featured','testimonials:spotlight','social:feed','faq'],pages:[['Shop','bag',['hero','shop:grid']],['Contact','phoneCall',['contact','faq']]]},
+    market:{name:'Market stall',desc:'Retro signage, a quick order list and which markets you will be at.',style:'retro',theme:'diner',home:['hero:badge','shop:list','map','social:feed','contact'],pages:[['Shop','bag',['hero','shop:grid']]]},
+    studio:{name:'Art studio',desc:'Full-bleed photos, prints for sale and your story.',style:'portfolio',theme:'folio',home:['hero:overlay','shop:lookbook','about','social:feed','contact'],pages:[['Shop','bag',['hero','shop:grid']],['Contact','phoneCall',['contact','faq']]]}}}});
+ Object.assign(KITS.bakery.layouts,{
+  preorder:{name:'Order-ahead bakery',desc:'Pick a pickup day and time, build a pastry box and see what is left today.',style:'playful',theme:'frosting',home:['hero:bubble','shop:list','testimonials','social:feed','map','faq'],pages:[['Shop','bag',['hero','shop:grid']],['Visit','pin',['map','contact']]]},
+  cakes:{name:'Cake studio',desc:'Custom cakes with size and flavor choices, photos and reviews.',style:'luxe',theme:'blush',home:['hero:arch','shop:featured','gallery','testimonials:spotlight','faq','contact'],pages:[['Order','bag',['hero','shop']],['Contact','phoneCall',['contact','map']]]}});
+ KITS.bakery.shopH='Order ahead for pickup';
+ Object.assign(KITS.retail.layouts,{
+  store:{name:'Full online store',desc:'Collections, sale prices, gift boxes and shipping, with reviews and your feed.',style:'classic',theme:'market',home:['hero:split','shop:grid','about','testimonials','social:feed','faq'],pages:[['Shop','bag',['hero','shop:grid']],['Contact','phoneCall',['contact','faq','map']]]}});
+})();
+genData=(o=>function(type,F){if(type!=='shop')return o.apply(this,arguments);const K=kitOf(F.industry),S=STORES[F.industry];
+ if(S)return{heading:K.shopH||'Shop online',...STORE_SET,...S.set,items:S.products.map(clone)};
+ const d=o.apply(this,arguments);return{...STORE_SET,...d,items:(d.items||[]).map(x=>PB({...x,stock:'',price:x.price}))}})(genData);
+
+/* helpers */
+const num$=v=>{const n=parseFloat(String(v??'').replace(/[^0-9.]/g,''));return isFinite(n)?n:0};
+const hasV=v=>String(v??'').trim()!=='';
+const spLS=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
+let CART=Array.isArray(spLS('twp-cart-v1'))?spLS('twp-cart-v1'):[];
+const WISH=new Set(spLS('twp-wish-v1')||[]);
+const SPF={};let SPV=null,SP_REMIND=false;const SP_BACK=CART.length>0;
+const cartSave=()=>spLS('twp-cart-v1',CART);
+const cartCount=()=>CART.reduce((n,l)=>n+l.qty,0);
+const wkey=x=>slug(state.brand.name)+'|'+String(x.name||'');
+function spSec(id){const s=sec(id);if(s)return s;const f=state.pages&&findSecAny(id);return f?f.s:null}
+function spNorm(s){const d=s.data;Object.keys(STORE_SET).forEach(k=>{if(d[k]===undefined)d[k]=STORE_SET[k]});d.items=(d.items||[]).map(x=>{const p=PB(x);if(!Array.isArray(p.images))p.images=[];return Object.assign(x,p)});return d}
+function spCols(items){const c=[];items.forEach(x=>{const k=String(x.collection||'').trim();if(k&&!c.includes(k))c.push(k)});return c}
+function optList(str){return String(str||'').split(',').map(v=>v.trim()).filter(Boolean).map(v=>{const m=v.match(/\(\s*\+\s*\$?([\d.]+)\s*\)/);return{label:v.replace(/\(\s*\+\s*\$?[\d.]+\s*\)/,'').trim(),add:m?+m[1]:0}})}
+function pOpts(x){const o=[];if(hasV(x.opt1)&&hasV(x.opt1v))o.push({name:x.opt1,vals:optList(x.opt1v)});if(hasV(x.opt2)&&hasV(x.opt2v))o.push({name:x.opt2,vals:optList(x.opt2v)});return o}
+function salePct(x){const p=num$(x.price),c=num$(x.compare);return c>p&&p>0?Math.round((1-p/c)*100):0}
+function inCart(sid,k){return CART.filter(l=>l.sid===sid&&l.k===k).reduce((n,l)=>n+l.qty,0)}
+function leftOf(s,x,k){const n=hasV(x.stock)?+x.stock:hasV(x.daily)?+x.daily:Infinity;return isFinite(n)?Math.max(0,n-inCart(s.id,k)):Infinity}
+function stockNote(x,L){if(!isFinite(L))return'';const day=!hasV(x.stock)&&hasV(x.daily);if(L<=0)return day?'Sold out for today':'Sold out';if(L<=5)return `Only ${L} left${day?' today':''}`;return day?`${L} left today`:''}
+function unitPrice(x,sel,plan,d){const o=pOpts(x);let p=num$(x.price);
+ if(x.kind==='gift'&&o[0]){const v=o[0].vals[(sel||[])[0]||0];if(v&&num$(v.label))p=num$(v.label)}
+ else o.forEach((g,i)=>{const v=g.vals[(sel||[])[i]||0];if(v)p+=v.add});
+ if(plan==='sub')p=p*(1-(+d.subOff||0)/100);return Math.round(p*100)/100}
+function badgesHtml(x,L){const sale=salePct(x);return [sale?`<i class="sp-b sale">Save ${sale}%</i>`:'',x.badge&&BADGES[x.badge]&&x.badge!==''?`<i class="sp-b">${esc(BADGES[x.badge])}</i>`:'',x.preorder==='yes'?`<i class="sp-b pre">Preorder</i>`:'',L<=0?`<i class="sp-b out">Sold out</i>`:''].join('')}
+function rateHtml(x){return hasV(x.rating)&&+x.rating>0?`<span class="sp-rate">${stars(Math.round(+x.rating))}<small>${(+x.rating).toFixed(1)}${hasV(x.reviews)?` (${esc(x.reviews)})`:''}</small></span>`:''}
+function spAddBtn(s,x,k,L,cls){const lbl=btnLabel(s.id,'addLabel')||'Add to cart';
+ if(EDIT)return `<button type="button" class="sbtn sm ${cls||'ghost'}" data-btn="${s.id}|addLabel">${esc(lbl)}</button>`;
+ if(L<=0)return `<button type="button" class="sbtn sm ghost" disabled>Sold out</button>`;
+ const pick=pOpts(x).length||x.kind!=='item';return `<button type="button" class="sbtn sm ${cls||'ghost'}" ${pick?`data-spopen="${s.id}|${k}"`:`data-spadd="${s.id}|${k}"`}>${esc(pick?(x.kind==='box'?'Build your box':x.kind==='gift'?'Choose amount':'Choose options'):x.preorder==='yes'?'Preorder':lbl)}</button>`}
+function spCard(s,x,k,cls){const L=leftOf(s,x,k),note=stockNote(x,L),w=WISH.has(wkey(x));
+ return `<article class="sp-card${L<=0?' is-out':''}${cls?' '+cls:''}" data-spcard="${s.id}|${k}"><div class="sp-ph">${pic(x.image,IP(s,`items.${k}.image`),90+k*37,'Product photo')}<div class="sp-badges">${badgesHtml(x,L)}</div>${EDIT?`<button type="button" class="sp-view" data-spview="${s.id}|${k}">${ic('eye',13)} Product page</button>`:`<button type="button" class="sp-wish${w?' on':''}" data-spwish="${s.id}|${k}" aria-pressed="${w}" aria-label="${w?'Remove from':'Save to'} your wishlist">${(w?icFill:ic)('heart',17)}</button><button type="button" class="sp-quick" data-spopen="${s.id}|${k}">Quick view</button>`}</div>
+ <div class="sp-info"><h3${T(s,`items.${k}.name`)}>${esc(x.name)}</h3>${rateHtml(x)}<div class="sp-price"><b${T(s,`items.${k}.price`)}>${esc(x.price)}</b>${salePct(x)?`<s>${esc(x.compare)}</s>`:''}${x.sub==='yes'?`<small>${ic('repeat',12)} Subscribe and save</small>`:''}</div>${note?`<span class="sp-stock${L<=0?' out':L<=5?' low':''}">${note}</span>`:''}</div>${spAddBtn(s,x,k,L)}</article>`}
+function spPerks(d){const p=[];if(d.pickup==='yes')p.push(`${ic('pin',14)} Free pickup`);if(d.delivery==='yes')p.push(`${ic('truck',14)} Local delivery ${esc(num$(d.deliveryFee)?d.deliveryFee:'free')}`);if(d.shipping==='yes')p.push(`${ic('box',14)} ${num$(d.freeOver)?'Free shipping over '+esc(d.freeOver):'Ships for '+esc(d.shipFee)}`);return p.length?`<span class="sp-perks">${p.map(x=>`<span>${x}</span>`).join('')}</span>`:''}
+R.shop=s=>{const d=spNorm(s),v=s.variant,all=d.items,f=SPF[s.id]||'All',cols=spCols(all),pos=hasPOS();
+ const saved=all.filter(x=>WISH.has(wkey(x))).length;
+ const list=all.map((x,k)=>({x,k})).filter(({x})=>f==='All'||(f==='♥'?WISH.has(wkey(x)):String(x.collection||'').trim()===f));
+ const chips=cols.length>1||saved?`<div class="sp-chips" role="tablist">${['All',...cols].map(c=>`<button type="button" class="sp-chip${f===c?' on':''}" data-spf="${s.id}|${esc(c)}">${esc(c)}</button>`).join('')}${saved&&!EDIT?`<button type="button" class="sp-chip${f==='♥'?' on':''}" data-spf="${s.id}|♥">${icFill('heart',12)} Saved (${saved})</button>`:''}</div>`:'';
+ const head=`<div class="sec-head sp-head"><h2${T(s,'heading')}>${esc(d.heading)}</h2>${d.sub||EDIT?`<p${T(s,'sub')}>${esc(d.sub)}</p>`:''}${pos?`<span class="possync">${ic('check',14)} Prices and stock synced with the register</span>`:''}</div><div class="sp-bar">${chips}${spPerks(d)}</div>`;
+ const addTile=EDIT?`<button type="button" class="sp-addtile" data-liadd="${s.id}|items">${ic('plus',22)}<b>Add a product</b><small>Photos, price, sizes and stock</small></button>`:'';
+ const empty=!list.length?`<p class="sp-empty">${f==='♥'?'Nothing saved yet. Tap the heart on anything you like.':'No products here yet.'}</p>`:'';
+ let body;
+ if(v==='list'){const groups=[];list.forEach(it=>{const c=String(it.x.collection||'').trim()||'Menu';let g=groups.find(z=>z.c===c);if(!g)groups.push(g={c,items:[]});g.items.push(it)});
+  body=`<div class="sp-list">${groups.map(g=>`<div class="sp-grp">${groups.length>1||cols.length?`<h3 class="sp-grp-h">${esc(g.c)}</h3>`:''}${g.items.map(({x,k})=>{const L=leftOf(s,x,k),n=stockNote(x,L);return `<div class="sp-li${L<=0?' is-out':''}" data-spcard="${s.id}|${k}"><div class="sp-th">${pic(x.image,IP(s,`items.${k}.image`),90+k*37,'Photo')}</div><div class="sp-lt"><h4${T(s,`items.${k}.name`)}>${esc(x.name)}</h4>${x.desc||EDIT?`<p${T(s,`items.${k}.desc`)}>${esc(x.desc)}</p>`:''}<div class="sp-badges in">${badgesHtml(x,L)}${n?`<span class="sp-stock${L<=0?' out':L<=5?' low':''}">${n}</span>`:''}</div></div><div class="sp-lp"><b${T(s,`items.${k}.price`)}>${esc(x.price)}</b>${salePct(x)?`<s>${esc(x.compare)}</s>`:''}${EDIT?`<button type="button" class="sp-view" data-spview="${s.id}|${k}">${ic('eye',13)}</button>`:L>0?`<button type="button" class="sp-plus" ${pOpts(x).length||x.kind!=='item'?`data-spopen`:`data-spadd`}="${s.id}|${k}" aria-label="Add ${esc(x.name)}">${ic('plus',18)}</button>`:''}</div></div>`}).join('')}</div>`).join('')}${addTile}</div>`}
+ else if(v==='lookbook')body=`<div class="sp-look">${list.map(({x,k})=>`<article class="sp-lk" data-spcard="${s.id}|${k}">${pic(x.image,IP(s,`items.${k}.image`),90+k*37,'Look photo')}<div class="sp-badges">${badgesHtml(x,leftOf(s,x,k))}</div><div class="sp-lk-cap"><div><h3${T(s,`items.${k}.name`)}>${esc(x.name)}</h3><b${T(s,`items.${k}.price`)}>${esc(x.price)}</b>${salePct(x)?` <s>${esc(x.compare)}</s>`:''}</div><button type="button" class="sp-shop" ${EDIT?`data-spview`:`data-spopen`}="${s.id}|${k}">${ic('bag',14)} Shop this look</button></div></article>`).join('')}${addTile}</div>`;
+ else if(v==='featured'&&list.length){const{x,k}=list[0],L=leftOf(s,x,k);
+  body=`<div class="sp-feat" data-spcard="${s.id}|${k}"><div class="sp-feat-ph">${pic(x.image,IP(s,`items.${k}.image`),120,'Featured photo')}<div class="sp-badges">${badgesHtml(x,L)}</div></div><div class="sp-feat-tx"><p class="eyebrow">Featured</p><h3${T(s,`items.${k}.name`)}>${esc(x.name)}</h3>${rateHtml(x)}<div class="sp-price big"><b${T(s,`items.${k}.price`)}>${esc(x.price)}</b>${salePct(x)?`<s>${esc(x.compare)}</s>`:''}</div>${x.desc||EDIT?`<p class="muted"${T(s,`items.${k}.desc`)}>${esc(x.desc)}</p>`:''}${pOpts(x).map(g=>`<p class="sp-optline"><b>${esc(g.name)}:</b> ${g.vals.map(v=>esc(v.label)).join(' · ')}</p>`).join('')}<div class="btns">${spAddBtn(s,x,k,L,' ')}${EDIT?`<button type="button" class="sp-view" data-spview="${s.id}|${k}">${ic('eye',13)} Product page</button>`:`<button type="button" class="sbtn sm ghost" data-spopen="${s.id}|${k}">See details</button>`}</div></div></div><div class="sp-grid">${list.slice(1).map(({x,k})=>spCard(s,x,k)).join('')}${addTile}</div>`}
+ else if(v==='carousel')body=`<div class="sp-rowwrap"><div class="sp-row" data-sprowid="${s.id}">${list.map(({x,k})=>spCard(s,x,k)).join('')}${addTile}</div><button type="button" class="sp-arr l" data-sprow="${s.id}|-1" aria-label="Scroll back">${ic('l',18)}</button><button type="button" class="sp-arr r" data-sprow="${s.id}|1" aria-label="Scroll forward">${ic('r',18)}</button></div>`;
+ else body=`<div class="sp-grid">${list.map(({x,k})=>spCard(s,x,k)).join('')}${addTile}</div>`;
+ return `<section class="sp-sec spv-${v}"><div class="wrap">${head}${empty}${body}</div></section>`};
+
+/* floating cart button on the page */
+renderSite=(o=>function(edit){let h=o.apply(this,arguments);if((edit||FULL)&&state.sections.some(x=>x.type==='shop'&&!x.hidden)){const n=cartCount();h+=`<div class="cart-dock${hasAddon('chat')?' w-chat':''}"><button type="button" class="cartb" data-spcart aria-label="Cart, ${n} item${n===1?'':'s'}">${ic('bag',22)}${n?`<i>${n}</i>`:''}</button></div>`;
+ if(FULL&&n&&SP_BACK&&!SP_REMIND){SP_REMIND=true;setTimeout(()=>toast(`Welcome back! You still have ${n} item${n===1?'':'s'} in your cart.`,{label:'View cart',fn:()=>spOpenCart()}),900)}}return h})(renderSite);
+
+/* overlay: product page and cart drawer, outside the page so it works in the editor and full screen */
+function spRoot(){let r=$('#spRoot');if(!r){r=document.createElement('div');r.id='spRoot';document.body.appendChild(r)}return r}
+function spClose(){SPV=null;const r=$('#spRoot');if(r){r.innerHTML='';r.className=''}document.body.classList.remove('sp-open')}
+function spPaint(keepScroll){if(!SPV){spClose();return}const r=spRoot(),pane=r.querySelector('.sp-scroll'),st=pane?pane.scrollTop:0;
+ r.className='sp-root'+(keepScroll?' sp-still':'');r.dataset.look=state.brand.look||'standard';r.setAttribute('style',siteVars(state.brand));document.body.classList.add('sp-open');
+ r.innerHTML=SPV.view==='product'?spProduct():spCartView();
+ const np=r.querySelector('.sp-scroll');if(np&&keepScroll)np.scrollTop=st;else{const f=r.querySelector('[data-spfocus]');if(f)f.focus({preventScroll:true})}}
+function spOpen(sid,k){const s=spSec(sid);if(!s)return;spNorm(s);SPV={view:'product',sid,k,sel:[0,0],qty:1,plan:'once',every:'Every week',box:{},img:0,gift:{to:'',from:'',msg:''}};spPaint()}
+function spOpenCart(){SPV={view:'cart',step:'cart',f:SPV&&SPV.f||{}};spPaint()}
+function spProduct(){const s=spSec(SPV.sid);if(!s)return'';const d=s.data,x=d.items[SPV.k];if(!x)return'';
+ const L=leftOf(s,x,SPV.k),imgs=[x.image,...(x.images||[])].filter(Boolean),cur=imgs[Math.min(SPV.img,imgs.length-1)],o=pOpts(x),price=unitPrice(x,SPV.sel,SPV.plan,d),note=stockNote(x,L);
+ const tst=(firstOf('testimonials')||{data:{items:[]}}).data.items.filter(t=>!t.hidden).slice(0,2);
+ let extra='';
+ if(x.kind==='box'){const c=spBoxPool(d,SPV.k,x),n=Object.values(SPV.box).reduce((a,b)=>a+b,0),need=+x.boxSize||6;
+  extra=`<div class="sp-box"><div class="between"><b>Pick ${need}</b><span class="sp-boxn${n===need?' ok':''}">${n} of ${need} chosen</span></div>${c.map(({y,j})=>`<div class="sp-boxi"><span>${esc(y.name)}</span><span class="sp-qty sm"><button type="button" data-spbox="${j}|-1" ${SPV.box[j]?'':'disabled'} aria-label="One less ${esc(y.name)}">${ic('minus',14)}</button><b>${SPV.box[j]||0}</b><button type="button" data-spbox="${j}|1" ${n>=need?'disabled':''} aria-label="One more ${esc(y.name)}">${ic('plus',14)}</button></span></div>`).join('')||'<p class="muted">Add products to the “'+esc(x.boxFrom||'')+'” collection to fill this box.</p>'}</div>`}
+ if(x.kind==='gift')extra=`<div class="sp-giftf"><label>To (email)<input data-spgift="to" type="email" value="${esc(SPV.gift.to)}" placeholder="friend@example.com"></label><label>From<input data-spgift="from" value="${esc(SPV.gift.from)}" placeholder="Your name"></label><label>Message<textarea data-spgift="msg" rows="2" placeholder="Happy birthday!">${esc(SPV.gift.msg)}</textarea></label></div>`;
+ const subOn=x.sub==='yes',canAdd=L>0&&(x.kind!=='box'||Object.values(SPV.box).reduce((a,b)=>a+b,0)===(+x.boxSize||6));
+ return `<div class="sp-bg" data-spclose></div><div class="sp-modal" role="dialog" aria-modal="true" aria-label="${esc(x.name)}"><button type="button" class="sp-x" data-spclose aria-label="Close" data-spfocus>${ic('x',20)}</button><div class="sp-scroll"><div class="sp-pd">
+  <div class="sp-gal"><div class="sp-main" data-spzoom>${cur?mediaHtml(cur):`<div class="sp-noimg" style="--ang:${90+SPV.k*37}deg">${ic('camera',30)}</div>`}${cur?`<span class="sp-zhint">${ic('plus',12)} Hover or tap to zoom</span>`:''}</div>${imgs.length>1?`<div class="sp-thumbs">${imgs.map((m,i)=>`<button type="button" class="${i===SPV.img?'on':''}" data-spimg="${i}" aria-label="Photo ${i+1}">${mediaHtml(m,true)}</button>`).join('')}</div>`:''}</div>
+  <div class="sp-det"><div class="sp-badges in">${badgesHtml(x,L)}</div><h2>${esc(x.name)}</h2>${rateHtml(x)}
+   <div class="sp-price big"><b>${money(price,2)}</b>${salePct(x)&&SPV.plan!=='sub'?`<s>${esc(x.compare)}</s><i class="sp-b sale">Save ${salePct(x)}%</i>`:''}</div>
+   ${note?`<p class="sp-stock${L<=0?' out':L<=5?' low':''}">${note}</p>`:''}
+   ${x.desc?`<p class="sp-desc">${lines(x.desc)}</p>`:''}
+   ${o.map((g,i)=>`<div class="sp-opt"><b>${esc(g.name)}: <span>${esc((g.vals[SPV.sel[i]||0]||{}).label||'')}</span></b><div class="sp-vals" role="radiogroup" aria-label="${esc(g.name)}">${g.vals.map((v,j)=>`<button type="button" role="radio" aria-checked="${(SPV.sel[i]||0)===j}" class="${(SPV.sel[i]||0)===j?'on':''}" data-spopt="${i}|${j}">${esc(v.label)}${v.add?` <small>+${money(v.add)}</small>`:''}</button>`).join('')}</div></div>`).join('')}
+   ${extra}
+   ${subOn?`<div class="sp-plan" role="radiogroup" aria-label="Purchase options"><button type="button" role="radio" aria-checked="${SPV.plan==='once'}" class="${SPV.plan==='once'?'on':''}" data-spplan="once"><b>One-time purchase</b><span>${money(unitPrice(x,SPV.sel,'once',d),2)}</span></button><button type="button" role="radio" aria-checked="${SPV.plan==='sub'}" class="${SPV.plan==='sub'?'on':''}" data-spplan="sub"><b>${ic('repeat',14)} Subscribe and save ${+d.subOff||0}%</b><span>${money(unitPrice(x,SPV.sel,'sub',d),2)}</span></button>${SPV.plan==='sub'?`<label class="sp-every">Deliver<select data-spevery>${['Every week','Every 2 weeks','Every month'].map(e=>`<option${SPV.every===e?' selected':''}>${e}</option>`).join('')}</select></label>`:''}</div>`:''}
+   ${x.preorder==='yes'?`<p class="sp-note">${ic('calendar',15)} Preorder: needs ${+x.lead||0} day${+x.lead===1?'':'s'} notice. You pick the date in your cart.</p>`:''}
+   <div class="sp-buy">${x.kind==='box'||x.kind==='gift'?'':`<span class="sp-qty"><button type="button" data-spqty="-1" ${SPV.qty<=1?'disabled':''} aria-label="Fewer">${ic('minus',16)}</button><b>${SPV.qty}</b><button type="button" data-spqty="1" ${isFinite(L)&&SPV.qty>=L?'disabled':''} aria-label="More">${ic('plus',16)}</button></span>`}<button type="button" class="sbtn" data-spaddp ${canAdd?'':'disabled'}>${L<=0?'Sold out':x.preorder==='yes'?'Preorder':'Add to cart'} · ${money(price*(x.kind==='box'||x.kind==='gift'?1:SPV.qty),2)}</button></div>
+   <div class="sp-acts"><button type="button" data-spwish="${SPV.sid}|${SPV.k}" class="${WISH.has(wkey(x))?'on':''}">${(WISH.has(wkey(x))?icFill:ic)('heart',16)} ${WISH.has(wkey(x))?'Saved':'Save'}</button><button type="button" data-spshare>${ic('share',16)} Share</button></div>
+   ${spPerks(d)}
+   ${hasV(x.rating)||tst.length?`<div class="sp-revs"><h3>Reviews</h3>${rateHtml(x)}${tst.map(t=>`<blockquote>${stars(t.stars||5)}<p>“${esc(t.quote)}”</p><cite>${esc(t.name)}</cite></blockquote>`).join('')}</div>`:''}
+  </div></div></div></div>`}
+function spBoxPool(d,k,x){const from=String(x.boxFrom||'').trim();return d.items.map((y,j)=>({y,j})).filter(({y,j})=>j!==k&&y.kind==='item'&&(!from||String(y.collection||'').trim()===from))}
+
+/* cart and checkout */
+const dayIdx=d=>(d.getDay()+6)%7;
+function spOpenDay(d){const h=state.hours&&state.hours[dayIdx(d)];return!!(h&&!h.closed)}
+function spLead(d){return Math.max(+d.notice||0,...CART.map(l=>l.pre?+l.lead||0:0))}
+function spDates(d){const out=[],t=new Date();t.setHours(0,0,0,0);t.setDate(t.getDate()+spLead(d));for(let i=0;out.length<10&&i<60;i++){if(spOpenDay(t))out.push(new Date(t));t.setDate(t.getDate()+1)}return out}
+const isoD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const fromIso=s=>{const[y,m,dd]=String(s).split('-').map(Number);return new Date(y,m-1,dd)};
+const dayLbl=d=>d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+function spSlots(d,iso){if(!iso)return[];const day=fromIso(iso),h=state.hours[dayIdx(day)];let out=[];
+ const custom=String(d.slots||'').split(',').map(x=>x.trim()).filter(Boolean);
+ if(custom.length)out=custom;else if(h&&!h.closed){const[oh,om]=h.open.split(':').map(Number),[ch]=h.close.split(':').map(Number);for(let m=oh*60+om;m<=ch*60-60;m+=60)out.push(`${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`)}
+ if(iso===isoD(new Date())){const now=new Date(),cut=now.getHours()*60+now.getMinutes()+60;out=out.filter(t=>{const m=/^(\d\d):(\d\d)$/.exec(t);return!m||(+m[1]*60+ +m[2])>=cut})}return out}
+const slotLbl=t=>/^\d\d:\d\d$/.test(t)?fmtTime(t):t;
+function spCodes(d){const m={};String(d.codes||'').split(/[\n,]+/).forEach(r=>{const[a,b]=r.split('=').map(x=>(x||'').trim());if(!a||!b)return;const k=a.toUpperCase();if(/free\s*ship/i.test(b))m[k]={ship:true};else if(/%/.test(b))m[k]={pct:num$(b)};else if(num$(b))m[k]={amt:num$(b)}});return m}
+function spStore(){const s=(CART[0]&&spSec(CART[0].sid))||state.sections.find(x=>x.type==='shop'&&!x.hidden);return s?spNorm(s):{...STORE_SET}}
+function spMethods(d){return [['pickup','Pickup',d.pickup==='yes'],['delivery','Local delivery',d.delivery==='yes'],['ship','Shipping',d.shipping==='yes']].filter(m=>m[2])}
+function spTotals(d){const F=SPV.f,sub=CART.reduce((a,l)=>a+l.unit*l.qty,0),m=F.method||(spMethods(d)[0]||['pickup'])[0];const code=F.code&&spCodes(d)[F.code];
+ let fee=0;if(m==='delivery')fee=num$(d.deliveryFee);if(m==='ship')fee=num$(d.freeOver)&&sub>=num$(d.freeOver)?0:num$(d.shipFee);
+ let disc=0;if(code){if(code.pct)disc=sub*code.pct/100;if(code.amt)disc=Math.min(sub,code.amt);if(code.ship&&m!=='pickup')fee=0}
+ disc=Math.round(disc*100)/100;return{sub,fee,disc,total:Math.max(0,sub-disc+fee),m,code}}
+function spCartView(){const d=spStore(),F=SPV.f,t=spTotals(d),n=cartCount(),ms=spMethods(d);
+ const head=`<div class="sp-dh"><h2>${SPV.step==='done'?'Order placed':SPV.step==='details'?'Checkout':`Your cart <small>(${n})</small>`}</h2><button type="button" class="sp-x" data-spclose aria-label="Close" data-spfocus>${ic('x',20)}</button></div>`;
+ if(SPV.step==='done'){const o=SPV.done;return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Order placed">${head}<div class="sp-scroll"><div class="sp-done">${ic('check',30)}<h3>Thanks, ${esc(o.name.split(' ')[0]||'friend')}!</h3><p>Order <b>#${o.no}</b> is in. ${o.method==='ship'?'We will email tracking when it ships.':o.method==='delivery'?`We will deliver it ${esc(o.when)}.`:`It will be ready for pickup ${esc(o.when)}.`}</p><p class="muted">A receipt is on its way to ${esc(o.email)}.</p>${EDIT_DEMO()}<button type="button" class="sbtn" data-spclose>Keep shopping</button></div></div></aside>`}
+ if(!CART.length)return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Cart">${head}<div class="sp-scroll"><div class="sp-done">${ic('bag',30)}<h3>Your cart is empty</h3><p class="muted">Tap a product to see sizes, flavors and photos.</p><button type="button" class="sbtn" data-spclose>Start shopping</button></div></div></aside>`;
+ const freeBar=t.m==='ship'&&num$(d.freeOver)?(()=>{const left=num$(d.freeOver)-t.sub;return `<div class="sp-free">${left>0?`You are <b>${money(left,2)}</b> away from free shipping`:`${ic('check',14)} You get free shipping`}<span><i style="width:${Math.min(100,t.sub/num$(d.freeOver)*100)}%"></i></span></div>`})():'';
+ const lines=CART.map((l,i)=>{const s=spSec(l.sid),x=s&&s.data.items[l.k];return `<div class="sp-line"><div class="sp-lth">${x&&x.image?mediaHtml(x.image,true):ic('bag',18)}</div><div class="sp-ltx"><b>${esc(l.name)}</b>${l.opts?`<small>${esc(l.opts)}</small>`:''}${l.sub?`<small class="sp-subtag">${ic('repeat',11)} ${esc(l.every)}</small>`:''}${l.pre?`<small class="sp-subtag">${ic('calendar',11)} Preorder · ${+l.lead||0} days notice</small>`:''}<span class="sp-qty sm"><button type="button" data-spline="${i}|-1" aria-label="Fewer">${ic('minus',13)}</button><b>${l.qty}</b><button type="button" data-spline="${i}|1" ${l.fixed?'disabled':''} aria-label="More">${ic('plus',13)}</button></span></div><div class="sp-lpr"><b>${money(l.unit*l.qty,2)}</b><button type="button" class="sp-rm" data-sprm="${i}">Remove</button></div></div>`}).join('');
+ if(SPV.step==='details'){const need=t.m!=='pickup';
+  return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Checkout">${head}<form class="sp-scroll sp-form" id="spForm"><button type="button" class="sp-back" data-spstep="cart">${ic('l',14)} Back to cart</button>
+   <div class="sp-sum">${n} item${n===1?'':'s'} · ${t.m==='ship'?'Shipping':t.m==='delivery'?`Delivery ${esc(F.when||'')}`:`Pickup ${esc(F.when||'')}`}<b>${money(t.total,2)}</b></div>
+   <label>Name<input required data-spin="name" autocomplete="name" value="${esc(F.name||'')}"></label><label>Email<input required type="email" data-spin="email" autocomplete="email" value="${esc(F.email||'')}"></label><label>Phone (for pickup texts)<input type="tel" data-spin="phone" autocomplete="tel" value="${esc(F.phone||'')}"></label>
+   ${need?`<label>${t.m==='ship'?'Shipping address':'Delivery address'}<textarea required rows="2" data-spin="addr" autocomplete="street-address">${esc(F.addr||'')}</textarea></label>`:''}
+   <fieldset class="sp-pay"><legend>Pay with</legend>${[['card','Card, Apple Pay or Google Pay'],['paypal','PayPal or Venmo'],...(t.m==='pickup'&&d.payLater==='yes'?[['later','Pay at pickup']]:[])].map(([k,l])=>`<label class="${(F.pay||'card')===k?'on':''}"><input type="radio" name="sppay" value="${k}" data-sppay ${(F.pay||'card')===k?'checked':''}> ${l}</label>`).join('')}</fieldset>
+   ${EDIT_DEMO()}<button type="submit" class="sbtn sp-go">Place order · ${money(t.total,2)}</button></form></aside>`}
+ const dates=t.m==='ship'?[]:spDates(d),lead=spLead(d),iso=F.date&&dates.some(x=>isoD(x)===F.date)?F.date:(dates[0]?isoD(dates[0]):''),slots=spSlots(d,iso);if(iso!==F.date){F.date=iso;F.slot=''}
+ const preWhy=CART.find(l=>l.pre&&+l.lead===lead&&lead>0);
+ return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Cart">${head}<div class="sp-scroll">${freeBar}<div class="sp-lines">${lines}</div>
+  ${ms.length?`<div class="sp-blk"><h3>How do you want it?</h3><div class="sp-seg">${ms.map(([k,l])=>`<button type="button" class="${t.m===k?'on':''}" data-spm="${k}">${ic(k==='pickup'?'pin':k==='delivery'?'truck':'box',15)} ${l}</button>`).join('')}</div>
+   ${t.m==='delivery'?`<p class="sp-note">${ic('truck',14)} ${esc(d.deliveryArea||'Local delivery')} · ${num$(d.deliveryFee)?esc(d.deliveryFee):'Free'}</p>`:''}${t.m==='ship'?`<p class="sp-note">${ic('box',14)} ${t.fee?`Shipping ${money(t.fee,2)}`:'Free shipping'}${num$(d.freeOver)?` · free over ${esc(d.freeOver)}`:''}</p>`:''}
+   ${t.m!=='ship'?`<h3>${t.m==='pickup'?'Pickup':'Delivery'} day</h3>${dates.length?`<div class="sp-days">${dates.map(x=>{const k=isoD(x);return `<button type="button" class="${k===iso?'on':''}" data-spdate="${k}"><small>${x.toLocaleDateString('en-US',{weekday:'short'})}</small><b>${x.getDate()}</b><small>${x.toLocaleDateString('en-US',{month:'short'})}</small></button>`}).join('')}</div>${preWhy?`<p class="sp-note">${ic('calendar',14)} The earliest day is ${dayLbl(dates[0])} because ${esc(preWhy.name)} needs ${lead} day${lead===1?'':'s'} notice.</p>`:''}<h3>Time</h3>${slots.length?`<div class="sp-slots">${slots.map(x=>`<button type="button" class="${F.slot===x?'on':''}" data-spslot="${esc(x)}">${esc(slotLbl(x))}</button>`).join('')}</div>`:`<p class="sp-note">No times left that day. Pick another day.</p>`}`:`<p class="sp-note">Pickup days come from your business hours. Add open hours to take orders.</p>`}`:''}</div>`:''}
+  <div class="sp-blk"><label class="sp-notes">Notes for the shop<textarea rows="2" data-spin="note" placeholder="${t.m==='pickup'?'Name for the cake, allergies, or who is picking up':'Gate code, gift note, anything we should know'}">${esc(F.note||'')}</textarea></label>
+   <div class="sp-code"><input data-spin="codeIn" placeholder="Discount or promo code" value="${esc(F.codeIn||'')}" aria-label="Discount code"><button type="button" class="sbtn sm ghost" data-spcode>Apply</button></div>${F.code?`<p class="sp-ok">${ic('tag',14)} ${esc(F.code)} applied <button type="button" data-spuncode>Remove</button></p>`:F.codeErr?`<p class="sp-err">${esc(F.codeErr)}</p>`:''}</div>
+  <div class="sp-tot"><div><span>Subtotal</span><b>${money(t.sub,2)}</b></div>${t.disc?`<div class="disc"><span>Discount</span><b>−${money(t.disc,2)}</b></div>`:''}${t.m!=='pickup'?`<div><span>${t.m==='ship'?'Shipping':'Delivery'}</span><b>${t.fee?money(t.fee,2):'Free'}</b></div>`:''}<div class="big"><span>Total</span><b>${money(t.total,2)}</b></div><small class="muted">Taxes are added at payment if they apply.</small></div></div>
+  <div class="sp-foot"><button type="button" class="sbtn sp-go" data-spstep="details" ${t.m!=='ship'&&(!F.date||!F.slot)?'disabled':''}>Check out · ${money(t.total,2)}</button>${t.m!=='ship'&&(!F.date||!F.slot)?`<small class="muted">Pick a ${t.m==='pickup'?'pickup':'delivery'} time to continue.</small>`:''}</div></aside>`}
+const EDIT_DEMO=()=>`<p class="sp-demo">${ic('info',14)} Preview checkout: no card is charged. When your store goes live, payments go to your own account and orders show in your dashboard.</p>`;
+function spAddLine(s,k,opt){const x=s.data.items[k],o=pOpts(x),sel=opt.sel||[],plan=opt.plan||'once',d=s.data;
+ const parts=o.map((g,i)=>`${g.name}: ${(g.vals[sel[i]||0]||{}).label||''}`);
+ if(x.kind==='box'){const picks=Object.entries(opt.box||{}).filter(([,q])=>q>0).map(([j,q])=>`${q}× ${d.items[+j].name}`);parts.push(picks.join(', '))}
+ if(x.kind==='gift'&&opt.gift){if(opt.gift.to)parts.push('To '+opt.gift.to);if(opt.gift.msg)parts.push('“'+opt.gift.msg+'”')}
+ const line={sid:s.id,k,name:x.name,opts:parts.filter(Boolean).join(' · '),unit:unitPrice(x,sel,plan,d),qty:opt.qty||1,sub:plan==='sub',every:plan==='sub'?(opt.every||'Every week'):'',pre:x.preorder==='yes',lead:+x.lead||0,fixed:x.kind!=='item'};
+ const same=CART.find(l=>!l.fixed&&l.sid===line.sid&&l.k===k&&l.opts===line.opts&&l.sub===line.sub&&l.every===line.every);
+ const L=leftOf(s,x,k);if(isFinite(L)&&line.qty>L){toast(L?`Only ${L} left`:'Sold out');return false}
+ if(same)same.qty+=line.qty;else CART.push(line);cartSave();renderSites();
+ toast(`Added ${x.name} to your cart`,{label:'View cart',fn:spOpenCart});return true}
+function spPlace(){const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.name||'').trim(),em=(F.email||'').trim();if(!nm||!/^\S+@\S+\.\S+$/.test(em)){toast('Add your name and a valid email');return}
+ state.shopOrders=state.shopOrders||[];const no=1001+state.shopOrders.length;const when=t.m==='ship'?'':`${dayLbl(fromIso(F.date))} at ${slotLbl(F.slot)}`;
+ const o={no,at:Date.now(),name:nm,email:em,phone:F.phone||'',addr:F.addr||'',method:t.m,date:F.date||'',slot:F.slot||'',when,note:F.note||'',code:F.code||'',pay:F.pay||'card',lines:CART.map(l=>({name:l.name,opts:l.opts,qty:l.qty,unit:l.unit,sub:l.sub,every:l.every})),subtotal:t.sub,discount:t.disc,fee:t.fee,total:Math.round(t.total*100)/100,status:'new',demo:true};
+ state.shopOrders.push(o);
+ state.leads=state.leads||[];state.leads.unshift({id:uid(),name:nm,email:em,msg:`Order #${no}: ${o.lines.map(l=>`${l.qty}× ${l.name}${l.opts?' ('+l.opts+')':''}`).join(', ')}. ${t.m==='ship'?'Ship to '+o.addr:t.m==='delivery'?'Deliver '+when+' to '+o.addr:'Pickup '+when}. Total ${money(o.total,2)}${o.pay==='later'?', paying at pickup':''}.${o.note?' Note: '+o.note:''}`,at:Date.now(),read:false,order:no});
+ CART=[];cartSave();SPV.step='done';SPV.done=o;save();renderSites();spPaint()}
+
+/* events */
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;const q=s=>t.closest(s);let el;
+ if(el=q('[data-spcart]')){e.preventDefault();spOpenCart();return}
+ if(el=q('[data-spf]')){const[id,c]=el.dataset.spf.split('|');SPF[id]=SPF[id]===c&&c==='♥'?'All':c;renderSites();return}
+ if(el=q('[data-sprow]')){const[id,dir]=el.dataset.sprow.split('|');const r=$(`[data-sprowid="${id}"]`);if(r)r.scrollBy({left:+dir*r.clientWidth*.8,behavior:'smooth'});return}
+ if(el=q('[data-spwish]')){e.preventDefault();const[id,k]=el.dataset.spwish.split('|');const s=spSec(id),x=s&&s.data.items[+k];if(!x)return;const w=wkey(x);if(WISH.has(w)){WISH.delete(w);toast('Removed from your wishlist')}else{WISH.add(w);toast('Saved to your wishlist')}spLS('twp-wish-v1',[...WISH]);if(!$('#site.edit'))renderSites();if(SPV)spPaint(true);return}
+ if(el=q('[data-spview],[data-spopen]')){e.preventDefault();const[id,k]=(el.dataset.spview||el.dataset.spopen).split('|');spOpen(id,+k);return}
+ if(el=q('[data-spadd]')){e.preventDefault();const[id,k]=el.dataset.spadd.split('|');const s=spSec(id);if(s){spNorm(s);spAddLine(s,+k,{})}return}
+ if((el=q('[data-spcard]'))&&!q('#site.edit')&&!q('button,a,input,select,textarea')){const[id,k]=el.dataset.spcard.split('|');spOpen(id,+k);return}
+ if(el=q('[data-liadd]')){const[id,path]=el.dataset.liadd.split('|');if(path==='items'&&el.classList.contains('sp-addtile')){const s=sec(id);if(s&&s.type==='shop')setTimeout(()=>{state.selected=id;state.rightTab='section';if(!state.inspOpen)openPanel('insp');renderInspector();const n=(sec(id).data.items||[]).length-1;requestAnimationFrame(()=>{if(!jumpTo(`[data-limove^="${id}|items|${n}|"]`)){const b=$(`#inspector [data-limove^="${id}|items|${n}|"]`);if(b){b.scrollIntoView({block:'center'});jumpFlash(b)}}})},0)}}
+ if(el=q('[data-spdup]')){const[id,i]=el.dataset.spdup.split('|');const s=sec(id);if(!s)return;snap();const c=clone(s.data.items[+i]);c.name=c.name+' copy';s.data.items.splice(+i+1,0,c);hard();toast('Product duplicated');return}
+ if(!q('#spRoot'))return;
+ if(q('[data-spclose]')){spClose();return}
+ if(!SPV)return;
+ if(el=q('[data-spimg]')){SPV.img=+el.dataset.spimg;spPaint(true);return}
+ if(el=q('[data-spopt]')){const[i,j]=el.dataset.spopt.split('|').map(Number);SPV.sel[i]=j;spPaint(true);return}
+ if(el=q('[data-spplan]')){SPV.plan=el.dataset.spplan;spPaint(true);return}
+ if(el=q('[data-spqty]')){SPV.qty=Math.max(1,SPV.qty+ +el.dataset.spqty);spPaint(true);return}
+ if(el=q('[data-spbox]')){const[j,dl]=el.dataset.spbox.split('|').map(Number);SPV.box[j]=Math.max(0,(SPV.box[j]||0)+dl);spPaint(true);return}
+ if(q('[data-spaddp]')){const s=spSec(SPV.sid);if(s&&spAddLine(s,SPV.k,SPV))spClose();return}
+ if(q('[data-spshare]')){const s=spSec(SPV.sid),x=s.data.items[SPV.k];const url=`https://${slug(state.brand.name)}.${admin.domain||'thinkwebpros.com'}/shop/${slug(x.name)}`;
+  const done=()=>toast('Product link copied. It opens this product once your site is live.');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(done,()=>toast(url));else toast(url);return}
+ if(el=q('[data-spline]')){const[i,dl]=el.dataset.spline.split('|').map(Number);const l=CART[i];if(!l)return;if(dl>0){const s=spSec(l.sid),x=s&&s.data.items[l.k];const L=s&&x?leftOf(s,x,l.k):Infinity;if(L<=0){toast('No more in stock');return}}l.qty+=dl;if(l.qty<=0)CART.splice(i,1);cartSave();renderSites();spPaint(true);return}
+ if(el=q('[data-sprm]')){CART.splice(+el.dataset.sprm,1);cartSave();renderSites();spPaint(true);return}
+ if(el=q('[data-spm]')){SPV.f.method=el.dataset.spm;spPaint(true);return}
+ if(el=q('[data-spdate]')){SPV.f.date=el.dataset.spdate;SPV.f.slot='';spPaint(true);return}
+ if(el=q('[data-spslot]')){SPV.f.slot=el.dataset.spslot;SPV.f.when=`${dayLbl(fromIso(SPV.f.date))} at ${slotLbl(SPV.f.slot)}`;spPaint(true);return}
+ if(q('[data-spcode]')){const c=String(SPV.f.codeIn||'').trim().toUpperCase();if(!c)return;if(spCodes(spStore())[c]){SPV.f.code=c;SPV.f.codeErr='';toast(`${c} applied`)}else{SPV.f.code='';SPV.f.codeErr='That code is not valid.'}spPaint(true);return}
+ if(q('[data-spuncode]')){SPV.f.code='';SPV.f.codeIn='';spPaint(true);return}
+ if(el=q('[data-spstep]')){SPV.step=el.dataset.spstep;spPaint();return}});
+document.addEventListener('input',e=>{const t=e.target;if(!(t instanceof Element)||!SPV)return;
+ if(t.dataset.spin){SPV.f[t.dataset.spin]=t.value;return}
+ if(t.dataset.spgift){SPV.gift[t.dataset.spgift]=t.value;return}});
+document.addEventListener('change',e=>{const t=e.target;if(!(t instanceof Element))return;
+ if(t.matches('select[data-sf]')){const[id,path]=t.dataset.sf.split('|');const s=sec(id);if(s){snap();setPath(s.data,path,t.value);hard()}return}
+ if(!SPV)return;if(t.dataset.sppay!==undefined){SPV.f.pay=t.value;spPaint(true);return}if(t.matches('[data-spevery]')){SPV.every=t.value;return}});
+document.addEventListener('submit',e=>{if(e.target.id==='spForm'){e.preventDefault();e.stopImmediatePropagation();spPlace()}},true);
+addEventListener('keydown',e=>{if(SPV&&e.key==='Escape'){e.preventDefault();e.stopPropagation();spClose()}},true);
+/* photo zoom: follows the pointer on a mouse, tap toggles it on touch */
+document.addEventListener('pointermove',e=>{const m=e.target instanceof Element&&e.target.closest('#spRoot [data-spzoom]');if(!m||e.pointerType!=='mouse')return;const r=m.getBoundingClientRect();m.style.setProperty('--zx',((e.clientX-r.left)/r.width*100)+'%');m.style.setProperty('--zy',((e.clientY-r.top)/r.height*100)+'%');m.classList.add('z')});
+document.addEventListener('pointerout',e=>{const m=e.target instanceof Element&&e.target.closest('#spRoot [data-spzoom]');if(m&&e.pointerType==='mouse'&&!m.contains(e.relatedTarget))m.classList.remove('z')});
+document.addEventListener('click',e=>{const m=e.target instanceof Element&&e.target.closest('#spRoot [data-spzoom]');if(!m||matchMedia('(hover:hover)').matches)return;const r=m.getBoundingClientRect();m.style.setProperty('--zx',((e.clientX-r.left)/r.width*100)+'%');m.style.setProperty('--zy',((e.clientY-r.top)/r.height*100)+'%');m.classList.toggle('z')});
+
+/* studio: product editor and store settings in the section pane */
+fieldHtml=(o=>function(s,f,prefix){if(f[2]==='products')return spEditor(s);if(f[2]==='storeset')return spSettings(s);return o.apply(this,arguments)})(fieldHtml);
+function spEditor(s){const arr=spNorm(s).items;
+ return `<div class="fld sp-ed"><span>Products · ${arr.length}</span><p class="hint">Click a product on the page to jump to it here. Leave Stock empty if you do not count it.</p>${arr.map((x,i)=>{const F=(k,l,t,sub)=>fieldHtml(s,[k,l,t,sub],`items.${i}`);const L=hasV(x.stock)?+x.stock:Infinity;
+  return `<div class="li sp-eli"><div class="li-h"><b>${esc(x.name||'Product '+(i+1))}</b><span class="row" style="gap:2px"><button type="button" class="iconbtn" data-spview="${s.id}|${i}" title="See the product page" aria-label="See the product page">${ic('eye',14)}</button><button type="button" class="iconbtn" data-spdup="${s.id}|${i}" title="Duplicate" aria-label="Duplicate">${ic('copy',14)}</button><button type="button" class="iconbtn" data-limove="${s.id}|items|${i}|-1" ${i===0?'disabled':''} aria-label="Move up">${ic('up',14)}</button><button type="button" class="iconbtn" data-limove="${s.id}|items|${i}|1" ${i===arr.length-1?'disabled':''} aria-label="Move down">${ic('down',14)}</button><button type="button" class="iconbtn" data-lidel="${s.id}|items|${i}" aria-label="Remove">${ic('trash',14)}</button></span></div>
+  ${isFinite(L)&&L<=5?`<p class="sp-edwarn">${L<=0?'Sold out: shoppers cannot add it.':`Low stock: ${L} left.`}</p>`:''}
+  ${F('image','Main photo','image')}
+  <div class="sp-ed2">${F('name','Name','text')}${F('collection','Collection','text')}</div>
+  <div class="sp-ed3">${F('price','Price','text')}${F('compare','Was (sale)','text')}${F('stock','Stock','text')}</div>
+  ${F('badge','Badge','select',BADGES)}
+  ${F('desc','Description','textarea')}
+  <details class="sp-more"><summary>Sizes, colors and flavors</summary><div class="sp-ed2">${F('opt1','Option name','text')}${F('opt1v','Choices','text')}</div><div class="sp-ed2">${F('opt2','Second option','text')}${F('opt2v','Choices','text')}</div><p class="hint">Separate choices with commas. Add a price like “Large (+$8)”.</p></details>
+  <details class="sp-more"><summary>Selling tools</summary>${F('kind','Product type','select',{item:'Regular product',box:'Build-a-box (shopper picks the items)',gift:'Gift card (choices are amounts)'})}<div class="sp-ed2">${F('boxSize','Box holds (build-a-box)','number')}${F('boxFrom','Picks from collection','text')}</div><div class="sp-ed2">${F('daily','Made each day (bakeries)','text')}${F('sub','Subscribe and save','select',{no:'Off',yes:'On'})}</div><div class="sp-ed2">${F('preorder','Preorder','select',{no:'No',yes:'Yes'})}${F('lead','Days of notice','number')}</div><div class="sp-ed2">${F('rating','Star rating','text')}${F('reviews','Number of reviews','text')}</div>${F('images','More photos','gallery')}</details></div>`}).join('')}<button type="button" class="btn sm" data-liadd="${s.id}|items" style="justify-self:start">${ic('plus',13)} Add product</button></div>`}
+function spSettings(s){const F=(k,l,t,sub)=>fieldHtml(s,[k,l,t,sub],'');spNorm(s);
+ return `<div class="fld sp-set"><span>Checkout, pickup and delivery</span>
+  <div class="sp-ed2">${F('pickup','Pickup','select',{yes:'On',no:'Off'})}${F('payLater','Pay at pickup','select',{yes:'Allowed',no:'Pay online only'})}</div>
+  <div class="sp-ed3">${F('delivery','Local delivery','select',{yes:'On',no:'Off'})}${F('deliveryFee','Fee','text')}${F('deliveryArea','Area','text')}</div>
+  <div class="sp-ed3">${F('shipping','Shipping','select',{yes:'On',no:'Off'})}${F('shipFee','Rate','text')}${F('freeOver','Free over','text')}</div>
+  <div class="sp-ed2">${F('notice','Days of notice for every order','number')}${F('subOff','Subscribe and save (%)','number')}</div>
+  ${F('slots','Pickup times (empty uses your hours)','text')}
+  ${F('codes','Discount codes','textarea')}<p class="hint">One per line, like SWEET10 = 10%, TAKE5 = $5 or FREESHIP = free shipping.</p></div>`}
+
+/* E-commerce plan: the store, domain and selling tools in one price */
+const COMMERCE_TIER={id:'commerce',name:'E-commerce',setup:499,monthly:59,maxSections:20,includes:['store','domain'],features:['Online store with unlimited products','Sizes, colors, flavors and stock counts','Pickup, local delivery, shipping and preorders','Discount codes, gift cards and build-a-box','No added fees from us on your sales','Your own domain and email','We load your first 50 products']};
+const addCommerce=a=>{if(a&&Array.isArray(a.tiers)&&!a.tiers.some(t=>t.id==='commerce'))a.tiers.push(clone(COMMERCE_TIER))};
+addCommerce(admin);
+defaultAdmin=(o=>function(){const a=o.apply(this,arguments);addCommerce(a);return a})(defaultAdmin);
+/* selling online on another plan: show what E-commerce would cost instead */
+renderPlans=(o=>function(){o.apply(this,arguments);const t=curTier(),ec=tierById('commerce');if(!ec||ec.id!=='commerce'||t.id==='commerce'||!state.cart.addons.includes('store'))return;
+ const c=cartCalc(),store=addonById('store'),dom=addonById('domain');const now=t.monthly+(store?store.price:0)+(state.cart.addons.includes('domain')&&!(t.includes||[]).includes('domain')&&dom?dom.price:0),save=now-ec.monthly;
+ const box=$('#v-plans .summary .sum-tot');if(box&&save>0)box.insertAdjacentHTML('afterend',`<div class="limit-note sp-nudge"><span>Selling online? The E-commerce plan includes your store and domain for ${money(ec.monthly)}/mo, ${money(save)}/mo less than ${esc(t.name)} with the store add-on.</span><button type="button" class="btn sm" data-settier="commerce">Switch to E-commerce</button></div>`)})(renderPlans);
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
