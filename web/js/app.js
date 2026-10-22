@@ -1429,7 +1429,8 @@ function linkOf(scope,key){if(scope==='ann')return(state.announce&&state.announc
 function setLink(scope,key,L){if(scope==='ann'){state.announce.link=L;save();soft();return}if(scope==='hdr'){state.brand.ctaLink=L}else{const s=sec(scope);if(!s)return;s.data.links=s.data.links||{};s.data.links[key]=L}save()}
 function setLabel(scope,key,v){if(scope==='hdr')state.brand.ctaLabel=v;else{const s=sec(scope);if(s)s.data[key]=v}
  $$(`[data-btn="${scope}|${key}"]`).forEach(b=>b.textContent=v||'Button');save()}
-const normUrl=u=>{u=String(u||'').trim();if(!u)return'';return /^[a-z]+:/i.test(u)?u:'https://'+u};
+// only web, email, phone and text links; javascript: and data: links could run code on the owner's site
+const normUrl=u=>{u=String(u||'').trim();if(!u)return'';if(/^[a-z]+:/i.test(u))return /^(https?|mailto|tel|sms):/i.test(u)?u:'';return 'https://'+u};
 function findSecAny(id){syncPage();for(const p of state.pages){const s=(p.sections||[]).find(x=>x.id===id);if(s)return{p,s}}return null}
 const secTitle=s=>`${CATALOG[s.type]?CATALOG[s.type].name:s.type}${s.data&&s.data.heading?': '+String(s.data.heading).slice(0,32):''}`;
 function linkText(L){const b=state.biz||{};switch(L.t){case'page':{const p=(state.pages||[]).find(x=>x.id===L.v);return p?`Goes to the ${p.name} page`:'Pick a page'}

@@ -32,6 +32,7 @@ Set environment variables in your shell or host (the server doesn't read `.env` 
 - `ANTHROPIC_API_KEY` turns on the live AI logo maker. Without it, the logo maker uses its built-in quick ideas.
 - `ADMIN_TOKEN` unlocks `GET /api/orders`. Without it, orders can be placed but not read over the API.
 - `DATA_DIR` is where orders are saved (default `data/`).
+- `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` turn on the bot check, and `AI_PER_DAY` / `AI_DAILY_TOTAL` change the AI limits. See Security below.
 
 Or with Docker:
 
@@ -56,6 +57,18 @@ Limits to know before taking real orders: orders are saved to the function's tem
 | POST | `/api/orders` | `{ order, design }` from checkout. Saved as JSON under `DATA_DIR/orders`. |
 | GET | `/api/orders` | Admin list (`Authorization: Bearer <ADMIN_TOKEN>`). |
 | GET | `/api/orders/:id` | One order with its full design. |
+
+## Security
+
+What the site does on its own (code in `server/security.js`, headers in `vercel.json`):
+
+- **Security headers** on every page and API answer: a Content-Security-Policy that blocks inline and outside scripts (only PayPal and Cloudflare Turnstile are allowed), HSTS, no framing (stops clickjacking), `nosniff`, a strict referrer policy and a Permissions-Policy that turns off camera, microphone and location. `vercel.json` is the one list; the Express server sends the same headers when run on its own. Keep pages free of inline `<script>` and `onclick=` attributes, or the policy blocks them.
+- **Rate limits** per visitor: 300 API calls a minute; the AI logo maker 10 a minute and `AI_PER_DAY` (100) a day, plus `AI_DAILY_TOTAL` (1000) a day for everyone together so the Anthropic bill has a ceiling; orders 10 an hour and 40 a day. Counts are shared through Upstash Redis when it's connected, otherwise kept per server.
+- **Bot check**: a hidden form field that bots fill in (those orders are quietly dropped), and Cloudflare Turnstile on orders and the AI logo maker once `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are set. A visitor who passes gets a signed cookie for 6 hours.
+- **Only this site can post** to the API (other websites' pages are refused), request bodies are capped (5 MB, 64 KB for the order itself, 5,000 characters a field), and errors never show server details.
+- **Admin password**: 10 wrong `ADMIN_TOKEN` tries from one address locks it out for 15 minutes. The server warns in the logs if `ADMIN_TOKEN` is shorter than 16 characters; use a long random one (for example the output of `openssl rand -hex 32`).
+- **Uploads**: logos and photos are redrawn onto a canvas in the browser and saved as PNG or JPEG, so code hidden in an SVG never reaches the site. Links in a design only allow web, email, phone and text addresses (no `javascript:`).
+- **Dependencies**: CI runs `npm audit` and fails on high or critical holes, and Dependabot opens weekly update pull requests.
 
 ## Where things stand
 
