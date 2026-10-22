@@ -1,7 +1,8 @@
 /* Connects the studio to the Think Web Pros server.
    - window.claude.use('sample') is the interface the AI logo maker already calls; here it is backed by POST /api/ai/sample,
      so the API key stays on the server. If the server has no key, use() rejects and the studio falls back to quick ideas.
-   - TWP.submitOrder() sends a placed order (plus the design it was placed for) to POST /api/orders. */
+   - TWP.submitOrder() sends a placed order (plus the design it was placed for) to POST /api/orders.
+   Paying for an order lives in payments.js. */
 (()=>{
 'use strict';
 let cfg=null;
@@ -31,10 +32,13 @@ if(!window.claude){
  }};
 }
 
-window.TWP={
+const send=body=>fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+window.TWP=Object.assign(window.TWP||{},{
+ // Resolves to { id, number, payment } or null. A design too big for the host (Vercel takes 4.5 MB) is dropped
+ // so the order and payment still go through; our team asks for the photos afterwards.
  submitOrder(order,design){
-  return fetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order,design})})
+  return send({order,design}).then(r=>r.status===413?send({order:{...order,designTooLarge:true},design:null}):r)
    .then(r=>r.ok?r.json():null).catch(()=>null);
  }
-};
+});
 })();
