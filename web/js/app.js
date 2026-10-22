@@ -1938,24 +1938,36 @@ const LOGO_D={left:'Logo left',center:'Logo centered'},LOGO_M={left:'Logo left',
 const logoD=()=>state.brand.header==='center'?'center':'left';
 const logoM=()=>state.brand.logoM==='center'?'center':'left';
 function logoIllus(kind,k){return kind==='d'?`<span class="mi mi-d lo-${k}"><i class="mi-logo"></i><span class="mi-links"><i class="mi-l on"></i><i class="mi-l"></i><i class="mi-l"></i></span></span>`:`<span class="mi mi-m lo-${k}"><i class="mi-logo"></i><i class="mi-burg"></i></span>`}
-function devPicks(kind){const isD=kind==='d',L=isD?LOGO_D:LOGO_M,cur=isD?logoD():logoM(),M=isD?MENU_D:MENU_M,cm=isD?menuD():menuM();
- return `<div class="sectitle">Logo</div><div class="mpick lpick" role="radiogroup" aria-label="Logo position on ${isD?'computers':'phones'}">${Object.entries(L).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cur}" class="mp${k===cur?' on':''}" data-logo${kind}="${k}">${logoIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>
- <div class="sectitle">Menu</div><div class="mpick" role="radiogroup" aria-label="Menu style on ${isD?'computers':'phones'}">${Object.entries(M).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cm}" class="mp${k===cm?' on':''}" data-menu${kind}="${k}">${menuIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function logoPick(kind){const isD=kind==='d',L=isD?LOGO_D:LOGO_M,cur=isD?logoD():logoM();
+ return `<div class="mpick lpick" role="radiogroup" aria-label="Logo position on ${isD?'computers':'phones'}">${Object.entries(L).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cur}" class="mp${k===cur?' on':''}" data-logo${kind}="${k}">${logoIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function menuPick(kind){const isD=kind==='d',M=isD?MENU_D:MENU_M,cm=isD?menuD():menuM();
+ return `<div class="mpick" role="radiogroup" aria-label="Menu style on ${isD?'computers':'phones'}">${Object.entries(M).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cm}" class="mp${k===cm?' on':''}" data-menu${kind}="${k}">${menuIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function devPicks(kind){return `<div class="sectitle">Logo</div>${logoPick(kind)}<div class="sectitle">Menu</div>${menuPick(kind)}`}
 function ctaSwitch(){const hc=state.brand.ctaLabel!=='';return `<label class="bgx-sw" style="margin-top:10px"><input type="checkbox" data-hdrcta ${hc?'checked':''}><i></i><span>Show a button in the menu</span></label>`}
 function menuPickers(){const ph=state.device==='phone';
  return `<div class="hp-dev${ph?'':' cur'}"><div class="hp-h">${ic('desktop',15)}<b>On computers</b>${ph?`<button type="button" class="linkbtn" data-hdrdev="desktop">Preview</button>`:'<span class="hp-now">Showing</span>'}</div>${devPicks('d')}</div>
  <div class="hp-dev${ph?' cur':''}"><div class="hp-h">${ic('phone',15)}<b>On phones</b>${ph?'<span class="hp-now">Showing</span>':`<button type="button" class="linkbtn" data-hdrdev="phone">Preview</button>`}</div>${devPicks('m')}</div>
  ${ctaSwitch()}<p class="hint">Tip: click <b>Logo &amp; menu</b> on the page header to change these while you look at it.</p>`}
 
-/* header popover on the page: pick a device, see it, change it */
-function hdrPopHtml(){const ph=state.device==='phone';
- return `<div class="bp-h"><b>${ic('layout',14)} Logo &amp; menu</b><button type="button" class="iconbtn" data-bpclose aria-label="Close">${ic('x',16)}</button></div>
+/* header pane on the page: pick a device, see it, change it. Laid out as slides like the other bottom panes */
+function hdrPopHtml(){const ph=state.device==='phone',k=ph?'m':'d',hc=state.brand.ctaLabel!=='';
+ const slide=(cls,icon,title,body)=>`<section class="hp-slide ${cls}" aria-label="${title}"><h4>${ic(icon,14)}${title}</h4>${body}</section>`;
+ return `<div class="bp-h hp-top"><b>${ic('layout',14)} Logo &amp; menu</b>
  <div class="seg hp-seg" role="tablist" aria-label="Device"><button type="button" role="tab" aria-selected="${!ph}" class="${ph?'':'on'}" data-hdrdev="desktop">${ic('desktop',15)} Computer</button><button type="button" role="tab" aria-selected="${ph}" class="${ph?'on':''}" data-hdrdev="phone">${ic('phone',15)} Phone</button></div>
- <p class="hint" style="margin:0">Computers and phones each keep their own layout. The preview switches so you can see it.</p>
- ${devPicks(ph?'m':'d')}${ctaSwitch()}<div class="bp-act"><button type="button" class="btn sm pri" data-bpclose>Done</button></div>`}
-function openHdrPop(){ask0();const el=document.createElement('div');el.id='btnPop';el.className='bp hdr-pop';el.setAttribute('role','dialog');el.setAttribute('aria-label','Logo and menu');el.innerHTML=hdrPopHtml();document.body.appendChild(el);placeHdrPop()}
+ <small class="hp-note">Computers and phones each keep their own layout.</small>
+ <button type="button" class="btn sm pri hp-done" data-bpclose>Done</button><button type="button" class="iconbtn" data-bpclose aria-label="Close">${ic('x',16)}</button></div>
+ <div class="hp-jump dk-chips" role="tablist" aria-label="Jump to">${[['hp-logo','Logo'],['hp-menu','Menu'],['hp-cta','Menu button']].map(([c,l],i)=>`<button type="button" role="tab" data-hpgo="${c}" class="${i?'':'on'}" aria-selected="${!i}">${l}</button>`).join('')}</div>
+ <div class="hp-track" role="group" aria-label="Logo and menu settings for ${ph?'phones':'computers'}">
+ ${slide('hp-logo','image','Logo',logoPick(k))}
+ ${slide('hp-menu','menu',ph?'Menu on phones':'Menu on computers',menuPick(k))}
+ ${slide('hp-cta','link','Menu button',`${ctaSwitch()}<p class="hint">${hc?'Click the button on the page to change its words and where it goes.':'Add a button like “Call us” or “Book now” beside your menu.'}</p>`)}
+ </div>`}
+function openHdrPop(){ask0();const el=document.createElement('div');el.id='btnPop';el.className='bp hdr-pop';el.setAttribute('role','dialog');el.setAttribute('aria-label','Logo and menu');el.innerHTML=hdrPopHtml();document.body.appendChild(el);hpTrack(el);placeHdrPop()}
+/* narrow bottom pane: the chips show which slide you're on and jump between them */
+function hpTrack(el){const tr=el.querySelector('.hp-track');if(!tr)return;const mark=()=>{const x=tr.scrollLeft;let best=null,bd=1e9;tr.querySelectorAll('.hp-slide').forEach(s=>{const d=Math.abs(s.offsetLeft-tr.offsetLeft-16-x);if(d<bd){bd=d;best=s}});if(!best)return;el.querySelectorAll('[data-hpgo]').forEach(b=>{const on=best.classList.contains(b.dataset.hpgo);b.classList.toggle('on',on);b.setAttribute('aria-selected',on)})};
+ tr.addEventListener('scroll',()=>{clearTimeout(tr._t);tr._t=setTimeout(mark,60)},{passive:true});mark()}
 function placeHdrPop(){const el=$('#btnPop.hdr-pop');if(!el)return;if(innerWidth<=560){el.classList.add('sheet');return}const pb=$('#pagebar');const top=pb?pb.getBoundingClientRect().bottom+10:120;el.style.top=Math.max(8,Math.min(top,innerHeight-el.offsetHeight-8))+'px';el.style.left=Math.max(8,innerWidth-el.offsetWidth-16)+'px'}
-function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){el.innerHTML=hdrPopHtml();placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
+function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){const tr=el.querySelector('.hp-track'),x=tr?tr.scrollLeft:0;el.innerHTML=hdrPopHtml();const t2=el.querySelector('.hp-track');if(t2)t2.scrollLeft=x;hpTrack(el);placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
 function setDevice(d){state.device=d;MOPEN=false;$('#device').dataset.device=d;$$('#deviceSeg button').forEach(b=>b.classList.toggle('on',b.dataset.device===d));save();hard();fitDevice()}
 
 /* a computer or tablet preview on a small screen: show the real wide layout, shrunk to fit */
@@ -1967,6 +1979,7 @@ addEventListener('resize',()=>{clearTimeout(fitDevice._t);fitDevice._t=setTimeou
 
 document.addEventListener('click',e=>{const T0=e.target;if(!(T0 instanceof Element))return;const q=s=>T0.closest(s);let el;
  if(q('[data-hdredit]')){e.preventDefault();e.stopPropagation();openHdrPop();return}
+ if(el=q('[data-hpgo]')){e.stopPropagation();const p=el.closest('#btnPop'),tr=p&&p.querySelector('.hp-track'),s=tr&&tr.querySelector('.'+el.dataset.hpgo);if(s)tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});return}
  if(el=q('[data-hdrdev]')){e.stopPropagation();setDevice(el.dataset.hdrdev);refreshHdrPop();return}
  if(el=q('[data-logod]')){e.stopPropagation();snap();const v=el.dataset.logod;state.brand.header=v==='center'?'center':(state.brand.header==='call'?'call':'left');hard();refreshHdrPop();return}
  if(el=q('[data-logom]')){e.stopPropagation();snap();state.brand.logoM=el.dataset.logom;hard();refreshHdrPop();return}
