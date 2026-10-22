@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { addImportRoutes } from './importer.js';
 import { addReportRoutes, createReportFiles } from './reports.js';
 import { checkOrder, createCounter, isBot, rateLimit, sameOrigin, securityHeaders } from './security.js';
 
@@ -19,7 +20,7 @@ function sameSecret(a, b) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
@@ -103,6 +104,10 @@ export function createApp({ ai, store, reports = createReportFiles(path.join(tmp
 
   const reportLimit = rateLimit(counter, 'reports', [{ windowSec: 3600, max: reportsPerHour }, { windowSec: 86_400, max: reportsPerHour * 4 }], 'You’ve sent several reports already. Please wait a while and try again.');
   addReportRoutes(app, { reports, limit: reportLimit, humanOnly, requireAdmin });
+
+  // reading another store's public product list: a few per visitor, since each one fetches pages from that store
+  const importLimit = rateLimit(counter, 'import', [{ windowSec: 600, max: 10 }, { windowSec: 86_400, max: 40 }], 'You’ve imported several stores already. Please wait a few minutes and try again.');
+  addImportRoutes(app, { readStore, limit: importLimit });
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
   // the old studio guide page now lives inside the studio as the tour and Help panel

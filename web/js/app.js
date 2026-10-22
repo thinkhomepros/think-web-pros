@@ -3203,7 +3203,7 @@ function stOrders(){const all=[...shopOrders()].sort((a,b)=>b.at-a.at),cnt=k=>k=
   <div class="stp-acts">${stBtn(o)}<label>Status <select data-ostat="${o.no}">${Object.entries(ORD_ST).map(([k,l])=>`<option value="${k}"${o.status===k?' selected':''}>${l}</option>`).join('')}</select></label></div></div></details>`).join(''):`<p class="stp-empty">${all.length?'No orders match.':'No orders yet. Place a test order from the preview (Full screen, add to cart, check out) or add sample orders.'}</p>`}`}
 function stInventory(){const P=allProds(),cols=[...new Set(P.map(p=>String(p.x.collection||'').trim()).filter(Boolean))],q=STQ.toLowerCase();
  const L=P.filter(({x})=>(!STCOL||String(x.collection||'').trim()===STCOL)&&(!q||String(x.name).toLowerCase().includes(q)));const n=STSEL.size;
- return `<div class="stp-tools"><input type="search" data-stq placeholder="Search products" value="${esc(STQ)}" aria-label="Search products"><select data-stcol aria-label="Collection"><option value="">All collections</option>${cols.map(c=>`<option${STCOL===c?' selected':''}>${esc(c)}</option>`).join('')}</select><label class="stp-low">Low-stock alert at <input type="number" min="0" data-stlow value="${lowAt()}"></label><button type="button" class="od-btn ghost" data-stcsv="inventory">Export CSV</button><label class="od-btn ghost stp-file">Import CSV<input type="file" accept=".csv,text/csv" hidden data-stimport></label></div>
+ return `<div class="stp-tools"><input type="search" data-stq placeholder="Search products" value="${esc(STQ)}" aria-label="Search products"><select data-stcol aria-label="Collection"><option value="">All collections</option>${cols.map(c=>`<option${STCOL===c?' selected':''}>${esc(c)}</option>`).join('')}</select><label class="stp-low">Low-stock alert at <input type="number" min="0" data-stlow value="${lowAt()}"></label><button type="button" class="od-btn ghost" data-stcsv="inventory">Export CSV</button><button type="button" class="od-btn ghost" data-impopen title="From Shopify, Etsy, Square, Wix, WooCommerce, Squarespace, Big Cartel or a CSV">Import products</button></div>
  ${n?`<div class="stp-bulk"><b>${n} selected</b><input type="number" data-stbulkn placeholder="Amount" aria-label="Amount"><button type="button" class="od-btn" data-stbulk="add">Add stock</button><button type="button" class="od-btn" data-stbulk="set">Set stock</button><button type="button" class="od-btn ghost" data-stbulk="sale">Sale % off</button><button type="button" class="od-btn ghost" data-stbulk="nosale">End sale</button><button type="button" class="od-btn ghost" data-stbulk="out">Mark sold out</button><button type="button" class="od-btn ghost" data-stbulk="clear">Clear</button></div>`:''}
  <div class="stp-inv"><div class="stp-ih"><label><input type="checkbox" data-stall ${n&&n===L.length?'checked':''} aria-label="Select all"></label><span>Product</span><span>Price</span><span>Was</span><span>Stock</span><span>Status</span></div>
  ${L.map(({s,x,k})=>{const id=s.id+'|'+k,cb=combos(x),vs=x.vstock&&Object.keys(x.vstock).length;return `<div class="stp-ir"><label><input type="checkbox" data-stsel="${id}" ${STSEL.has(id)?'checked':''} aria-label="Select ${esc(x.name)}"></label>
@@ -3302,6 +3302,108 @@ document.addEventListener('change',e=>{const t=e.target;if(!(t instanceof Elemen
  if(t.matches('[data-stimport]')){const f=t.files[0];t.value='';if(!f)return;f.text().then(txt=>{const rows=csvParse(txt);if(rows.length<2){toast('That file has no products');return}const h=rows[0].map(x=>x.trim().toLowerCase());if(!h.includes('name')){toast('The first row needs a "name" column');return}
   const s=shopSecs()[0];if(!s){toast('Add the Online store section first');return}snap();let up=0,add=0;rows.slice(1).forEach(r=>{const o={};h.forEach((c,i)=>{if(INV_COLS.includes(c))o[c]=(r[i]??'').trim()});if(!o.name)return;const f=allProds().find(p=>p.x.name.toLowerCase()===o.name.toLowerCase());
    if(f){Object.assign(f.x,o);up++}else{s.data.items.push(PB(o));add++}});save();soft();stRe();toast(`${up} updated, ${add} added`)})}});
+/* ---------- import products from another store (web/js/import.js reads the files) ---------- */
+Object.assign(P,{upload:'<path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/>',plug:'<path d="M9 2v5M15 2v5M6 7h12v4a6 6 0 0 1-12 0zM12 17v5"/>'});
+const IMPC={shopify:'#5E8E3E',etsy:'#F1641E',square:'#111111',woocommerce:'#7F54B3',wix:'#0C6EFC',squarespace:'#222222',bigcartel:'#222222',other:'#6B7280'};
+const IMP={step:'pick',plat:null,res:null,mode:'add',busy:false,err:'',from:''};
+function impTarget(){syncPage();const cur=state.pages.find(p=>p.id===state.pageId);for(const p of [cur,...state.pages.filter(x=>x!==cur)]){const s=(p&&p.sections||[]).find(x=>x.type==='shop');if(s)return{p,s}}return null}
+function openImport(plat){if(!window.TWPImport){toast('The importer did not load. Refresh the page and try again.');return}Object.assign(IMP,{step:plat?'how':'pick',plat:plat||null,res:null,mode:'add',busy:false,err:'',from:''});impRender()}
+function impRender(){const X=window.TWPImport,PL=X.PLATFORMS,t=impTarget(),have=t?(t.s.data.items||[]).length:0;let body='';
+ const urlBox=ph=>`<form class="imp-url" data-impurlf><label class="fld"><span>Or paste your store link</span><span class="imp-urlrow"><input type="text" inputmode="url" id="impUrl" placeholder="${esc(ph)}" autocomplete="off" ${IMP.busy?'disabled':''}><button type="submit" class="btn sm pri" ${IMP.busy?'disabled':''}>${IMP.busy?'Reading…':'Get products'}</button></span></label><p class="hint">Works with Shopify, Big Cartel and WooCommerce stores, and most store pages that list prices. Etsy shops need the file.</p></form>`;
+ const err=IMP.err?`<p class="imp-err" role="alert">${esc(IMP.err)}</p>`:'';
+ if(IMP.step==='pick')body=`<p class="muted">Bring your products over from the store you use now. Names, photos, prices, sizes and colors, sale prices and stock come along, and you can change anything after.</p><div class="imp-plats">${Object.entries(PL).map(([k,p])=>`<button type="button" class="imp-plat" data-impplat="${k}"><i style="--ic:${IMPC[k]}">${esc(p.name==='Other or spreadsheet'?'CSV':p.name.slice(0,1))}</i><b>${esc(p.name)}</b></button>`).join('')}</div>${urlBox('yourshop.com or yourshop.myshopify.com')}${err}`;
+ else if(IMP.step==='how'){const p=PL[IMP.plat]||PL.other;body=`<button type="button" class="linkbtn imp-back" data-impback>${ic('l',14)} All stores</button><h3 class="imp-h3">From ${esc(p.name)}</h3><ol class="imp-steps">${p.how.map(x=>`<li>${esc(x)}</li>`).join('')}</ol><label class="imp-drop" data-impdrop><input type="file" accept=".csv,.tsv,.txt,text/csv" data-impfile hidden>${ic('upload',22)}<b>Choose your CSV file</b><small>or drop it here</small></label>${p.url?urlBox(IMP.plat==='shopify'?'yourshop.myshopify.com':IMP.plat==='bigcartel'?'yourshop.bigcartel.com':'yourshop.com'):''}${err}`}
+ else{const r=IMP.res,n=r.products.length,src=IMP.from||(PL[r.platform]||PL.other).name;
+  const row=x=>{const o=[x.opt1&&x.opt1v?`${x.opt1}: ${x.opt1v.replace(/\s*\(\+[^)]*\)/g,'')}`:'',x.opt2&&x.opt2v?`${x.opt2}: ${x.opt2v.replace(/\s*\(\+[^)]*\)/g,'')}`:''].filter(Boolean).join(' · ');
+   return `<li class="imp-row">${x.image?`<img src="${esc(x.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="imp-noimg">${ic('image',16)}</span>`}<span class="imp-rt"><b>${esc(x.name)}</b><small>${esc([x.collection,o].filter(Boolean).join(' · ')||'No choices')}</small></span><span class="imp-rp"><b>${esc(x.price)}</b>${x.compare?`<s>${esc(x.compare)}</s>`:''}<small>${x.stock!==undefined&&x.stock!==''?esc(x.stock)+' in stock':''}</small></span></li>`};
+  body=`<button type="button" class="linkbtn imp-back" data-impback>${ic('l',14)} Start again</button><h3 class="imp-h3">${n} product${n===1?'':'s'} found${src?' from '+esc(src):''}</h3><ul class="imp-list">${r.products.slice(0,12).map(row).join('')}</ul>${n>12?`<p class="muted imp-more">and ${n-12} more</p>`:''}${r.notes.length?`<ul class="imp-notes">${r.notes.map(x=>`<li>${ic('info',14)}<span>${esc(x)}</span></li>`).join('')}</ul>`:''}
+  ${have?`<div class="imp-mode" role="radiogroup" aria-label="What to do with your current products"><label><input type="radio" name="impmode" value="add" ${IMP.mode==='add'?'checked':''}><span><b>Add to my ${have} product${have===1?'':'s'}</b><small>Products with the same name are updated</small></span></label><label><input type="radio" name="impmode" value="replace" ${IMP.mode==='replace'?'checked':''}><span><b>Replace my products</b><small>Your store shows only the imported ones</small></span></label></div>`:''}
+  <p class="hint">Photos keep loading from ${esc(src||'your old store')}. To keep them if you close that store, replace them with your own in each product.</p><div class="imp-go"><button type="button" class="btn" data-closemodal>Cancel</button><button type="button" class="btn pri" data-impgo>${ic('check',15)} Import ${n} product${n===1?'':'s'}</button></div>`}
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal imp" role="dialog" aria-modal="true" aria-labelledby="impT"><div class="modal-h"><div><h2 id="impT">${ic('upload',20)} Import your products</h2></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><div class="imp-b">${body}</div></div></div>`;
+ const f=$('#modalRoot [data-impplat],#modalRoot [data-impgo],#modalRoot .imp-drop');if(f&&f.focus&&IMP.step!=='how')f.focus()}
+function impResult(r,from){IMP.busy=false;if(r.error){IMP.err=r.error;impRender();return}IMP.res=r;IMP.from=from||'';IMP.err='';IMP.step='review';const t=impTarget();IMP.mode=t&&isSample(t.s)?'replace':'add';impRender()}
+// a store still holding the sample products it was made with: imports replace them unless the owner says otherwise
+function isSample(s){const d=s.data.items||[];return d.length>0&&d.every(x=>!x.src)&&d.every(x=>!x.image||/^data:image\/svg/.test(x.image))}
+function impFile(file){if(!file)return;IMP.err='';
+ if(/\.(xlsx?|numbers|ods)$/i.test(file.name)){IMP.err='That is a spreadsheet file. Open it and save or download it as CSV, then choose the CSV here.';impRender();return}
+ if(file.size>15e6){IMP.err='That file is over 15 MB. Export only your products, or split the file in two.';impRender();return}
+ const fr=new FileReader();fr.onerror=()=>{IMP.err='The file could not be read.';impRender()};fr.onload=()=>impResult(window.TWPImport.fromCSV(String(fr.result),IMP.plat),'');fr.readAsText(file)}
+async function impUrl(url){if(!String(url||'').trim()){IMP.err='Paste the link to your store first.';impRender();return}IMP.busy=true;IMP.err='';impRender();
+ try{const r=await fetch('/api/import/store',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url})});const j=await r.json().catch(()=>({}));
+  if(!r.ok){IMP.busy=false;IMP.err=j.error||'That store could not be read. Try its CSV export instead.';impRender();return}
+  const res=window.TWPImport.fromJSON(j.source,j.products);impResult(res,j.source==='page'?String(url).replace(/^https?:\/\//,'').split('/')[0]:'')}
+ catch(e){IMP.busy=false;IMP.err='No connection to the importer. Check your internet and try again.';impRender()}}
+function impApply(){const r=IMP.res;if(!r)return;snap();let t=impTarget(),fresh=false;
+ if(!t){insertSection('shop');t=impTarget();fresh=true}
+ if(!t){closeModal();toast('The Online store section is turned off in Admin, so products have nowhere to go.');return}
+ const items=r.products.map(x=>PB(x));const m=window.TWPImport.merge(fresh?[]:(t.s.data.items||[]),items,fresh?'replace':IMP.mode);
+ t.s.data.items=m.items;closeModal();
+ if(t.p.id!==state.pageId)gotoPage(t.p.id,t.s.id);else{state.selected=t.s.id;state.rightTab='section'}
+ hard();const msg=[m.added?`${m.added} added`:'',m.updated?`${m.updated} updated`:''].filter(Boolean).join(', ');
+ toast(`Products imported: ${msg||'nothing new'}`,{label:'Undo',fn:undo});
+ requestAnimationFrame(()=>{const el=$(`#site [data-sec="${t.s.id}"]`);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})})}
+document.addEventListener('click',e=>{const T=e.target;if(!(T instanceof Element))return;const q=s=>T.closest(s);let el;
+ if(q('[data-impopen]')){e.preventDefault();dsMenuClose();openImport();return}
+ if(!q('.modal.imp'))return;
+ if(el=q('[data-impplat]')){IMP.plat=el.dataset.impplat;IMP.step='how';IMP.err='';impRender();return}
+ if(q('[data-impback]')){IMP.step=IMP.step==='review'&&IMP.plat?'how':'pick';IMP.res=null;IMP.err='';impRender();return}
+ if(q('[data-impgo]')){impApply();return}});
+document.addEventListener('change',e=>{const T=e.target;if(!(T instanceof Element))return;
+ if(T.matches('[data-impfile]'))impFile(T.files&&T.files[0]);
+ if(T.matches('.modal.imp [name="impmode"]'))IMP.mode=T.value});
+document.addEventListener('submit',e=>{if(!e.target.matches||!e.target.matches('[data-impurlf]'))return;e.preventDefault();impUrl($('#impUrl').value)});
+['dragover','dragleave','drop'].forEach(n=>document.addEventListener(n,e=>{const d=e.target instanceof Element&&e.target.closest('[data-impdrop]');if(!d)return;e.preventDefault();d.classList.toggle('over',n==='dragover');if(n==='drop')impFile(e.dataTransfer.files[0])}));
+// entry points: the product editor and the Designs menu
+spEditor=(o=>function(s){return `<div class="imp-cta"><button type="button" class="btn sm" data-impopen>${ic('upload',14)} Import from Shopify, Etsy, Square…</button></div>`+o.apply(this,arguments)})(spEditor);
+dsMenu=(o=>function(){o.apply(this,arguments);const q=$('#dsMenu [data-dsact="quick"]');if(q)q.insertAdjacentHTML('afterend',`<button type="button" role="menuitem" data-impopen>${ic('upload',16)}<span><b>Import products</b><small>From Shopify, Etsy, Square, Wix and more</small></span></button>`)})(dsMenu);
+
+/* ---------- Apps & links: order, booking, review and social apps, as buttons or embedded on the page ----------
+   Only apps whose embed address we build ourselves are shown in a frame (vercel.json frame-src lists their hosts);
+   every other link becomes a button that opens in a new tab. */
+const yt=u=>{const m=u.hostname.endsWith('youtu.be')?u.pathname.slice(1):u.searchParams.get('v')||(u.pathname.match(/\/(?:shorts|embed|live)\/([\w-]+)/)||[])[1];return m&&/^[\w-]{6,20}$/.test(m)?'https://www.youtube-nocookie.com/embed/'+m:null};
+const APPS={
+ doordash:{n:'DoorDash',c:'#EB1700',g:'order',v:'Order on'},ubereats:{n:'Uber Eats',c:'#06C167',g:'order',v:'Order on'},grubhub:{n:'Grubhub',c:'#FF8000',g:'order',v:'Order on'},toast:{n:'Toast',c:'#FF4C00',g:'order',v:'Order with'},chownow:{n:'ChowNow',c:'#1E1E1E',g:'order',v:'Order with'},
+ shopify:{n:'Shopify',c:'#5E8E3E',g:'shop',v:'Shop on'},etsy:{n:'Etsy',c:'#F1641E',g:'shop',v:'Shop on'},squareonline:{n:'Square Online',c:'#111111',g:'shop',v:'Shop on'},amazon:{n:'Amazon',c:'#FF9900',g:'shop',v:'Shop on'},ebay:{n:'eBay',c:'#0064D2',g:'shop',v:'Shop on'},
+ calendly:{n:'Calendly',c:'#006BFF',g:'book',v:'Book with',host:/(^|\.)calendly\.com$/,embed:u=>u.href},
+ squareappt:{n:'Square Appointments',c:'#111111',g:'book',v:'Book with',host:/^(book|app)\.squareup\.com$/,embed:u=>u.href},
+ acuity:{n:'Acuity Scheduling',c:'#2B3A55',g:'book',v:'Book with',host:/(^|\.)acuityscheduling\.com$|\.as\.me$/,embed:u=>u.href},
+ vagaro:{n:'Vagaro',c:'#F2672A',g:'book',v:'Book on'},booksy:{n:'Booksy',c:'#21B8B0',g:'book',v:'Book on'},fresha:{n:'Fresha',c:'#101928',g:'book',v:'Book on'},mindbody:{n:'Mindbody',c:'#E4002B',g:'book',v:'Book on'},opentable:{n:'OpenTable',c:'#DA3743',g:'book',v:'Reserve on'},resy:{n:'Resy',c:'#FF462D',g:'book',v:'Reserve on'},
+ google:{n:'Google reviews',c:'#4285F4',g:'reviews',v:'Read our'},yelp:{n:'Yelp',c:'#D32323',g:'reviews',v:'Review us on'},tripadvisor:{n:'Tripadvisor',c:'#00AF87',g:'reviews',v:'Review us on'},
+ youtube:{n:'YouTube',c:'#FF0000',g:'media',v:'Watch on',host:/(^|\.)(youtube\.com|youtu\.be)$/,embed:yt,shape:'video'},
+ instagram:{n:'Instagram',c:'#E1306C',g:'media',v:'Follow on',host:/(^|\.)instagram\.com$/,embed:u=>{const m=u.pathname.match(/^\/(p|reel|tv)\/([\w-]+)/);return m?`https://www.instagram.com/${m[1]}/${m[2]}/embed`:null},shape:'post'},
+ tiktok:{n:'TikTok',c:'#111111',g:'media',v:'Follow on',host:/(^|\.)tiktok\.com$/,embed:u=>{const m=u.pathname.match(/\/video\/(\d+)/);return m?'https://www.tiktok.com/embed/v2/'+m[1]:null},shape:'tall'},
+ spotify:{n:'Spotify',c:'#1DB954',g:'media',v:'Listen on',host:/^open\.spotify\.com$/,embed:u=>{const m=u.pathname.match(/\/(track|album|playlist|artist|show|episode)\/(\w+)/);return m?`https://open.spotify.com/embed/${m[1]}/${m[2]}`:null},shape:'audio'},
+ facebook:{n:'Facebook',c:'#1877F2',g:'media',v:'Follow on'},
+ googleforms:{n:'Google Forms',c:'#673AB7',g:'forms',v:'Fill out our form on',host:/^docs\.google\.com$/,embed:u=>/^\/forms\/d\//.test(u.pathname)?u.origin+u.pathname.replace(/\/(edit|viewform|formResponse)?\/?$/,'')+'/viewform?embedded=true':null},
+ typeform:{n:'Typeform',c:'#262627',g:'forms',v:'Fill out our form on',host:/(^|\.)typeform\.com$/,embed:u=>u.href},
+ jotform:{n:'Jotform',c:'#FF6100',g:'forms',v:'Fill out our form on',host:/(^|\.)jotform\.com$/,embed:u=>u.href},
+ mailchimp:{n:'Mailchimp',c:'#FFE01B',g:'forms',v:'Join our list on'},
+ link:{n:'Other website',c:'#6B7280',g:'other',v:'Visit'}};
+const APP_G={order:'Order food',shop:'Shop',book:'Book or reserve',reviews:'Reviews',media:'Social and video',forms:'Forms and email',other:'Other'};
+const APP_NAMES=Object.fromEntries(Object.entries(APPS).map(([k,a])=>[k,`${a.n} · ${APP_G[a.g]}`]));
+function appInfo(x){const a=APPS[x.app]||APPS.link;let raw=String(x.url||'').trim();const m=raw.match(/src\s*=\s*["']([^"']+)["']/i);if(m)raw=m[1];
+ if(raw&&!/^[a-z][\w+.-]*:/i.test(raw))raw='https://'+raw.replace(/^\/+/,'');let u=null;try{u=new URL(raw)}catch(e){}
+ if(!u||!/^https?:$/.test(u.protocol)||!u.hostname.includes('.'))return{a,href:'',embed:null};u.protocol='https:';
+ const embed=a.embed&&a.host&&a.host.test(u.hostname)?a.embed(u):null;return{a,href:u.href,embed}}
+Object.assign(CATALOG,{apps:{name:'Apps & links',desc:'Order, booking, review and social apps you already use',variants:{buttons:'Buttons',cards:'Cards',embed:'Embedded'}}});
+Object.assign(TH,{apps:'<rect x="3" y="5" width="11" height="10" rx="2.5" opacity=".35"/><rect x="16.5" y="5" width="11" height="10" rx="2.5"/><rect x="30" y="5" width="11" height="10" rx="2.5" opacity=".35"/><rect x="3" y="19" width="38" height="7" rx="3.5" opacity=".55"/>'});
+Object.assign(DEFAULTS,{apps:{heading:'Order, book and follow along',sub:'Find us on the apps you already use.',items:[{app:'doordash',url:'',label:''},{app:'ubereats',url:'',label:''},{app:'google',url:'',label:''}]}});
+Object.assign(FIELDS,{apps:[['heading','Heading','text'],['sub','Supporting text','text'],['@apps','','appshint'],['items','Apps','list',[['app','App','select',APP_NAMES],['url','Your link (or the embed code the app gives you)','text'],['label','Button text (leave blank for automatic)','text']]]]});
+Object.assign(ITEM_BLANK,{apps:{app:'link',url:'',label:''}});
+fieldHtml=(o=>function(s,f,prefix){if(f[2]==='appshint')return `<p class="hint ap-hint">Paste the link to your page on each app. With the <b>Embedded</b> layout, Calendly, Square Appointments and Acuity booking, YouTube videos, Instagram and TikTok posts, Spotify, and Google Forms, Typeform or Jotform show right on your page. Everything else becomes a button.</p>`;return o.apply(this,arguments)})(fieldHtml);
+R.apps=s=>{const d=s.data,v=s.variant;const list=(d.items||[]).map((x,i)=>({x,i,...appInfo(x)})).filter(o=>EDIT||o.href);
+ const head=`<div class="sec-head center"><h2${T(s,'heading')}>${esc(d.heading)}</h2>${d.sub||EDIT?`<p${T(s,'sub')}>${esc(d.sub)}</p>`:''}</div>`;
+ const lbl=o=>o.x.label||`${o.a.v} ${o.a.n}`;
+ const mark=o=>`<i class="ap-mark" style="--ac:${o.a.c}" aria-hidden="true">${esc(o.a.n.split(/\s+/).filter(w=>/^[A-Z]/.test(w)).map(w=>w[0]).join('').slice(0,2))}</i>`;
+ const need=o=>EDIT&&!o.href?`<small class="ap-need">Paste your ${esc(o.a.n)} link</small>`:'';
+ const go=(o,cls,inner)=>EDIT||!o.href?`<span class="${cls}">${inner}</span>`:`<a class="${cls}" href="${esc(o.href)}" target="_blank" rel="noopener">${inner}</a>`;
+ const card=o=>`<div class="svc ap-card"${PK(`items.${o.i}`)}>${mark(o)}<h3>${esc(o.a.n)}</h3><p>${esc(APP_G[o.a.g])}</p>${go(o,'sbtn sm ap-go',esc(lbl(o)))}${need(o)}</div>`;
+ let body;
+ if(v==='buttons')body=`<div class="ap-row">${list.map(o=>`<div class="ap-it"${PK(`items.${o.i}`)}>${go(o,'sbtn ap-btn',mark(o)+`<span>${esc(lbl(o))}</span>`)}${need(o)}</div>`).join('')}</div>`;
+ else if(v==='embed'){const fr=list.filter(o=>o.embed),rest=list.filter(o=>!o.embed);
+  body=`${fr.map(o=>`<div class="ap-embed ap-${o.a.shape||'tall-'+o.a.g}"${PK(`items.${o.i}`)}>${EDIT?'<div class="ap-shield" aria-hidden="true"></div>':''}<iframe src="${esc(o.embed)}" title="${esc(o.a.n)}" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="encrypted-media; picture-in-picture; fullscreen" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"></iframe></div>`).join('')}${rest.length?`<div class="ap-grid">${rest.map(card).join('')}</div>`:''}`}
+ else body=`<div class="ap-grid">${list.map(card).join('')}</div>`;
+ return `<section class="ap-sec ap-v-${v}"><div class="wrap">${head}${list.length?body:''}</div></section>`};
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
