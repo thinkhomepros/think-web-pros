@@ -1856,7 +1856,7 @@ body.dock-side .dock .insp-tabs>.iconbtn:last-child{order:1;margin-left:auto}
 body.dock-side .dk-nav{flex-basis:100%}
 body.dock-side .dk-track{padding:10px 12px 12px;gap:10px;scroll-padding-inline:12px}
 body.dock-side .dk-slide,body.dock-side .dock-modal .dk-slide{flex-basis:calc(100% - 4px)}
-body.dock-side.dock-on #canvas,body.dock-side:has(.dock-modal) #canvas,body.dock-side.one-bar:has(#btnPop) #canvas{padding-bottom:22px;padding-right:calc(var(--dkw) + 22px)}
+body.dock-side.dock-on #canvas,body.dock-side:has(.dock-modal) #canvas,body.dock-side.one-bar:has(#btnPop) #canvas{padding-bottom:0}
 body.dock-side.dock-on .pane.float.lib{bottom:14px}
 body.dock-side .modal-bg.dock-bg{justify-content:flex-end;align-items:stretch;padding-top:var(--dktop,58px)}
 body.dock-side .modal.dock-modal{width:var(--dkw);height:auto;border-radius:16px 0 0 0;box-shadow:-10px 0 40px rgba(20,22,26,.2);animation:dkside .2s ease}
@@ -1872,3 +1872,63 @@ body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
 .kl-look .sw{display:inline-flex;border-radius:4px;overflow:hidden;border:1px solid color-mix(in srgb,var(--tx,#222) 14%,transparent)}
 .kl-look .sw i{width:12px;height:12px;display:block}
 @container site (max-width:560px){ .kl.kl-blank{grid-template-columns:96px 1fr} .kl-or::before,.kl-or::after{display:none} }
+
+/* device frames: a tablet or phone preview shows the whole device, with the page scrolling inside its screen */
+.dv-shell{display:contents}
+.dv-sb,.dv-nb{display:none}
+.chrome .dv-win{display:none}
+.device[data-os=win] .chrome .dots{display:none}
+.device[data-os=win] .chrome .dv-win{display:flex;gap:16px;margin-left:6px;color:var(--muted);font-size:12px;font-style:normal}
+.device[data-os=win] .chrome .dv-win i{font-style:normal;line-height:1}
+.device[data-os=mac] .chrome i:nth-child(1){background:#FF5F57}
+.device[data-os=mac] .chrome i:nth-child(2){background:#FEBC2E}
+.device[data-os=mac] .chrome i:nth-child(3){background:#28C840}
+.dv-pick{padding-inline:6px!important;min-width:0}
+.dv-shell.framed{--bz:12px;--bt:12px;--bb:12px;--rad:56px;--sbh:50px;--nbh:72px;display:block;flex:none;margin:auto;box-sizing:content-box;width:var(--sw);height:var(--sh);padding:var(--bt) var(--bz) var(--bb);background:#16171B;border-radius:var(--rad);box-shadow:0 0 0 2px #3A3C43,0 24px 60px rgba(20,22,26,.28);position:relative}
+.dv-shell.framed>.canvas{width:100%;height:100%;padding:0;background:#fff;border-radius:calc(var(--rad) - var(--bz));overflow-y:auto;overflow-x:hidden;scrollbar-width:none;flex:none;display:flex;flex-direction:column}
+.dv-shell.framed>.canvas::-webkit-scrollbar{display:none}
+.dv-shell.framed .device{max-width:none!important;width:100%!important;flex:1 0 auto;margin:0;border:0!important;border-radius:0!important;box-shadow:none;overflow:visible}
+.dv-shell.framed .device .chrome{display:flex;position:sticky;top:var(--sbh);z-index:40;padding:6px 10px;border-bottom:1px solid #E3E5EA;background:#F4F5F7}
+.dv-shell.framed .device .chrome .dots,.dv-shell.framed .device .chrome .dv-win{display:none}
+.dv-shell.framed .device .chrome .url{text-align:center;font-size:12px;background:#E7E9ED;border:0;color:#3B3F46}
+.dv-shell.framed .dv-sb{display:flex;align-items:center;gap:6px;position:sticky;top:0;z-index:41;flex:none;height:var(--sbh);padding:0 26px;background:#F4F5F7;color:#111;font:600 14px/1 -apple-system,system-ui,sans-serif}
+.dv-shell.framed .dv-sb b{font-weight:600;min-width:54px}
+.dv-shell.framed .dv-sb .dv-date{font-weight:500;font-size:12px}
+.dv-shell.framed .dv-sb .dv-cut{flex:1;align-self:stretch;position:relative}
+.dv-shell.framed .dv-sb .dv-ic{display:flex;align-items:center;gap:5px}
+.dv-shell.framed .dv-sb svg{fill:currentColor}
+.dv-shell.framed .dv-nb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:sticky;bottom:0;z-index:41;flex:none;height:var(--nbh);background:#F4F5F7;border-top:1px solid #E3E5EA;margin-top:auto}
+.dv-shell.framed .dv-home{display:block;width:134px;height:5px;border-radius:9px;background:#111}
+.dv-shell.framed .dv-url{display:flex;align-items:center;justify-content:center;gap:5px;width:calc(100% - 24px);height:40px;border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);font:500 13px/1 -apple-system,system-ui,sans-serif;color:#222;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 12px}
+.dv-shell.framed .dv-keys{display:flex;justify-content:space-around;align-items:center;width:70%}
+.dv-shell.framed .dv-keys i{display:block;width:14px;height:14px;border:2px solid #444}
+.dv-shell.framed .dv-keys .k-r{border-width:0 2px;width:10px;height:13px;box-shadow:inset -5px 0 0 -3px #444}
+.dv-shell.framed .dv-keys .k-h{border-radius:5px;width:16px;height:16px}
+.dv-shell.framed .dv-keys .k-b{border:0;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:10px solid #444}
+.dv-shell.framed .site .mtab{bottom:var(--nbh)}
+.dv-shell.framed .site .chat-dock{bottom:calc(var(--nbh) + 16px)}
+/* iPhone: Dynamic Island, Safari's address bar at the bottom */
+.dv-shell.framed[data-os=ios] .device .chrome{display:none}
+.dv-shell.framed[data-cut=island] .dv-sb .dv-cut::after{content:"";position:absolute;left:50%;top:11px;translate:-50% 0;width:122px;height:35px;border-radius:20px;background:#000}
+.dv-shell.framed[data-cut=island] .dv-sb{padding-top:6px}
+/* iPhone SE: home button and thick top and bottom bezels */
+.dv-shell.framed[data-cut=home]{--bz:16px;--bt:72px;--bb:72px;--rad:52px;--sbh:20px;--nbh:52px}
+.dv-shell.framed[data-cut=home]>.canvas{border-radius:2px}
+.dv-shell.framed[data-cut=home] .dv-sb{font-size:12px;padding:0 8px}
+.dv-shell.framed[data-cut=home]::before{content:"";position:absolute;top:34px;left:50%;translate:-50% 0;width:56px;height:6px;border-radius:9px;background:#2C2E34}
+.dv-shell.framed[data-cut=home]::after{content:"";position:absolute;bottom:13px;left:50%;translate:-50% 0;width:46px;height:46px;border-radius:50%;border:2px solid #3A3C43;box-sizing:border-box}
+/* Android phones: camera hole or notch, Chrome's address bar on top, a navigation bar at the bottom */
+.dv-shell.framed[data-os=android]{--bz:9px;--bt:9px;--bb:9px;--rad:42px;--sbh:32px;--nbh:46px}
+.dv-shell.framed[data-os=android] .dv-sb{font:500 13px/1 Roboto,system-ui,sans-serif;padding:0 22px}
+.dv-shell.framed[data-cut=hole] .dv-sb .dv-cut::after{content:"";position:absolute;left:50%;top:50%;translate:-50% -50%;width:12px;height:12px;border-radius:50%;background:#000}
+.dv-shell.framed[data-cut=drop] .dv-sb .dv-cut::after{content:"";position:absolute;left:50%;top:0;translate:-50% 0;width:26px;height:22px;border-radius:0 0 13px 13px;background:#000}
+.dv-shell.framed[data-nav=swipe]{--nbh:24px}
+.dv-shell.framed[data-os=android] .dv-home{width:108px;height:4px;background:#333}
+.dv-shell.framed[data-os=android] .dv-nb{border-top:0}
+/* tablets */
+.dv-shell.framed[data-dev=tablet]{--bz:22px;--bt:22px;--bb:22px;--rad:40px;--sbh:26px;--nbh:20px}
+.dv-shell.framed[data-dev=tablet] .dv-sb{font-size:12px;padding:0 20px}
+.dv-shell.framed[data-dev=tablet] .dv-nb{border-top:0;background:transparent;position:sticky}
+.dv-shell.framed[data-dev=tablet][data-nav=keys]{--rad:30px;--nbh:44px}
+.dv-shell.framed[data-dev=tablet][data-nav=keys] .dv-nb{background:#F4F5F7}
+.dv-shell.framed .site .sec{scroll-margin-top:calc(var(--sbh) + 44px)}
