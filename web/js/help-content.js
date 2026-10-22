@@ -1,84 +1,7 @@
-/* Think Web Pros Studio: tutorial steps and help articles.
-   Shared by the studio's Help panel and tour (js/help.js) and the guide page (/guide).
+/* Think Web Pros Studio: help articles for the Help panel and tour (js/help.js).
    Text inside <span data-only="pc|tab|ph|touch"> only shows on that kind of device. */
 window.TWP_HELP = (function () {
   'use strict';
-
-  /* the 8 tutorial steps; img is the screenshot number in /img/guide/{pc|tab|ph}-N.webp */
-  var tour = [
-    {
-      id: 'start', img: 1, title: 'Pick your business',
-      text: {
-        pc: 'Choose the kind of business you run, then pick a layout. Every layout comes with pages, a menu and words written for your business. Nothing is locked in, so you can change all of it later.',
-        tab: 'Tap the kind of business you run, then pick a layout. Every layout comes with pages, a menu and words written for your business. You can change all of it later.',
-        ph: 'Tap the kind of business you run, then scroll and pick a layout. Each one comes with pages, a menu and words written for you. You can change all of it later.'
-      },
-      tips: ['Not sure? Pick the closest match. "Something else" and "Start with a blank page" are at the bottom of the list.', 'Change type, next to the layouts, takes you back to the business list.']
-    },
-    {
-      id: 'words', img: 2, title: 'Click any words to change them',
-      text: {
-        pc: 'Click any text on your page and type over it, just like a document. A Text color button pops up above the words you picked.',
-        tab: 'Tap any text on your page and type over it. A Text color button pops up above the words you picked.',
-        ph: 'Tap any text on your page and type over it. A Text color button pops up above the words you picked.'
-      },
-      tips: ['Every button on the page has a small link badge. Click it to change where the button goes.', 'Click + Photo or video on any picture to upload your own.']
-    },
-    {
-      id: 'business', img: 3, title: 'Add your logo and business info',
-      text: {
-        pc: 'Click Design in the top right corner and choose Business. Fill in your name, phone, email, address and a short line about you, then upload your logo on the Logo card. No logo yet? The AI logo maker can draw one.',
-        tab: 'Tap Design in the top right corner and choose Business. Fill in your name, phone, email, address and a short line about you, then upload your logo on the Logo card. Swipe sideways to move between cards.',
-        ph: 'Tap the palette button in the top right corner and choose Business. The panel slides up from the bottom. Swipe sideways through the cards to add your name, phone, email, address, about line and logo.'
-      },
-      tips: ['Your logo\'s colors are picked up automatically and offered as color schemes.', 'Rather not show your phone or address? Switch it to Hidden. We still need it for your account.']
-    },
-    {
-      id: 'style', img: 4, title: 'Choose a style',
-      text: {
-        pc: 'In the Design panel, open Style. Try a different site style, flip between Light and Dark, and change colors, fonts, the page background and button shapes. Your words and photos stay right where they are.',
-        tab: 'In the Design panel, open Style. Try a different site style, flip between Light and Dark, and change colors, fonts, the page background and button shapes. Your words and photos stay put.',
-        ph: 'In the Design panel, tap Style. Swipe through the cards to try site styles, Light or Dark, colors, fonts, the page background and button shapes. Your words and photos stay put.'
-      },
-      tips: ['Found a look you like? Save it under Saved styles so you can come back to it.', 'The Light and Dark versions each keep their own colors.']
-    },
-    {
-      id: 'sections', img: 5, title: 'Move, change and add sections',
-      text: {
-        pc: 'Each part of your page is a section. Click its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add a new one, click Sections in the top left.',
-        tab: 'Each part of your page is a section. Tap its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add a new one, tap Sections in the top left.',
-        ph: 'Each part of your page is a section. Tap its name tag, like "Hero banner section", to get its toolbar: switch the layout, Edit, move it up or down, hide it or delete it. To add one, open the ⋯ menu and tap Sections.'
-      },
-      tips: ['Drag the dotted grip on a section to move it anywhere on the page.', 'Edit opens that section\'s Layout, Buttons, Background, Words and Photo settings.']
-    },
-    {
-      id: 'pages', img: 6, title: 'Pages and your menu',
-      text: {
-        pc: 'The page picker (it says Home to start) switches pages, adds a page, and opens Pages & menu to rename, reorder and pick a menu style. Click your header and choose Logo & menu to place your logo and menu.',
-        tab: 'The page picker (it says Home to start) switches pages, adds a page, and opens Pages & menu to rename, reorder and pick a menu style. Tap your header and choose Logo & menu to place your logo and menu.',
-        ph: 'Tap the page picker (it says Home to start) to switch pages, add a page, or open Pages & menu to rename, reorder and pick a menu style. Tap your header and choose Logo & menu to place your logo and menu.'
-      },
-      tips: ['Computers and phones each keep their own logo and menu layout.', 'Phones can use a bottom tab bar menu, just like an app.']
-    },
-    {
-      id: 'preview', img: 7, title: 'Preview and save',
-      text: {
-        pc: 'Use Computer, Tablet and Phone at the top to see your site at each size. Light flips to the dark version. Undo, Redo and Save sit right beside them, and Designs holds everything you have saved.',
-        tab: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone. Undo, Redo and Save are in the top bar, the sun button flips light and dark, and Designs holds everything you have saved.',
-        ph: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone, show the dark version, save, or open My designs. Undo and Save are in the top bar.'
-      },
-      tips: ['A pink dot on Save means you have changes that are not saved to My designs yet. After the first save, changes are autosaved every minute.', 'On a computer, Ctrl+Z undoes and Ctrl+Shift+Z redoes (Cmd on a Mac).']
-    },
-    {
-      id: 'launch', img: 8, title: 'Launch when you love it',
-      text: {
-        pc: 'Designing is free. When you are ready, click Next: plans. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.',
-        tab: 'Designing is free. When you are ready, tap Next: plans. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.',
-        ph: 'Designing is free. When you are ready, tap the pink arrow in the top bar. Pick Starter, Growth or Pro, add the services you want, like online booking or a store, and check out.'
-      },
-      tips: ['We ask for your business name, phone, email, address and a short description before checkout.', 'Stuck at any point? Open Help for searchable tips, or replay this tour.']
-    }
-  ];
 
   var cats = [
     ['start', 'Getting started'],
@@ -108,7 +31,7 @@ window.TWP_HELP = (function () {
       body: '<p>Open the studio and pick the kind of business you run. You will see a few layouts made for that kind of business. Each one comes with pages, a menu and words already written, so you start with a real site instead of a blank page.</p><ol><li>Pick your business type.</li><li>Pick a layout and choose <b>Use this layout</b>.</li><li>' + D.click + ' any words to change them and any photo to upload your own.</li><li>Add your logo and business info under <b>Design › Business</b>.</li><li>When you love it, go to plans and launch.</li></ol>' },
     { id: 'tour-replay', cat: 'start', title: 'See the tutorial again',
       keys: 'tutorial tour walkthrough replay intro guide show again popup welcome',
-      body: '<p>Open <b>Help</b> and choose <b>Take the tour</b>. <span data-only="tab">On a tablet, Help is in the main menu (the logo button in the top left) and the <b>⋯</b> menu.</span><span data-only="ph">On a phone, Help is in the <b>☰</b> main menu and the <b>⋯</b> menu.</span> The full illustrated guide, with steps for computers, tablets and phones, is at <a href="/guide">thinkwebpros.com/guide</a>.</p>' },
+      body: '<p>Open <b>Help</b> and choose <b>Take the tour</b>. <span data-only="tab">On a tablet, Help is in the main menu (the logo button in the top left) and the <b>⋯</b> menu.</span><span data-only="ph">On a phone, Help is in the <b>☰</b> main menu and the <b>⋯</b> menu.</span> The tour adjusts itself to your computer, tablet or phone.</p>' },
     { id: 'tour-off', cat: 'start', title: 'Stop the tutorial from popping up',
       keys: 'dont show again turn off disable tutorial popup tour skip annoying hide welcome',
       body: '<p>Tick <b>Don\'t show this again</b> at the bottom of the tutorial, or finish it once, and it will not open by itself again on this device. If you only choose <b>Skip</b>, it may come back on your next visit. You can always reopen it from <b>Help</b>.</p><p class="muted">The choice is saved in this browser. Clearing your browser data or using a private window will bring the tutorial back once.</p>' },
@@ -258,7 +181,7 @@ window.TWP_HELP = (function () {
       body: '<p>The panel scrolls the section you are editing into view above it. <span data-only="touch">Drag the handle at the top of the panel down to make it shorter, or close it with ✕.</span><span data-only="pc">Close it with ✕ when you are done, or switch the preview to Phone to see more of the page at once.</span></p>' },
     { id: 'help', cat: 'trouble', title: 'Get more help',
       keys: 'help support contact question stuck human person',
-      body: '<p>Search this Help panel with a few words, like "logo" or "add page". The full illustrated guide is at <a href="/guide">thinkwebpros.com/guide</a>. Once your site is live, every plan includes support from our team, and Growth and Pro include edits done for you each month.</p>' }
+      body: '<p>Search this Help panel with a few words, like "logo" or "add page". To see the main controls again, choose <b>Take the tour</b> at the top of this panel. Once your site is live, every plan includes support from our team, and Growth and Pro include edits done for you each month.</p>' }
   ];
 
   /* search: every word must match somewhere; titles and keywords count more than body text */
@@ -283,5 +206,5 @@ window.TWP_HELP = (function () {
     return out.sort(function (x, y) { return y[0] - x[0]; }).map(function (x) { return x[1]; });
   }
 
-  return { tour: tour, cats: cats, articles: articles, search: search };
+  return { cats: cats, articles: articles, search: search };
 })();
