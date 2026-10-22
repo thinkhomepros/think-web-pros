@@ -282,7 +282,13 @@ function siteVars(b){const c=b.colors,f=FONTS[b.font]||FONTS.fraunces;const pick
 const IP=(s,path)=>`${s.id}:${path}`;
 const CE=(()=>{try{const d=document.createElement('div');d.contentEditable='plaintext-only';return d.contentEditable==='plaintext-only'?'plaintext-only':'true'}catch(e){return'true'}})();
 var SUB=false,HSEL=false,HSUB=false;
-const tcAttr=(h,path)=>{const m=h&&h._tc&&h._tc[state.brand.mode||'light'];const c=m&&m[path];return c&&isHex(c)?` style="color:${c}"`:''};
+const tcAttr=(h,path)=>{const st=tcStyle(h,path);return st?` style="${st}"`:''};
+/* one piece of text: its color (per light/dark) plus size, font, bold, italic and alignment (the same in both modes) */
+function tcStyle(h,path){const m=h&&h._tc&&h._tc[state.brand.mode||'light'];const c=m&&m[path];return (c&&isHex(c)?`color:${c};`:'')+tsCss(h&&h._ts&&h._ts[path])}
+function tsCss(t){if(!t)return'';let s='';const z=+t.z;if(z&&z!==100)s+=`zoom:${Math.max(.5,Math.min(3,z/100))};`;const f=tsFont(t.f);if(f)s+=`font-family:${f};`;
+ if(t.b==='1')s+='font-weight:700;';else if(t.b==='0')s+='font-weight:400;';if(t.i==='1')s+='font-style:italic;';else if(t.i==='0')s+='font-style:normal;';
+ if(['left','center','right'].includes(t.a))s+=`text-align:${t.a};`;return s}
+function tsFont(k){return k==='h'?'var(--fh)':k==='b'?'var(--fb)':FONTS[k]?FONTS[k].h:''}
 const T=(s,path)=>tcAttr(s.data,path)+(EDIT?` contenteditable="${CE}" spellcheck="false" data-edit="${s.id}|${path}"`:'');
 const TB=path=>tcAttr(state.brand,path)+(EDIT?` contenteditable="${CE}" spellcheck="false" data-editb="${path}"`:'');
 const isVid=v=>typeof v==='string'&&((v.startsWith('idb:')&&!v.startsWith('idb:im'))||v.startsWith('data:video'));
@@ -497,9 +503,11 @@ function pnCss1(sid,k,ps){const P=`.site .pn-${sid}-${pnSlug(k)}.pnx.pnx`,bg=ps.
  /* words inside the card follow its text color; buttons, stars and badges keep theirs, and colors set on one piece of text still win */
  if(tx)css+=`${P} :is(h1,h2,h3,h4,h5,p,li,span,small,b,strong,em,cite,blockquote,summary,figcaption,label,div):not(.sbtn,.sbtn *,.stars,.stars *,.pr-pop,.ls-st,.mn-tag,.soc-ic,.soc-ic *){color:${tx}}`;
  return css}
-function pnCss(s){return pnAll(s).map(([k,ps])=>pnCss1(s.id,k,ps)).join('')}
+function pnCss(s){return secTxCss(s)+pnAll(s).map(([k,ps])=>pnCss1(s.id,k,ps)).join('')}
+/* a section's own text color (Quick edit): words outside its cards; cards and single words colored on their own keep theirs */
+function secTxCss(s){const c=s.tx;if(!isHex(c))return'';const P=`.site .sx-${s.id}`;return `${P}{color:${c};--tx:${c}}${P} :is(h1,h2,h3,h4,h5,p,li,span,small,b,strong,em,cite,blockquote,summary,figcaption,label,a):not(.sbtn,.sbtn *,.stars,.stars *,.pr-pop,.ls-st,.mn-tag,.soc-ic,.soc-ic *,.pnx,.pnx *){color:${c}}`}
 /* add each card's classes, plus one style block per section that holds its cards' styles */
-function pnApply(html,s){if(html.indexOf(' data-pk="')<0)return html;
+function pnApply(html,s){if(isHex(s.tx))html=html.replace(/^<section( class="([^"]*)")?/,(m,a,c)=>`<section class="${c||''} sx-${s.id}"`);if(html.indexOf(' data-pk="')<0&&!isHex(s.tx)&&!EDIT)return html;
  html=html.replace(/<([a-z]+)([^>]*?)\sdata-pk="([^"]+)"/g,(m,tag,pre,k)=>{const ps=pnGet(s,k);const cl=`pnx pn-${s.id}-${pnSlug(k)}${ps&&texLayer(ps.bg)?' bgx-t':''}${pnFill(ps)?' pnx-fill':''}${EDIT&&PSEL[s.id]===k?' pn-on':''}`;
   const pre2=/\sclass="/.test(pre)?pre.replace(/\sclass="/,` class="${cl} `):`${pre} class="${cl}"`;return `<${tag}${pre2} data-pk="${k}"`});
  const css=pnCss(s);if(!css&&!EDIT)return html;const st=`<style data-pns="${s.id}">${css}</style>`;
@@ -535,7 +543,9 @@ const PN_INNER='[data-edit],[data-editb],[data-img],[data-btn],[data-jump],a,but
 function pnClick(t,s){const pk=t.closest('[data-pk]');if(!pk||!s.contains(pk))return null;const id=s.dataset.sec,k=pk.dataset.pk;const inn=t.closest(PN_INNER);
  PSEL[id]=k;markPn();
  if(inn&&pk.contains(inn)&&!(inn===pk&&!pk.matches('[data-jumpli]'))){setTimeout(()=>{if(state.selected===id)pnRefresh()},0);return null}
- JUMP=null;return()=>{if(state.selected!==id)selectSection(id);if(!state.inspOpen)openPanel('insp');state.rightTab='section';if(!pnRefresh())renderInspector();requestAnimationFrame(pnShow)}}
+ JUMP=null;const x=QXY.x,y=QXY.y;return()=>{if(state.selected===id)pnRefresh();showQe({kind:'pn',id,k},x,y)}}
+/* where the last click or tap landed, so quick edit opens next to it */
+let QXY={x:0,y:0};addEventListener('pointerdown',e=>{QXY={x:e.clientX,y:e.clientY}},true);
 document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element)||!t.closest('#inspector'))return;let el;
  if(el=t.closest('[data-pnpick]')){e.preventDefault();const[id,k]=el.dataset.pnpick.split('|');PSEL[id]=k;markPn();pnRefresh();requestAnimationFrame(pnShow);
   const card=$(`#site [data-sec="${id}"] [data-pk="${k}"]`);if(card){const r=card.getBoundingClientRect(),cv=$('#canvas');if(cv&&(r.bottom<0||r.top>innerHeight*.6))card.scrollIntoView({block:'center',behavior:'smooth'})}return}
@@ -2374,25 +2384,109 @@ function tcHost(k,make){if(k.id){const s=sec(k.id);if(!s)return null;return s.da
 function tcGet(k){const h=tcHost(k);const m=h&&h._tc&&h._tc[state.brand.mode||'light'];return m&&isHex(m[k.path])?m[k.path]:''}
 function tcSet(k,v){const h=tcHost(k);if(!h)return;snap();const md=state.brand.mode||'light';h._tc=h._tc||{};const m=h._tc[md]=h._tc[md]||{};if(v)m[k.path]=v.toUpperCase();else delete m[k.path];save()}
 function txtEl(){if(!TXT)return null;const sel=TXT.k.id?`#site [data-edit="${TXT.k.id}|${TXT.k.path}"]`:`#site [data-editb="${TXT.k.path}"]`;try{return document.querySelector(sel)}catch(e){return null}}
-function showTxtBar(el){TXT={k:tcKey(el)};let b=$('#txtbar');if(!b){b=document.createElement('div');b.id='txtbar';b.setAttribute('role','toolbar');b.setAttribute('aria-label','Text options');document.body.appendChild(b)}paintTxtBar();placeTxtBar()}
-function paintTxtBar(){const b=$('#txtbar');if(!b||!TXT)return;const c=tcGet(TXT.k),el=txtEl(),cur=c||(el?rgbHex(getComputedStyle(el).color):'#000000');
- b.innerHTML=`<button type="button" class="tb-col" data-tcopen title="Text color" aria-label="Text color"><span class="tb-a" style="border-color:${cur}">A</span><span class="tb-l">Text color</span>${ic('down',12)}</button>${c?`<button type="button" class="tb-reset" data-tcreset title="Back to the style's color">${ic('x',12)}<span class="tb-l"> Reset</span></button>`:''}<input type="color" id="tcInp" value="${cur.toLowerCase()}" tabindex="-1" aria-hidden="true">`}
+function showTxtBar(el){if(QE)hideQe();TXT={k:tcKey(el)};let b=$('#txtbar');if(!b){b=document.createElement('div');b.id='txtbar';b.setAttribute('role','toolbar');b.setAttribute('aria-label','Text options');document.body.appendChild(b)}paintTxtBar();placeTxtBar()}
+function paintTxtBar(){const b=$('#txtbar');if(!b||!TXT)return;const c=tcGet(TXT.k),el=txtEl(),cs=el?getComputedStyle(el):null,cur=c||(cs?rgbHex(cs.color):'#000000');const t=tsGet(TXT.k),z=+t.z||100;
+ const bold=t.b?t.b==='1':!!cs&&+cs.fontWeight>=600,ital=t.i?t.i==='1':!!cs&&cs.fontStyle==='italic',al=t.a||'';const any=!!c||Object.keys(t).length>0;
+ const fl=t.f==='h'?'Heading font':t.f==='b'?'Body font':FONTS[t.f]?FONTS[t.f].name.split(' + ')[0]:'Font';
+ b.innerHTML=`<button type="button" class="tb-col" data-tcopen title="Text color" aria-label="Text color"><span class="tb-a" style="border-color:${cur}">A</span><span class="tb-l">Color</span>${ic('down',12)}</button><i class="tb-sep"></i>`
+ +`<button type="button" data-tsz="-1" title="Smaller text" aria-label="Smaller text" ${z<=60?'disabled':''}><span class="tb-sm">A</span>−</button><span class="tb-v" title="Text size">${z}%</span><button type="button" data-tsz="1" title="Bigger text" aria-label="Bigger text" ${z>=250?'disabled':''}><span class="tb-lg">A</span>+</button><i class="tb-sep"></i>`
+ +`<button type="button" class="tb-font${TS_FONTS?' on':''}" data-tsfont title="Font" aria-label="Font" aria-expanded="${!!TS_FONTS}" style="${t.f?esc(`font-family:${tsFont(t.f)}`):''}"><span class="tb-fl">${esc(fl)}</span>${ic('down',12)}</button>`
+ +`<button type="button" data-tsb class="${bold?'on':''}" title="Bold" aria-label="Bold" aria-pressed="${bold}"><b>B</b></button><button type="button" data-tsi class="${ital?'on':''}" title="Italic" aria-label="Italic" aria-pressed="${ital}"><i style="font-family:Georgia,serif">I</i></button>`
+ +`<button type="button" data-tsal title="Line up text: ${al||'as the style has it'}" aria-label="Text alignment">${alignIc(al||'left')}</button><i class="tb-sep"></i>`
+ +`<button type="button" data-tsmore title="All settings for this text">${ic('edit',13)}<span class="tb-l">More</span></button>`
+ +`${any?`<button type="button" class="tb-reset" data-tcreset title="Back to the style's look">${ic('x',12)}<span class="tb-l"> Reset</span></button>`:''}<input type="color" id="tcInp" value="${cur.toLowerCase()}" tabindex="-1" aria-hidden="true">`
+ +(TS_FONTS?`<div class="tb-drop" role="menu" aria-label="Fonts">${[['','Style default'],['h','Heading font'],['b','Body font'],...Object.entries(FONTS).map(([k,f])=>[k,f.name.split(' + ')[0]])].map(([k,l])=>`<button type="button" role="menuitem" data-tsf="${k}" class="${(t.f||'')===k?'on':''}" style="${k?esc(`font-family:${tsFont(k)}`):''}">${esc(l)}</button>`).join('')}</div>`:'')}
+/* size, font, bold, italic and alignment are kept per piece of text in host._ts, next to its colors in host._tc */
+let TS_FONTS=false;
+function tsGet(k){const h=tcHost(k);return(h&&h._ts&&h._ts[k.path])||{}}
+function tsSet(k,prop,v){const h=tcHost(k);if(!h)return;snap();h._ts=h._ts||{};const t=h._ts[k.path]=h._ts[k.path]||{};if(v===''||v==null)delete t[prop];else t[prop]=String(v);if(!Object.keys(t).length)delete h._ts[k.path];if(!Object.keys(h._ts).length)delete h._ts;save();tsLive()}
+function tsLive(){const el=txtEl();if(!el||!TXT)return;const st=tcStyle(tcHost(TXT.k),TXT.k.path);if(st)el.setAttribute('style',st);else el.removeAttribute('style');paintTxtBar();placeTxtBar()}
+function alignIc(a){const L={left:[[4,20],[4,14],[4,18]],center:[[4,20],[7,17],[5,19]],right:[[4,20],[10,20],[6,20]]}[a]||[[4,20],[4,14],[4,18]];return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${L.map(([x1,x2],i)=>`<path d="M${x1} ${6+i*6}h${x2-x1}"/>`).join('')}</svg>`}
+/* "More" opens the full settings with this text's box showing */
+function tsMore(){if(!TXT)return;const k=TXT.k;hideTxtBar();if(!k.id){openPane('brand',null,'#b-name',true);return}
+ const s=sec(k.id);if(!s)return;JUMP={id:k.id,sel:`[data-sf="${k.id}|${k.path}"]`};if(state.selected!==k.id)selectSection(k.id);state.rightTab='section';if(!state.inspOpen)openPanel('insp');renderInspector();
+ requestAnimationFrame(()=>{if(JUMP&&jumpTo(JUMP.sel,true))JUMP=null;else{const m=k.path.match(/^(\w+)\.(\d+)/);if(m&&jumpTo(`[data-limove^="${k.id}|${m[1]}|${m[2]}|"]`))JUMP=null}})}
 function rgbHex(s){const m=String(s).match(/\d+(\.\d+)?/g);return m&&m.length>=3?toHex(+m[0],+m[1],+m[2]):'#000000'}
 function placeTxtBar(){const b=$('#txtbar'),el=txtEl();if(!b)return;if(!el||!el.getClientRects().length){b.hidden=true;return}b.hidden=false;const r=el.getBoundingClientRect(),cv=$('#canvas').getBoundingClientRect();
- if(r.bottom<cv.top||r.top>cv.bottom){b.hidden=true;return}
+ if(r.bottom<cv.top||r.top>cv.bottom){b.hidden=true;return}b.style.left='0px';
  const pill=el.closest('.sec,.hdr');const pr=pill&&pill.querySelector(':scope>.sec-pill,.hdr-pill');const pb=pr&&pr.offsetParent?pr.getBoundingClientRect():null;
  let top=r.top-b.offsetHeight-8,left=Math.max(8,Math.min(r.left,innerWidth-b.offsetWidth-8));const hit=pb&&top<pb.bottom&&top+b.offsetHeight>pb.top&&left<pb.right&&left+b.offsetWidth>pb.left;
  if(top<cv.top+4||hit)top=Math.min(r.bottom+8,innerHeight-b.offsetHeight-8);b.style.top=top+'px';b.style.left=left+'px'}
-function hideTxtBar(){const b=$('#txtbar');if(b)b.remove();TXT=null}
+function hideTxtBar(){const b=$('#txtbar');if(b)b.remove();TXT=null;TS_FONTS=false}
 document.addEventListener('focusout',e=>{if(!TXT)return;setTimeout(()=>{const a=document.activeElement;if(a&&a.closest&&(a.closest('#txtbar,.cpop')||a.matches('#site [data-edit],#site [data-editb]')))return;if(CPOP&&CPOP.inp.id==='tcInp')return;hideTxtBar()},120)});
 /* keep the text focused while using the bar or the color popover */
 document.addEventListener('mousedown',e=>{const t=e.target;if(t instanceof Element&&TXT&&t.closest('#txtbar,.cpop'))e.preventDefault()},true);
 document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element)||!TXT)return;
  if(t.closest('[data-tcopen]')){e.stopPropagation();const i=$('#tcInp');if(CPOP&&CPOP.inp===i){closeColorPop();return}const bb=t.closest('[data-tcopen]').getBoundingClientRect();i.style.left=bb.left+'px';i.style.top=(bb.bottom-2)+'px';colorPop(i);return}
- if(t.closest('[data-tcreset]')){e.stopPropagation();tcSet(TXT.k,'');const el=txtEl();if(el)el.style.color='';paintTxtBar();return}
+ if(t.closest('[data-tcreset]')){e.stopPropagation();tcSet(TXT.k,'');const h=tcHost(TXT.k);if(h&&h._ts){delete h._ts[TXT.k.path];if(!Object.keys(h._ts).length)delete h._ts;save()}TS_FONTS=false;tsLive();return}
+ if(t.closest('[data-tsz]')){e.stopPropagation();const d=+t.closest('[data-tsz]').dataset.tsz,z=+tsGet(TXT.k).z||100,n=Math.max(60,Math.min(250,z+d*10));tsSet(TXT.k,'z',n===100?'':n);return}
+ if(t.closest('[data-tsfont]')){e.stopPropagation();TS_FONTS=!TS_FONTS;paintTxtBar();placeTxtBar();return}
+ if(t.closest('[data-tsf]')){e.stopPropagation();TS_FONTS=false;tsSet(TXT.k,'f',t.closest('[data-tsf]').dataset.tsf);return}
+ if(t.closest('[data-tsb]')){e.stopPropagation();const on=t.closest('[data-tsb]').classList.contains('on');tsSet(TXT.k,'b',on?'0':'1');return}
+ if(t.closest('[data-tsi]')){e.stopPropagation();const on=t.closest('[data-tsi]').classList.contains('on');tsSet(TXT.k,'i',on?'0':'1');return}
+ if(t.closest('[data-tsal]')){e.stopPropagation();const o=['','left','center','right'],a=tsGet(TXT.k).a||'';tsSet(TXT.k,'a',o[(o.indexOf(a)+1)%o.length]);return}
+ if(t.closest('[data-tsmore]')){e.stopPropagation();tsMore();return}
  if(!t.closest('#txtbar,.cpop')&&!t.closest('#site [data-edit],#site [data-editb]'))setTimeout(()=>{const a=document.activeElement;if(!(a&&a.matches&&a.matches('#site [data-edit],#site [data-editb]')))hideTxtBar()},0)},true);
 document.addEventListener('input',e=>{const t=e.target;if(t instanceof Element&&t.id==='tcInp'&&TXT){const el=txtEl();tcSet(TXT.k,t.value);if(el)el.style.color=t.value;const a=$('#txtbar .tb-a');if(a)a.style.borderColor=t.value;if(!$('#txtbar .tb-reset'))paintTxtBar()}},true);
 addEventListener('scroll',()=>{if(TXT)placeTxtBar()},true);addEventListener('resize',()=>{if(TXT)placeTxtBar()});
+/* ---------- quick edit: a small bar right next to a clicked card, section or the page background with the most used looks ----------
+   Fill color, texture, photo and text color in one tap; "More" opens the full settings for it. */
+let QE=null,QE_DROP='';
+function qeTarget(q){return q.kind==='page'?'page':q.kind==='sec'?'sec:'+q.id:`pn:${q.id}:${q.k}`}
+function qeEl(){if(!QE)return null;const site=$('#site');if(!site)return null;if(QE.kind==='page')return null;const w=site.querySelector(`[data-sec="${QE.id}"]`);if(!w)return null;return QE.kind==='sec'?w:w.querySelector(`[data-pk="${QE.k}"]`)}
+function qeName(){if(!QE)return'';if(QE.kind==='page')return'Page background';const s=sec(QE.id);if(!s)return'';if(QE.kind==='sec')return CATALOG[s.type].name+' section';const i=pnKeys(s).indexOf(QE.k);return pnLabel(s,QE.k,Math.max(0,i)).replace(/^\d+\.\s*/,'')||'Card'}
+function qeTx(){if(!QE)return'';if(QE.kind==='page')return state.brand.colors.tx;const s=sec(QE.id);if(!s)return'';if(QE.kind==='sec')return s.tx||'';const ps=pnGet(s,QE.k);return ps&&ps.tx||''}
+function qeAny(){if(!QE)return false;if(QE.kind==='page')return bgActive(state.brand.bg);const s=sec(QE.id);if(!s)return false;if(QE.kind==='sec')return bgActive(s.bg)||isHex(s.tx);return pnOn(pnGet(s,QE.k))}
+function showQe(q,x,y){hideTxtBar();QE={...q,x,y};QE_DROP='';let b=$('#qebar');if(!b){b=document.createElement('div');b.id='qebar';b.setAttribute('role','toolbar');document.body.appendChild(b)}b.setAttribute('aria-label','Quick edit: '+qeName());paintQe();placeQe()}
+function hideQe(){const b=$('#qebar');if(b)b.remove();QE=null;QE_DROP=''}
+function paintQe(){const b=$('#qebar');if(!b||!QE)return;const tg=qeTarget(QE),bg=bgOf(tg)||{},c=state.brand.colors;
+ const el=qeEl(),cs=el?getComputedStyle(el):null;const fill=isHex(bg.color)?bg.color:(cs&&cs.backgroundColor&&!/rgba?\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor)?rgbHex(cs.backgroundColor):(QE.kind==='page'?c.bg:c.sf));
+ const tx=qeTx()||(cs?rgbHex(cs.color):c.tx),tex=bg.tex&&bg.tex!=='none'?bg.tex:'';
+ b.innerHTML=`<span class="qe-name">${esc(qeName())}</span><i class="tb-sep"></i>`
+ +`<button type="button" data-qe="fill" title="Fill color" aria-label="Fill color"><span class="qe-sw" style="background:${fill}"></span><span class="tb-l">Fill</span>${ic('down',12)}</button>`
+ +`<button type="button" data-qe="tex" class="${QE_DROP==='tex'?'on':''}" title="Texture" aria-label="Texture" aria-expanded="${QE_DROP==='tex'}"><span class="qe-sw qe-tex" style="${tex?esc(`background:${texLayer(bg)||texCss(tex,'#555',12)}`):''}"></span><span class="tb-l">Texture</span>${ic('down',12)}</button>`
+ +`<button type="button" data-pick="bgx:${tg}|photo" title="Background photo" aria-label="Background photo">${ic('image',15)}<span class="tb-l">Photo</span></button>`
+ +`<button type="button" data-qe="tx" title="Text color" aria-label="Text color"><span class="tb-a" style="border-color:${tx}">A</span><span class="tb-l">Text</span>${ic('down',12)}</button>`
+ +(QE.kind==='pn'?`<button type="button" data-qe="shape" class="${QE_DROP==='shape'?'on':''}" title="Border, corners and shadow" aria-expanded="${QE_DROP==='shape'}">${ic('layout',14)}<span class="tb-l">Shape</span>${ic('down',12)}</button>`:'')
+ +`<i class="tb-sep"></i><button type="button" data-qe="more" title="All settings">${ic('edit',13)}<span class="tb-l">More</span></button>`
+ +(qeAny()?`<button type="button" class="tb-reset" data-qe="reset" title="Back to the style's look">${ic('x',12)}<span class="tb-l"> Reset</span></button>`:'')
+ +`<button type="button" class="qe-x" data-qe="close" aria-label="Close quick edit">${ic('x',14)}</button>`
+ +`<input type="color" id="qeFill" value="${fill.toLowerCase()}" tabindex="-1" aria-hidden="true"><input type="color" id="qeTx" value="${String(tx).toLowerCase()}" tabindex="-1" aria-hidden="true">`
+ +(QE_DROP==='tex'?`<div class="tb-drop qe-texd" role="menu" aria-label="Textures">${Object.entries(TEXTURES).map(([k,l])=>`<button type="button" role="menuitem" data-qetex="${k}" class="${(bg.tex||'none')===k?'on':''}" title="${l}"><span class="tex-sw" style="${k==='none'?'':esc(`background:${texCss(k,'#555',14)}`)}"></span><small>${l}</small></button>`).join('')}</div>`:'')
+ +(QE_DROP==='shape'?qeShape():'')}
+function qeShape(){const s=sec(QE.id),ps=(s&&pnGet(s,QE.k))||{};const row=(p,label,opts)=>`<div class="qe-row"><small>${label}</small><div class="seg sm">${opts.map(([v,l])=>`<button type="button" data-qeset="${p}|${v}" class="${String(ps[p]==null?'':ps[p])===v?'on':''}">${l}</button>`).join('')}</div></div>`;
+ return `<div class="tb-drop qe-shape" role="group" aria-label="Border, corners and shadow">${row('bd','Border',[['','Default'],['none','None'],['thin','Thin'],['thick','Thick']])}${row('rad','Corners',[['','Default'],['0','Square'],['8','Soft'],['18','Round'],['32','Extra']])}${row('sh','Shadow',[['','Default'],['none','None'],['soft','Soft'],['strong','Strong']])}</div>`}
+function placeQe(){const b=$('#qebar');if(!b||!QE)return;const cv=$('#canvas');if(!cv){hideQe();return}const cr=cv.getBoundingClientRect();
+ if(innerWidth<=560){const up=!!$('#builder.sheet-open');b.classList.add('qe-dock');b.classList.toggle('qe-up',up);b.style.left='';b.style.top=up?Math.round(cr.top+8)+'px':'';b.hidden=false;return}b.classList.remove('qe-dock','qe-up');
+ const el=qeEl();let r;if(el){r=el.getBoundingClientRect();if(r.bottom<cr.top||r.top>cr.bottom){b.hidden=true;return}if(QE.kind==='sec')r={left:QE.x,top:Math.max(r.top,QE.y-40),bottom:QE.y+10}}else r={left:QE.x,top:QE.y-10,bottom:QE.y+10};
+ b.hidden=false;b.style.left='0px';let top=r.top-b.offsetHeight-8,left=Math.max(8,Math.min(r.left,innerWidth-b.offsetWidth-8));if(top<cr.top+4)top=Math.min(r.bottom+8,innerHeight-b.offsetHeight-8);
+ if(top<cr.top+4&&el)top=cr.top+8;b.style.top=Math.max(8,top)+'px';b.style.left=left+'px'}
+function qeSetTx(v){const q=QE;if(!q)return;if(q.kind==='page'){state.brand.colors.tx=v.toUpperCase();save();soft();return}const s=sec(q.id);if(!s)return;
+ if(q.kind==='sec'){if(v)s.tx=v.toUpperCase();else delete s.tx;save();if(!pnLive(s)||!$(`#site .sx-${s.id}`))soft();return}pnSet(q.id,q.k,'tx',v,true)}
+function qeMore(){const q=QE;hideQe();if(!q)return;if(q.kind==='page'){openPageBg();return}
+ if(q.kind==='pn'){PSEL[q.id]=q.k;markPn();if(state.selected!==q.id)selectSection(q.id);state.rightTab='section';if(!state.inspOpen)openPanel('insp');if(!pnRefresh())renderInspector();requestAnimationFrame(pnShow);return}
+ if(state.selected!==q.id)selectSection(q.id);state.rightTab='section';if(!state.inspOpen)openPanel('insp');renderInspector();requestAnimationFrame(()=>{dkGo('bg');const d=$('#inspector details.bgx');if(d){d.open=true;jumpFlash(d)}})}
+function qeReset(){const q=QE;if(!q)return;snap();if(q.kind==='page')delete state.brand.bg;else{const s=sec(q.id);if(!s)return;if(q.kind==='sec'){delete s.bg;delete s.tx}else pnDrop(s,q.k)}save();hard();requestAnimationFrame(()=>{paintQe();placeQe()})}
+document.addEventListener('mousedown',e=>{const t=e.target;if(t instanceof Element&&QE&&t.closest('#qebar'))e.preventDefault()},true);
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element)||!QE)return;
+ const b=t.closest('#qebar [data-qe]');if(b){e.stopPropagation();const a=b.dataset.qe;
+  if(a==='fill'||a==='tx'){const i=$(a==='fill'?'#qeFill':'#qeTx');if(CPOP&&CPOP.inp===i){closeColorPop();return}const bb=b.getBoundingClientRect();i.style.left=bb.left+'px';i.style.top=(bb.bottom-2)+'px';snap();if(QE_DROP){QE_DROP='';const d=$('#qebar .tb-drop');if(d)d.remove()}colorPop(i);return}
+  if(a==='tex'||a==='shape'){QE_DROP=QE_DROP===a?'':a;closeColorPop();paintQe();placeQe();return}
+  if(a==='more'){qeMore();return}if(a==='reset'){qeReset();return}if(a==='close'){hideQe();return}return}
+ const tx=t.closest('#qebar [data-qetex]');if(tx){e.stopPropagation();const tg=qeTarget(QE),bg=bgEnsure(tg),v=tx.dataset.qetex;snap();
+  /* dots and lines show up: light on a dark fill, dark on a light one */
+  if(v!=='none'&&!bg.photo&&!bg.grad){const el=qeEl(),cs=el?getComputedStyle(el):null,base=isHex(bg.color)?bg.color:cs&&!/rgba\(0, 0, 0, 0\)/.test(cs.backgroundColor)?rgbHex(cs.backgroundColor):(QE.kind==='page'?state.brand.colors.bg:state.brand.colors.sf);bg.tc=onColor(base)==='#FFFFFF'?'#FFFFFF':'#000000'}
+  setBgx(tg,'tex',v);QE_DROP='';requestAnimationFrame(()=>{paintQe();placeQe()});return}
+ const st=t.closest('#qebar [data-qeset]');if(st){e.stopPropagation();const[p,v]=st.dataset.qeset.split('|');snap();pnSet(QE.id,QE.k,p,v);requestAnimationFrame(()=>{paintQe();placeQe()});return}
+ if(t.closest('#qebar,.cpop'))return;
+ /* a click anywhere else closes it; clicking another spot on the page opens its own */
+ hideQe()},true);
+document.addEventListener('input',e=>{const t=e.target;if(!(t instanceof Element)||!QE)return;
+ if(t.id==='qeFill'){const tg=qeTarget(QE),bg=bgEnsure(tg);bg.color=t.value;if(!bgLive(tg,bg))soft();else{clearTimeout(bgT);bgT=setTimeout(soft,400)}save();const sw=$('#qebar [data-qe="fill"] .qe-sw');if(sw)sw.style.background=t.value;if(!$('#qebar [data-qe="reset"]'))paintQe();return}
+ if(t.id==='qeTx'){qeSetTx(t.value);const a=$('#qebar [data-qe="tx"] .tb-a');if(a)a.style.borderColor=t.value;if(!$('#qebar [data-qe="reset"]'))paintQe()}},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&QE){if(QE_DROP){QE_DROP='';paintQe()}else hideQe()}});
+addEventListener('scroll',()=>{if(QE)placeQe()},true);addEventListener('resize',()=>{if(QE)placeQe()});
+
 document.addEventListener('keydown',e=>{if(state.tab!=='builder'||!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();
  if((k==='y'||(k==='z'&&e.shiftKey))&&!e.target.matches('input,textarea')){e.preventDefault();e.stopImmediatePropagation();redo()}
  else if(k==='s'){e.preventDefault();e.stopImmediatePropagation();saveDesign()}},true);
@@ -2619,16 +2713,17 @@ renderInspector=(o=>function(){o.apply(this,arguments);if(JUMP&&state.rightTab==
 addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element)||state.tab!=='builder')return;const go=clickEdit(t);if(go)setTimeout(go,0)},true);
 function clickEdit(t){const site=t.closest('#site.edit');
  if(site){
-  if(t.closest('[data-pgbg]'))return openPageBg;
+  if(t.closest('[data-pgbg]'))return qePage;
   /* menu links still go to their page, then Pages & menu opens so the names and order can be changed */
   if(t.closest('.hnav [data-gopage],.mnav [data-gopage],.fnav [data-gopage],.mtab [data-gopage],.mtab [data-gosec]'))return()=>{if(!$('#pgMgr'))pagesMgr()};
   const fj=t.closest('[data-fjump]');if(fj&&!t.closest('[data-edit],[data-editb],[data-btn],a,button')){const[tab,key]=fj.dataset.fjump.split('|');return()=>openPane(tab,key,null,true)}
-  const s=t.closest('.sec[data-sec]');if(s){if(t.closest('.sec-pill,.sec-grab,.sec-tools'))return null;const pc=pnClick(t,s);if(pc)return pc;const sel=jumpSel(t,s),id=s.dataset.sec;JUMP=sel?{id,sel}:null;
+  const s=t.closest('.sec[data-sec]');if(s){if(t.closest('.sec-pill,.sec-grab,.sec-tools'))return null;const pc=pnClick(t,s);if(pc)return pc;const sel=jumpSel(t,s),id=s.dataset.sec;JUMP=sel?{id,sel}:null;if(!sel&&!t.closest(INNER)){const x=QXY.x,y=QXY.y;return()=>showQe({kind:'sec',id},x,y)}
    return sel?()=>{if(JUMP&&state.selected===id&&state.inspOpen&&jumpTo(sel))JUMP=null}:null}
   /* bare page between or around sections */
-  return t===site||t.matches('.sframe,.smain,.es-bar,.chat-dock')?openPageBg:null}
+  return t===site||t.matches('.sframe,.smain,.es-bar,.chat-dock')?qePage:null}
  /* the gray space around the preview */
- return (t.matches('.pane.prev')||t.closest('.dv-shell,#canvas'))&&!t.closest('#site,button,a,input,select,textarea,[role=button],label,.bp,.cpop')?openPageBg:null}
+ return (t.matches('.pane.prev')||t.closest('.dv-shell,#canvas'))&&!t.closest('#site,button,a,input,select,textarea,[role=button],label,.bp,.cpop,#qebar')?qePage:null}
+function qePage(){showQe({kind:'page'},QXY.x,QXY.y)}
 /* ---------- design hold: without a plan, saving is free for 1 hour and the design stays editable for 24 hours ----------
    The clock starts when a design is started (first section added) and is not reset by saving, autosaving or copying.
    When the free hour ends, saving stops and the saved copies are deleted; the open design can still be edited until
