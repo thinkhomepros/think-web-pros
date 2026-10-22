@@ -82,7 +82,8 @@
           "priceSpecification": [
             { "@type": "UnitPriceSpecification", "price": "1199", "priceCurrency": "USD", "name": "One-time design" },
             { "@type": "UnitPriceSpecification", "price": "79", "priceCurrency": "USD", "unitCode": "MON", "name": "Monthly plan" }
-          ] }
+          ] },
+        { "@type": "Offer", "name": "Custom", "url": "https://thinkwebpros.com/builder#quote", "priceCurrency": "USD", "description": "Priced per job for more elaborate designs: many pages, custom features and integrations, or a full rebrand, designed with the Think Web Pros team. Request a quote." }
       ]
     },
     {
@@ -94,7 +95,7 @@
         { "@type": "Question", "name": "Do I need design or coding skills to use Think Web Pros?",
           "acceptedAnswer": { "@type": "Answer", "text": "No. You click any words on the page to type over them, tap a photo to upload your own, and pick a style from the Design panel. There is no code and nothing to install." } },
         { "@type": "Question", "name": "How much does a Think Web Pros website cost?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Designing is free. When you are happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "Designing is free. When you are happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan. For more elaborate designs, the Custom plan is priced per job: request a quote and the team replies with a price." } },
         { "@type": "Question", "name": "Can I use my own logo, or make one if I do not have one?",
           "acceptedAnswer": { "@type": "Answer", "text": "Yes to both. Upload the logo you already have, or describe what you want to the AI logo maker. Your first 3 AI requests are free, and the AI logo package for unlimited changes is $49 once." } },
         { "@type": "Question", "name": "Can I build and edit my website from my phone?",
@@ -239,6 +240,15 @@ section{padding:84px 0}
 .tier ul{list-style:none;display:grid;gap:10px;margin-bottom:24px;flex:1}
 .tier li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:15.5px;color:var(--ink-2)}
 .tier li svg{color:var(--accent);margin-top:4px}
+.custom-plan{margin-top:20px;display:flex;align-items:center;gap:28px;background:var(--card);border:2px dashed color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:18px;padding:28px}
+.custom-plan p{color:var(--ink-2);margin-top:8px;max-width:44em}
+.cp-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cp-badge{font-size:12px;font-weight:700;color:var(--accent-text);background:var(--accent-soft);padding:5px 10px;border-radius:999px}
+.custom-plan ul{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:15px;color:var(--ink-2)}
+.custom-plan li{display:flex;align-items:center;gap:8px}
+.custom-plan li svg{color:var(--accent);flex:none}
+.custom-plan .btn{flex:none}
+@media (max-width:900px){.custom-plan{flex-direction:column;align-items:stretch;max-width:480px;margin-left:auto;margin-right:auto;padding:24px}}
 .addons{margin-top:28px;text-align:center;color:var(--muted);font-size:15.5px}
 .addons b{color:var(--ink)}
 
@@ -486,6 +496,19 @@ footer a:hover{color:var(--ink)}
           <a class="btn" href="/builder">Start with Pro</a>
         </article>
       </div>
+      <article class="custom-plan" id="custom">
+        <div>
+          <div class="cp-head"><h3>Custom</h3><span class="cp-badge">Priced per job</span></div>
+          <p>Need something more elaborate? Lots of pages, custom features, booking or ordering built around how you work, or a full rebrand. Tell us what you need and we'll send a quote, usually within one business day.</p>
+          <ul>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Designed with you by our team</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>No section limit</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Custom features and integrations</li>
+            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>Hosting and support plan to fit</li>
+          </ul>
+        </div>
+        <a class="btn pri" href="/builder#quote">Request a quote</a>
+      </article>
       <p class="addons">Add only what you need: <b>online booking</b> $15/mo, <b>online store</b> $29/mo, <b>custom domain &amp; email</b> $8/mo, <b>SEO boost</b> $49/mo, <b>live chat</b> $12/mo, and <b>point of sale</b> from $39/mo.</p>
     </div>
   </section>
@@ -507,7 +530,7 @@ footer a:hover{color:var(--ink)}
         </details>
         <details>
           <summary>How much does a Think Web Pros website cost?</summary>
-          <p>Designing is free. When you're happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan.</p>
+          <p>Designing is free. When you're happy with your site, plans start at a one-time $299 design fee plus $19 per month for Starter. Growth is $599 plus $39 per month and Pro is $1,199 plus $79 per month. Hosting and SSL are included in every plan. For more elaborate designs, our Custom plan is priced per job: <a href="/builder#quote">request a quote</a> and we'll reply with a price.</p>
         </details>
         <details>
           <summary>Can I use my own logo, or make one if I don't have one?</summary>
