@@ -11,7 +11,6 @@
     x: '<path d="M6 6l12 12M18 6L6 18"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
-    book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5M8 7h7"/>',
     chev: '<path d="m9 6 6 6-6 6"/>',
     left: '<path d="m15 6-6 6 6 6"/>'
   };
@@ -72,7 +71,7 @@
     panel.innerHTML =
       '<div class="hp-h"><h2 id="hpTitle">' + ic('help', 18) + ' Help</h2><button type="button" class="hp-x" data-helpclose aria-label="Close help">' + ic('x', 18) + '</button></div>' +
       '<label class="hp-search">' + ic('search', 17) + '<input id="hpQ" type="search" placeholder="Search help: logo, colors, add page…" autocomplete="off" aria-label="Search help"></label>' +
-      '<div class="hp-acts"><button type="button" class="hp-act pri" data-tourstart>' + ic('play', 16) + ' Take the tour</button><a class="hp-act" href="/guide" target="_blank" rel="noopener">' + ic('book', 16) + ' Full guide</a></div>' +
+      '<div class="hp-acts"><button type="button" class="hp-act pri" data-tourstart>' + ic('play', 16) + ' Take the tour</button></div>' +
       '<div class="hp-chips" role="group" aria-label="Topics"><button type="button" class="on" data-hpcat="">All</button>' + H.cats.map(function (c) { return '<button type="button" data-hpcat="' + c[0] + '">' + esc(c[1].replace(/,.*| and .*/, '')) + '</button>'; }).join('') + '</div>' +
       '<div class="hp-list" id="hpList" data-dev="' + device() + '"></div>';
     document.body.appendChild(panel);

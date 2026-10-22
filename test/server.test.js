@@ -58,13 +58,11 @@ describe('server', () => {
     assert.equal((await fetch(`${live.base}/js/app.js`)).status, 200);
   });
 
-  test('serves the studio guide at /guide and the help scripts', async () => {
-    const res = await fetch(`${live.base}/guide`);
-    assert.equal(res.status, 200);
-    const html = await res.text();
-    assert.match(html, /HowTo/);
-    assert.match(html, /\/js\/help-content\.js/);
-    for (const file of ['js/help-content.js', 'js/help.js', 'css/help.css', 'img/guide/pc-1.webp', 'img/guide/tab-8.webp', 'img/guide/ph-4.webp']) {
+  test('sends the old /guide page to the studio and serves the help scripts', async () => {
+    const res = await fetch(`${live.base}/guide`, { redirect: 'manual' });
+    assert.equal(res.status, 301);
+    assert.equal(res.headers.get('location'), '/builder');
+    for (const file of ['js/help-content.js', 'js/help.js', 'css/help.css']) {
       assert.equal((await fetch(`${live.base}/${file}`)).status, 200, file);
     }
     const studio = await (await fetch(`${live.base}/builder`)).text();

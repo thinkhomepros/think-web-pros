@@ -88,6 +88,8 @@ export function createApp({ ai, store, adminToken, aiPerMinute = 10 }) {
   });
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
+  // the old studio guide page now lives inside the studio as the tour and Help panel
+  app.get(['/guide', '/guide.html'], (req, res) => res.redirect(301, '/builder'));
   app.use(express.static(WEB_DIR, { extensions: ['html'] }));
   return app;
 }

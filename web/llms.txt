@@ -19,6 +19,5 @@
 
 - Home: https://thinkwebpros.com/
 - Design your site: https://thinkwebpros.com/builder
-- Studio guide (step-by-step tutorial for computer, tablet and phone, plus searchable help): https://thinkwebpros.com/guide
 - Pricing: https://thinkwebpros.com/#pricing
 - FAQ: https://thinkwebpros.com/#faq
