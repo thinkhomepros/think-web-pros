@@ -1973,7 +1973,7 @@ function askKit(ind,lk){const has=syncPage().some(p=>(p.sections||[]).length);co
 
 /* section library: what this kind of business usually needs, first */
 function libItem(t){const c=CATALOG[t],ad=rule(t).addon,a=ad&&addonById(ad);const owned=ad&&hasAddon(ad);
- return `<div class="libitem" draggable="true" data-new="${t}">${thumb(t)}<span class="libtxt"><b>${esc(c.name)}</b><small>${esc(t==='shop'&&hasPOS()?'Synced with your POS register':c.desc)}</small>${a?`<span class="badge ${owned?'ok':'gold'}">${owned?'In your plan':'Add-on '+money(a.price)+(a.billing==='monthly'?'/mo':'')}</span>`:''}</span><button type="button" class="iconbtn" data-add="${t}" aria-label="Add ${esc(c.name)}">${ic('plus',18)}</button></div>`}
+ return `<div class="libitem" draggable="true" data-new="${t}" data-add="${t}" role="button" tabindex="0" aria-label="Add ${esc(c.name)}" title="Click to add, or drag onto the page">${thumb(t)}<span class="libtxt"><b>${esc(c.name)}</b><small>${esc(t==='shop'&&hasPOS()?'Synced with your POS register':c.desc)}</small>${a?`<span class="badge ${owned?'ok':'gold'}">${owned?'In your plan':'Add-on '+money(a.price)+(a.billing==='monthly'?'/mo':'')}</span>`:''}</span><span class="lib-plus" aria-hidden="true">${ic('plus',44)}</span></div>`}
 function renderLibrary(){const k=state.biz&&state.biz.industry;const all=Object.keys(CATALOG).filter(t=>rule(t).enabled);
  if(!k||!KITS[k]||k==='other'){$('#library').innerHTML=all.map(libItem).join('');return}
  const ls=Object.values(kitLayouts(k));const rec=[...new Set(ls.flatMap(L=>L.home.concat(...(L.pages||[]).map(p=>p[2]))).map(x=>x.split(':')[0]).filter(t=>t!=='hero'&&all.includes(t)))].slice(0,6);
@@ -2271,6 +2271,7 @@ addEventListener('scroll',()=>{if(TXT)placeTxtBar()},true);addEventListener('res
 document.addEventListener('keydown',e=>{if(state.tab!=='builder'||!(e.metaKey||e.ctrlKey))return;const k=e.key.toLowerCase();
  if((k==='y'||(k==='z'&&e.shiftKey))&&!e.target.matches('input,textarea')){e.preventDefault();e.stopImmediatePropagation();redo()}
  else if(k==='s'){e.preventDefault();e.stopImmediatePropagation();saveDesign()}},true);
+document.addEventListener('keydown',e=>{const t=e.target;if(t instanceof Element&&t.matches('div.libitem[role=button]')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();t.click()}});
 document.addEventListener('keydown',e=>{const t=e.target;if(t instanceof Element&&t.matches('div.st-card[role=button]')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();t.click()}});
 
 /* ---------- section editing dock: a short pane across the bottom with slides you swipe through ---------- */
