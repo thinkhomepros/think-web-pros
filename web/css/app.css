@@ -2014,21 +2014,31 @@ body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
 .site.edit [data-jump]{cursor:pointer}
 .jump-flash{animation:jumpfl 1.5s ease}
 @keyframes jumpfl{0%,100%{box-shadow:0 0 0 0 transparent}20%,60%{box-shadow:0 0 0 3px #C2287C}}
-/* design hold: without a plan, designs are kept for 1 hour */
+/* design hold: without a plan, saving is free for 1 hour and editing lasts 24 hours */
 .hold-wrap{position:sticky;top:0;height:0;z-index:20;display:flex;justify-content:center;align-items:flex-start;pointer-events:none}
 .hold-wrap.at-bottom{top:auto;bottom:0;align-items:flex-end}
 .hold-wrap[hidden]{display:none}
-.hold-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:600 12px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.1);white-space:nowrap}
+.hold-pill{pointer-events:auto;display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:7px 15px;border-radius:999px;border:1.5px solid color-mix(in srgb,var(--accent) 40%,var(--line));background:var(--panel);color:var(--ink);font:600 13.5px/1.2 inherit;font-family:inherit;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.14);white-space:nowrap;transition:font-size .3s,padding .3s,background .3s,box-shadow .3s}
+.hold-pill svg{color:var(--accent);flex:none}
 .hold-pill u{color:var(--accent);text-underline-offset:2px}
-.hold-pill:hover{color:var(--ink)}
-.hold-pill.low{background:var(--warn-soft);color:var(--warn);border-color:color-mix(in srgb,var(--warn) 35%,transparent)}
-.hold-pill.out{background:var(--bad-soft);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 35%,transparent)}
-@media (max-width:760px){ .hold-pill{margin:0 0 10px;font-size:12px;padding:6px 12px} }
+.hold-pill:hover{filter:brightness(1.05)}
+/* last 15 minutes: bigger and bright amber */
+.hold-pill.soon{font-size:15.5px;padding:9px 18px;background:#FFC21A;color:#3B2B00;border-color:#E0A100;box-shadow:0 8px 24px rgba(224,161,0,.45)}
+.hold-pill.soon svg,.hold-pill.soon u{color:#3B2B00}
+/* last 5 minutes: biggest, bright red, flashing */
+.hold-pill.urgent{font-size:18px;padding:11px 22px;background:#FF2D55;color:#fff;border-color:#D70F3B;box-shadow:0 0 0 4px rgba(255,45,85,.3),0 10px 30px rgba(255,45,85,.55);animation:holdFlash 1s steps(1,end) infinite}
+.hold-pill.urgent svg,.hold-pill.urgent u{color:#fff}
+@keyframes holdFlash{50%{background:#FFE14D;color:#7A0019;border-color:#FFB800;box-shadow:0 0 0 6px rgba(255,225,77,.45),0 10px 30px rgba(255,184,0,.6)}}
+@media (prefers-reduced-motion:reduce){ .hold-pill.urgent{animation:none} }
+/* free hour over: saving is off */
+.hold-pill.out{background:var(--bad-soft);color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent)}
+.hold-pill.out svg{color:var(--bad)}
+@media (max-width:760px){ .hold-pill{margin:0 0 10px;font-size:13px;padding:7px 13px;max-width:calc(100vw - 32px);white-space:normal;text-align:center} .hold-pill.soon{font-size:14.5px} .hold-pill.urgent{font-size:16px;padding:10px 16px} }
 .hold-note{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 12px;border-radius:10px;background:var(--warn-soft);color:var(--ink);font-size:13.5px;max-width:680px}
 .hold-note svg{flex:none;margin-top:2px;color:var(--warn)}
 .hold-note.ok{background:var(--ok-soft)}.hold-note.ok svg{color:var(--ok)}
 .dsc-hold{display:flex;gap:4px;align-items:center;color:var(--warn)!important}
-.dsc-hold.low{color:var(--bad)!important;font-weight:600}
+.dsc-hold.low,.dsc-hold.off{color:var(--bad)!important;font-weight:600}
 .ds-hold{display:flex;gap:5px;align-items:center;margin-top:6px;font-size:11.5px;color:var(--muted);background:none;border:0;padding:0;font-family:inherit;text-align:left;cursor:pointer}
 button.ds-hold:hover{color:var(--accent)}
 .store-plan{border-style:solid;border-color:var(--line)}
