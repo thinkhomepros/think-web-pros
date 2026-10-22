@@ -2038,7 +2038,7 @@ button.ds-hold:hover{color:var(--accent)}
 @media (max-width:1380px){ body.one-bar .full-btn span{display:none} }
 @media (max-width:900px){ body.one-bar .full-btn{display:none} }
 body.full-on .pane.prev{position:fixed;inset:0;z-index:2000}
-body.full-on .prevbar,body.full-on .pagebar,body.full-on .coach,body.full-on #fLib,body.full-on #fInsp,body.full-on .bp,body.full-on #btnPop,body.full-on #txtbar,body.full-on .cpop,body.full-on .ds-menu,body.full-on .ob-menu,body.full-on #modalRoot,body.full-on .sec-tools{display:none!important}
+body.full-on .prevbar,body.full-on .pagebar,body.full-on .coach,body.full-on #fLib,body.full-on #fInsp,body.full-on .bp,body.full-on #btnPop,body.full-on #txtbar,body.full-on .cpop,body.full-on .ds-menu,body.full-on .ob-menu,body.full-on #modalRoot,body.full-on .sec-tools,body.full-on .hold-wrap{display:none!important}
 body.full-on .pf-lb{z-index:2100}
 body.full-on #toasts{z-index:2200}
 body.full-on .canvas{padding:0;background:#fff}
