@@ -2033,3 +2033,21 @@ body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
 button.ds-hold:hover{color:var(--accent)}
 .store-plan{border-style:solid;border-color:var(--line)}
 .store-plan h3{display:flex;gap:6px;align-items:center}
+/* full screen: the studio steps aside and the site fills the screen */
+.full-btn{display:inline-flex;align-items:center;gap:4px}
+@media (max-width:1380px){ body.one-bar .full-btn span{display:none} }
+@media (max-width:900px){ body.one-bar .full-btn{display:none} }
+body.full-on .pane.prev{position:fixed;inset:0;z-index:2000}
+body.full-on .prevbar,body.full-on .pagebar,body.full-on .coach,body.full-on #fLib,body.full-on #fInsp,body.full-on .bp,body.full-on #btnPop,body.full-on #txtbar,body.full-on .cpop,body.full-on .ds-menu,body.full-on .ob-menu,body.full-on #modalRoot,body.full-on .sec-tools{display:none!important}
+body.full-on .pf-lb{z-index:2100}
+body.full-on #toasts{z-index:2200}
+body.full-on .canvas{padding:0;background:#fff}
+body.full-on .device{border-radius:0;box-shadow:none;border:0;margin:0 auto}
+body.full-on .device .chrome{display:none}
+body.full-on .dv-shell.framed .device .chrome{display:flex}
+body.full-on .pane.prev:has(.dv-shell.framed){background:#1A1B1F}
+body.full-on .device[data-device=phone]:not(.fitted){max-width:none!important;border:0}
+.full-exit{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));z-index:2150;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-radius:999px;background:rgba(20,22,26,.78);color:#fff;font:600 13px/1 Figtree,system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:opacity .3s ease}
+.full-exit:hover,.full-exit:focus-visible{background:rgba(20,22,26,.92);opacity:1}
+.full-exit.idle{opacity:.35}
+@media (max-width:600px){ .full-exit{top:auto;right:auto;left:calc(14px + env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));width:44px;height:44px;padding:0;justify-content:center} .full-exit span{display:none} }

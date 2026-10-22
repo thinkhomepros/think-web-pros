@@ -2351,7 +2351,7 @@ function pageMenuHtml(){return `<div class="obm-h">Pages</div>${state.pages.map(
 function moreMenuHtml(){const w=OBW(),d=state.brand.mode==='dark';let h='';
  if(w<=420)h+=obItem('data-toggle="lib"','menu','Sections','Add, move or remove sections');
  if(w<=600)h+=obItem('data-obredo','restart','Redo','',false).replace('<svg','<svg style="transform:scaleX(-1)"');
- if(w<=900){h+=`<div class="obm-h">Preview</div>`+[['desktop','Computer'],['tablet','Tablet'],['phone','Phone']].map(([k,l])=>obItem(`data-obdev="${k}"`,k,l,'',state.device===k)).join('');if(w<=600)h+=obItem('data-mode="toggle"',d?'sun':'moon',d?'Show light version':'Show dark version')}
+ if(w<=900){h+=`<div class="obm-h">Preview</div>`+[['desktop','Computer'],['tablet','Tablet'],['phone','Phone']].map(([k,l])=>obItem(`data-obdev="${k}"`,k,l,'',state.device===k)).join('');if(w<=600)h+=obItem('data-mode="toggle"',d?'sun':'moon',d?'Show light version':'Show dark version');h+=obItem('data-fullgo','full','Full screen','See your site the way visitors do')}
  h+=`<div class="obm-h">Design</div>${obItem('data-dsact="save"','save','Save to My designs')}${obItem('data-dsact="copy"','copy','Save as a copy')}${obItem('data-dsact="new"','plus','New design')}${obItem('data-dsact="all"','folder','Open My designs')}${obItem('data-dsact="quick"','spark','Quick start form')}${obItem('data-dsact="over"','restart','Start over')}`;if(w<=900)h+=`<div class="obm-sep"></div>${obItem('data-helpopen','help','Help &amp; tutorial','')}`;return h}
 document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;let el;
  if(el=t.closest('#obApp')){e.stopPropagation();obMenu(el,appMenuHtml());return}
@@ -2565,6 +2565,32 @@ document.addEventListener('click',e=>{const t=e.target instanceof Element&&e.tar
  if(t.closest('[data-storage]')){e.stopPropagation();openStorage();return}},true);
 document.addEventListener('submit',e=>{if(e.target.id==='storageForm'){e.preventDefault();e.stopPropagation();placeStorage()}},true);
 (function holdStartup(){const go=()=>{if(!designsReady){setTimeout(go,100);return}holdMigrate();const n=holdPurge(true);if(n){hard();toast(`Designs are kept for ${holdHours()} without a plan. ${n===1?'1 older design was':n+' older designs were'} cleared.`,{label:'Why?',fn:holdInfo})}holdTick();setInterval(holdTick,1000)};go()})();
+
+/* ---------- full screen: hide the studio and show the site edge to edge, the way a visitor sees it ---------- */
+Object.assign(P,{full:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',fullx:'<path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>'});
+let FULL=null;
+const fsDoc=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
+function fullBtn(){let b=$('#fullExit');if(b)return b;b=document.createElement('button');b.type='button';b.id='fullExit';b.className='full-exit';b.setAttribute('data-fullx','');b.setAttribute('aria-label','Exit full screen');b.innerHTML=`${ic('fullx',16)}<span>Exit full screen</span>`;document.body.appendChild(b);return b}
+function fullWake(){const b=$('#fullExit');if(!b)return;b.classList.remove('idle');const tb=$('#site .mtab');b.style.bottom=tb&&tb.offsetHeight&&innerWidth<=600?`calc(${Math.round(innerHeight-tb.getBoundingClientRect().top)+12}px + env(safe-area-inset-bottom,0px))`:'';clearTimeout(fullWake._t);fullWake._t=setTimeout(()=>b.classList.add('idle'),2600)}
+function fullOn(){if(FULL||state.tab!=='builder'||!state.onboarded)return;const a=document.activeElement;if(a&&a.blur)a.blur();
+ obMenuClose();closeColorPop();closeModal();ask0();$('#toasts').innerHTML='';FULL={native:false};document.body.classList.add('full-on');
+ const site=$('#site');site.classList.remove('edit');paintSite(site,false);fullBtn();fullWake();
+ const r=document.documentElement,go=r.requestFullscreen||r.webkitRequestFullscreen;
+ if(go){try{const pr=go.call(r);FULL.native=true;if(pr&&pr.catch)pr.catch(()=>{if(FULL)FULL.native=false})}catch(e){FULL.native=false}}
+ requestAnimationFrame(()=>{fitDevice();$('#canvas').scrollTop=0});
+ toast(matchMedia('(hover:hover)').matches?'Full screen. Press Esc to go back to editing.':'Full screen. Tap Exit full screen to go back to editing.')}
+function fullOff(){if(!FULL)return;const nat=fsDoc();FULL=null;document.body.classList.remove('full-on');clearTimeout(fullWake._t);const b=$('#fullExit');if(b)b.remove();$('#toasts').innerHTML='';
+ if(nat){const x=document.exitFullscreen||document.webkitExitFullscreen;if(x)try{const pr=x.call(document);if(pr&&pr.catch)pr.catch(()=>{})}catch(e){}}
+ const site=$('#site');site.classList.add('edit');paintSite(site,true);requestAnimationFrame(()=>{fitDevice();dockSync()})}
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{if(FULL&&FULL.native&&!fsDoc())fullOff();else if(FULL)requestAnimationFrame(fitDevice)}));
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;
+ if(t.closest('[data-fullgo]')){e.stopPropagation();obMenuClose();fullOn();return}
+ if(t.closest('[data-fullx]')){e.stopPropagation();fullOff()}},true);
+document.addEventListener('keydown',e=>{if(FULL&&e.key==='Escape'&&!$('.pf-lb')){e.preventDefault();fullOff()}});
+['pointermove','pointerdown','scroll'].forEach(ev=>document.addEventListener(ev,()=>{if(FULL)fullWake()},{passive:true,capture:true}));
+renderSites=(o=>function(){if(FULL&&state.tab==='builder'){paintSite($('#site'),false);renderUrl();return}return o.apply(this,arguments)})(renderSites);
+renderBuilder=(o=>function(){const r=o.apply(this,arguments);if(FULL){const s=$('#site');s.classList.remove('edit');paintSite(s,false)}return r})(renderBuilder);
+fitDevice=(o=>function(){o.apply(this,arguments);const d=$('#device');if(FULL&&d&&state.device==='desktop'&&innerWidth>=1024){d.style.zoom='';d.style.width='100%';d.style.maxWidth='none';d.classList.remove('fitted')}})(fitDevice);
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
