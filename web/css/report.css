@@ -1,0 +1,56 @@
+/* "Report a problem" form (js/report.js), used by the studio and the landing page, plus its Admin list.
+   Colors come from each page's own variables: the studio has --panel, the landing page has --card. */
+.rp-bg{position:fixed;inset:0;z-index:2147483000;background:rgba(10,11,14,.55);display:grid;place-items:center;padding:16px;overflow:auto;opacity:0;transition:opacity .15s}
+.rp-bg.in{opacity:1}
+.rp-bg[hidden]{display:none}
+.rp{--rp-bg:var(--panel,var(--card,#fff));--rp-2:var(--panel-2,var(--bg-2,#f6f6f8));position:relative;width:min(520px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:var(--rp-bg);color:var(--ink,#1c1d22);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);font:400 15px/1.5 var(--f-body,Figtree,system-ui,-apple-system,"Segoe UI",sans-serif);transform:translateY(8px);transition:transform .15s}
+.rp-bg.in .rp{transform:none}
+.rp-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 20px 6px}
+.rp-h h2{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:800;letter-spacing:-.01em;margin:0}
+.rp-h h2 svg{color:var(--accent,#C2287C)}
+.rp-x{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:0;background:transparent;color:inherit;cursor:pointer}
+.rp-x:hover{background:var(--rp-2)}
+.rp-body{padding:8px 20px 4px;overflow:auto;display:grid;gap:14px}
+.rp-f{display:grid;gap:6px;margin:0}
+.rp-f>span{font-weight:700;font-size:14px}
+.rp-f small{font-weight:400;color:var(--muted,#5f616b)}
+.rp-f textarea,.rp-f input{width:100%;font:inherit;color:inherit;background:var(--rp-bg);border:1.5px solid var(--line,#dcdde3);border-radius:10px;padding:10px 12px;resize:vertical;min-height:44px}
+.rp-f textarea:focus,.rp-f input:focus{outline:2px solid var(--accent,#C2287C);outline-offset:1px;border-color:transparent}
+.rp-shot{border:1.5px dashed var(--line,#dcdde3);border-radius:12px;padding:14px;text-align:center;cursor:pointer;background:var(--rp-2)}
+.rp-shot:hover,.rp-shot.over,.rp-shot:focus-visible{border-color:var(--accent,#C2287C);outline:none}
+.rp-shot.has{cursor:default;padding:10px}
+.rp-shot-in{display:grid;justify-items:center;gap:4px;color:var(--muted,#5f616b)}
+.rp-shot-in b{color:var(--ink,#1c1d22);font-size:14px}
+.rp-shot-in small{font-size:12.5px}
+.rp-shot img{max-height:180px;max-width:100%;border-radius:8px;border:1px solid var(--line,#dcdde3)}
+.rp-ctx{font-size:13px;color:var(--muted,#5f616b)}
+.rp-ctx summary{cursor:pointer;font-weight:600}
+.rp-ctx ul{margin:6px 0 0 18px;padding:0;display:grid;gap:2px}
+.rp-ctx b{color:var(--ink,#1c1d22);font-weight:600}
+.rp-err{margin:0;padding:9px 12px;border-radius:10px;background:var(--bad-soft,#fde7e4);color:var(--bad,#b42318);font-size:14px;font-weight:600}
+.rp-err[hidden]{display:none}
+.rp-f2{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px 18px}
+.rp-btn{height:42px;padding:0 18px;border-radius:999px;border:1.5px solid var(--line,#dcdde3);background:var(--rp-bg);color:inherit;font:700 14px/1 inherit;font-family:inherit;cursor:pointer}
+.rp-btn.sm{height:32px;padding:0 12px;font-size:13px}
+.rp-btn.pri{background:var(--accent,#C2287C);border-color:var(--accent,#C2287C);color:#fff}
+.rp-btn:disabled{opacity:.6;cursor:wait}
+.rp-thanks{display:grid;justify-items:center;text-align:center;gap:6px;padding:18px 0 6px}
+.rp-thanks svg{color:var(--ok,#067647)}
+.rp-thanks h3{font-size:18px;margin:0}
+.rp-thanks p{margin:0;color:var(--muted,#5f616b)}
+@media (max-width:600px){
+  .rp-bg{place-items:end center;padding:0}
+  .rp{width:100%;max-height:92dvh;border-radius:18px 18px 0 0}
+  .rp-f2 .rp-btn{flex:1}
+}
+@media (prefers-reduced-motion:reduce){.rp-bg,.rp{transition:none}}
+
+/* Admin › Problem reports */
+.rp-what summary{cursor:pointer}
+.rp-what p{margin:6px 0;white-space:pre-wrap}
+.rp-what ul{margin:4px 0 0 16px;padding:0}
+.rp-what code{font-size:12px;word-break:break-word}
+.rp-msg{margin-top:10px;font-size:14px;font-weight:600}
+.rp-msg.bad{color:var(--bad,#b42318)}
+.rp-tbl td{vertical-align:top}
+.rp-tbl a{color:var(--accent)}

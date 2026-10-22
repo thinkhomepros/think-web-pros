@@ -12,7 +12,8 @@
     search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
     play: '<circle cx="12" cy="12" r="9"/><path d="M10 8.5v7l6-3.5z"/>',
     chev: '<path d="m9 6 6 6-6 6"/>',
-    left: '<path d="m15 6-6 6 6 6"/>'
+    left: '<path d="m15 6-6 6 6 6"/>',
+    flag: '<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>'
   };
   var ic = function (n, s) { return '<svg width="' + (s || 16) + '" height="' + (s || 16) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[n] + '</svg>'; };
 
@@ -71,7 +72,7 @@
     panel.innerHTML =
       '<div class="hp-h"><h2 id="hpTitle">' + ic('help', 18) + ' Help</h2><button type="button" class="hp-x" data-helpclose aria-label="Close help">' + ic('x', 18) + '</button></div>' +
       '<label class="hp-search">' + ic('search', 17) + '<input id="hpQ" type="search" placeholder="Search help: logo, colors, add page…" autocomplete="off" aria-label="Search help"></label>' +
-      '<div class="hp-acts"><button type="button" class="hp-act pri" data-tourstart>' + ic('play', 16) + ' Take the tour</button></div>' +
+      '<div class="hp-acts"><button type="button" class="hp-act pri" data-tourstart>' + ic('play', 16) + ' Take the tour</button><button type="button" class="hp-act" data-report>' + ic('flag', 16) + ' Report a problem</button></div>' +
       '<div class="hp-chips" role="group" aria-label="Topics"><button type="button" class="on" data-hpcat="">All</button>' + H.cats.map(function (c) { return '<button type="button" data-hpcat="' + c[0] + '">' + esc(c[1].replace(/,.*| and .*/, '')) + '</button>'; }).join('') + '</div>' +
       '<div class="hp-list" id="hpList" data-dev="' + device() + '"></div>';
     document.body.appendChild(panel);

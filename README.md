@@ -30,7 +30,7 @@ npm run dev            # http://localhost:3000 (Studio at /builder)
 Set environment variables in your shell or host (the server doesn't read `.env` on its own; use `node --env-file=.env server/index.js` if you want it to):
 
 - `ANTHROPIC_API_KEY` turns on the live AI logo maker. Without it, the logo maker uses its built-in quick ideas.
-- `ADMIN_TOKEN` unlocks `GET /api/orders`. Without it, orders can be placed but not read over the API.
+- `ADMIN_TOKEN` unlocks `GET /api/orders` and the problem reports in Admin. Without it, orders can be placed but not read over the API.
 - `DATA_DIR` is where orders are saved (default `data/`).
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` turn on the bot check, and `AI_PER_DAY` / `AI_DAILY_TOTAL` change the AI limits. See Security below.
 
@@ -57,6 +57,10 @@ Limits to know before taking real orders: orders are saved to the function's tem
 | POST | `/api/orders` | `{ order, design }` from checkout. Saved as JSON under `DATA_DIR/orders`. |
 | GET | `/api/orders` | Admin list (`Authorization: Bearer <ADMIN_TOKEN>`). |
 | GET | `/api/orders/:id` | One order with its full design. |
+| POST | `/api/reports` | `{ report }` from "Report a problem": what happened, optional email and screenshot, plus page, browser, screen, preview device and recent script errors. 5 per hour per visitor, bot checked. Kept in Upstash Redis when it is connected, otherwise under `DATA_DIR/reports`. |
+| GET | `/api/reports` | Admin list without screenshots. The studio shows it under Admin › Problem reports (enter `ADMIN_TOKEN` there). |
+| GET | `/api/reports/:id` | One report with its screenshot. |
+| PATCH | `/api/reports/:id` | `{ status }`: `New`, `In progress` or `Fixed`. |
 
 ## Security
 

@@ -191,9 +191,12 @@ window.TWP_HELP = (function () {
     { id: 'cant-see-page', cat: 'trouble', title: 'The panel covers my page',
       keys: 'covered blocking cant see page panel too big sheet small screen',
       body: '<p>The panel scrolls the section you are editing into view above it. <span data-only="touch">Drag the handle at the top of the panel down to make it shorter, or close it with ✕.</span><span data-only="pc">Close it with ✕ when you are done, or switch the preview to Phone to see more of the page at once.</span></p>' },
+    { id: 'report-problem', cat: 'trouble', title: 'Report a problem or bug',
+      keys: 'report problem bug issue broken error not working glitch crash feedback wrong screenshot',
+      body: '<p>If something doesn\'t work the way it should, choose <b>Report a problem</b> at the top of this Help panel. <span data-only="pc">It is also in the main menu (the logo button in the top left).</span><span data-only="touch">It is also in the main menu (the logo button in the top left) and the <b>⋯</b> menu.</span></p><ol><li>Say what you were doing and what went wrong.</li><li>Add your email if you\'d like to hear back when it\'s fixed.</li><li>Add a screenshot if you can: choose a picture, drag one in, or paste it with <b>Ctrl+V</b>.</li></ol><p>Your report includes the page you were on, your browser and screen size, the preview you had open and any errors the page noticed, so we can find the problem faster. It never includes your design or photos.</p>' },
     { id: 'help', cat: 'trouble', title: 'Get more help',
       keys: 'help support contact question stuck human person',
-      body: '<p>Search this Help panel with a few words, like "logo" or "add page". To see the main controls again, choose <b>Take the tour</b> at the top of this panel. Once your site is live, every plan includes support from our team, and Growth and Pro include edits done for you each month.</p>' }
+      body: '<p>Search this Help panel with a few words, like "logo" or "add page". To see the main controls again, choose <b>Take the tour</b> at the top of this panel. If something is broken, choose <b>Report a problem</b> there and tell us what happened. Once your site is live, every plan includes support from our team, and Growth and Pro include edits done for you each month.</p>' }
   ];
 
   /* search: every word must match somewhere; titles and keywords count more than body text */
