@@ -15,6 +15,7 @@ const TWP=window.TWP=window.TWP||{};
 
 let methods=null;
 const ready=fetch('/api/config').then(r=>r.ok?r.json():{}).catch(()=>({})).then(c=>{methods=c.payments||null;TWP.payMethods=methods;return methods});
+TWP.payReady=ready;
 const anyMethod=m=>!!(m&&(m.card||m.paypal||m.zelle));
 
 async function api(path,opts={}){
