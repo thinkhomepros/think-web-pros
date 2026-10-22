@@ -2004,3 +2004,13 @@ body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
 .kc-chip .sw i{flex:1;display:block}
 .kit-modal .kc-bar{--tx:var(--ink);--bg-s:var(--panel-2);--p:var(--accent)}
 .kc-chip.kc-more{border-style:dashed;padding-left:10px}
+
+/* click-to-edit: page background strip under the footer, and a flash on the control a click jumped to */
+.site .pgbg-add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-top:1px dashed color-mix(in srgb,var(--tx) 22%,transparent);background:color-mix(in srgb,var(--tx) 3%,var(--bg-s));color:color-mix(in srgb,var(--tx) 55%,transparent);font:600 12.5px/1 'Figtree',system-ui,sans-serif;padding:10px 12px;cursor:pointer;transition:background .15s,color .15s}
+.site .pgbg-add small{font-size:11px;opacity:.7;font-weight:500}
+.site .pgbg-add:hover{background:#FBE3F0;color:#8E1D5B}
+.site.edit .foot [data-fjump],.site.edit .foot[data-fjump]{cursor:pointer}
+.site.edit .foot [data-fjump]:hover,.site.edit [data-jump]:hover{outline:1px dashed var(--accent-line);outline-offset:3px;border-radius:4px}
+.site.edit [data-jump]{cursor:pointer}
+.jump-flash{animation:jumpfl 1.5s ease}
+@keyframes jumpfl{0%,100%{box-shadow:0 0 0 0 transparent}20%,60%{box-shadow:0 0 0 3px #C2287C}}
