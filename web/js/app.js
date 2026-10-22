@@ -1888,7 +1888,7 @@ function subHero(name,F,sk){const s=kitSection('hero',F,sk,'centered');Object.as
 function buildFromForm(f,sk,lk,opt){opt=opt||{};const F=fillF(f);const K=kitOf(F.industry),L=K.layouts[lk]||K.layouts[kitFirst(F.industry)];sk=STYLES[sk]?sk:L.style;
  const st=STYLES[sk],tk=opt.theme&&(L.theme||K.theme)&&admin.themes[L.theme||K.theme]!==false?(L.theme||K.theme):st.theme,th=THEMES[tk];
  const ind=INDUSTRIES[F.industry]||INDUSTRIES.other;const goal=F.goal||ind.goal;
- const mode=opt.theme&&tk!==st.theme?(lum(THEMES[tk].colors.bg)<.25?'dark':'light'):(state.brand.mode||'light'),pal=themePal(tk);
+ const mode=opt.theme&&tk!==st.theme?(lum(THEMES[tk].colors.bg)<.25?'dark':'light'):(state.brand.mode||'light'),pal=opt.cols?kitColorPal(themePal(tk)):themePal(tk);
  const brand={...state.brand,name:F.name,tagline:fillT(ind.tagline,F),logo:f.logo,showName:true,logoSize:f.logo?48:44,style:sk,look:st.look,theme:tk,mode,pal,colors:{...pal[mode]},font:th.font,radius:th.radius,btn:th.btn,header:goal==='call'&&F.phone?'call':st.header,ctaLabel:'',ctaLink:null,bg:null};
  const mkS=spec=>{const[t,v]=spec.split(':');return CATALOG[t]&&rule(t).enabled?kitSection(t,{...F,goal},sk,v):null};
  const home=L.home.map(mkS).filter(Boolean);
@@ -1902,7 +1902,7 @@ function nextSuggested(){const have=new Set(state.sections.filter(x=>!x.hidden).
  const order=k&&KITS[k]?[...new Set(kitLayouts(k)[kitFirst(k)].home.map(x=>x.split(':')[0]).concat(SUGGEST_ORDER))]:SUGGEST_ORDER;
  return order.find(t=>CATALOG[t]&&!have.has(t)&&rule(t).enabled&&!(rule(t).addon&&!hasAddon(rule(t).addon)))}
 function applyKit(ind,lk){const L=kitLayouts(ind)[lk]||kitLayouts(ind)[kitFirst(ind)];snap();state.biz.industry=ind;
- const r=buildFromForm({...bizForm(),industry:ind,goal:(INDUSTRIES[ind]||INDUSTRIES.other).goal},L.style,lk,{theme:true});
+ const r=buildFromForm({...bizForm(),industry:ind,goal:(INDUSTRIES[ind]||INDUSTRIES.other).goal},L.style,lk,{theme:true,cols:true});
  if(!state.biz.name)r.brand.name=r.brand.name||state.brand.name;
  state.brand=r.brand;state.pages=r.pages;state.pageId='home';state.sections=r.pages[0].sections;state.started=true;state.selected=null;state.announce=r.announce;ANN_CLOSED=false;MOPEN=false;
  Object.keys(ssIdx).forEach(k=>delete ssIdx[k]);Object.keys(PF).forEach(k=>delete PF[k]);
@@ -1926,21 +1926,36 @@ function bizWrite(){const b=state.biz;if(!b.industry)return;snap();syncPage();co
 /* ---------- business type picker and layout cards ---------- */
 let KPICK=null;
 function kitTiles(cur){return `<div class="kt-grid" role="list">${Object.keys(INDUSTRIES).map(k=>{const K=kitOf(k);return `<button type="button" role="listitem" class="kt${cur===k?' on':''}" data-kitpick="${k}" title="${esc(INDUSTRIES[k].label)}">${ic(K.icon,22)}<b>${esc(K.short)}</b></button>`}).join('')}</div>`}
-function kitPreview(ind,lk){const L=kitLayouts(ind)[lk];const e=EDIT;const r=buildFromForm({...bizForm(),industry:ind},L.style,lk,{theme:true});const h=miniOf(r.brand,r.sections,3);EDIT=e;return h}
+function kitPreview(ind,lk){const L=kitLayouts(ind)[lk];const e=EDIT;const r=buildFromForm({...bizForm(),industry:ind},L.style,lk,{theme:true,cols:true});const h=miniOf(r.brand,r.sections,3);EDIT=e;return h}
 const kitTitle=k=>k&&k!=='other'&&KITS[k]?`${KITS[k].short} layouts`:'Starter layouts';
 const kitBlank=()=>`<div class="kl kl-blank"><button type="button" class="kl-pv" data-start="blank" aria-label="Start with a blank page"><span class="es-ill blank"><i></i></span></button><div class="kl-b"><b>Blank page</b><p>Add each section yourself, with suggestions when you want them.</p><button type="button" class="btn sm" data-start="blank">Start blank</button></div></div>`;
 const kitOr=()=>`<h4 class="kl-or">OR CHOOSE FROM THESE POPULAR LAYOUTS</h4>`;
-function kitLook(ind,L){const tk=L.theme||kitOf(ind).theme||(STYLES[L.style]||STYLES.classic).theme,t=THEMES[tk]||THEMES.harbor;
- return `<p class="kl-look"><span class="sw">${['p','a','sf'].map(c=>`<i style="background:${t.colors[c]}"></i>`).join('')}</span>${esc((STYLES[L.style]||STYLES.classic).name)} style · ${esc(t.name)} colors</p>`}
+function kitLook(ind,L){const tk=L.theme||kitOf(ind).theme||(STYLES[L.style]||STYLES.classic).theme,t=THEMES[tk]||THEMES.harbor,kc=kitCols();
+ return `<p class="kl-look"><span class="sw">${(kc?[kc.p,kc.a]:['p','a','sf'].map(c=>t.colors[c])).map(h=>`<i style="background:${h}"></i>`).join('')}</span>${esc((STYLES[L.style]||STYLES.classic).name)} style · ${kc?'Your colors':esc(t.name)+' colors'}</p>`}
+/* the customer's own business colors, previewed on every layout */
+const COLOR_COMBOS=[['Navy & orange','#1D3557','#E76F51'],['Forest & gold','#1B4332','#D4A373'],['Black & gold','#141414','#C9A227'],['Red & charcoal','#C1121F','#2B2D42'],['Teal & coral','#0F766E','#F97362'],['Royal blue & yellow','#1D4ED8','#FACC15'],['Purple & pink','#6D28D9','#EC4899'],['Burgundy & gold','#7A1E2C','#D9A441'],['Brown & tan','#5B3A29','#D9A066'],['Plum & blush','#7B2D55','#E9A5B4'],['Sky & sun','#0284C7','#F59E0B'],['Charcoal & lime','#2F3437','#84CC16']];
+function kitCols(){const c=state.kitCols;return c&&isHex(c.p)&&isHex(c.a)?c:null}
+function kitColorPal(pal){const c=kitCols();if(!c)return pal;const drop=h=>lum(h)>.45?hexMix(h,'#000000',.38):h,lift=h=>lum(h)<.18?hexMix(h,'#FFFFFF',.5):h;
+ const L={...pal.light,p:drop(c.p),a:c.a};L.sf=hexMix(L.p,L.bg,.9);const D={...pal.dark,p:lift(c.p),a:lift(c.a)};return{light:L,dark:D}}
+function kitLogoCombo(){const cols=state.brand.logoColors||[];if(!cols.length)return null;const sc=logoSchemes(cols)[0];return['From your logo',sc.c.p,sc.c.a]}
+let KCMORE=false;
+function kitColorBar(inModal){const kc=kitCols(),cur=kc||{p:'#1D3557',a:'#E76F51'},lg=kitLogoCombo();const same=x=>kc&&kc.p.toUpperCase()===x[1].toUpperCase()&&kc.a.toUpperCase()===x[2].toUpperCase();const all=KCMORE||COLOR_COMBOS.slice(5).some(same);
+ const chip=x=>`<button type="button" class="kc-chip${same(x)?' on':''}" data-kitcols="${x[1]}|${x[2]}" aria-pressed="${!!same(x)}"><span class="sw"><i style="background:${x[1]}"></i><i style="background:${x[2]}"></i></span>${esc(x[0])}</button>`;
+ return `<div class="kc-bar"${inModal?' data-kcmodal':''}><div class="kc-top"><b>What colors does your business use?</b><span class="kc-mine"><label class="kc-in"><input type="color" data-kitcol="p" value="${cur.p.toLowerCase()}" aria-label="Primary color"><span>Primary</span></label><label class="kc-in"><input type="color" data-kitcol="a" value="${cur.a.toLowerCase()}" aria-label="Secondary color"><span>Secondary</span></label></span></div>
+ <p class="kc-hint">Pick your two colors or try a popular pair. Every layout below shows them.</p>
+ <div class="kc-chips"><button type="button" class="kc-chip${kc?'':' on'}" data-kitcols="" aria-pressed="${!kc}">${ic('layout',13)} Layout colors</button>${lg?chip(lg):''}${(all?COLOR_COMBOS:COLOR_COMBOS.slice(0,5)).map(chip).join('')}${all?'':`<button type="button" class="kc-chip kc-more" data-kcmore>${ic('plus',13)} ${COLOR_COMBOS.length-5} more pairs</button>`}</div></div>`}
+function setKitCols(c){state.kitCols=c;save();if($('.kc-bar[data-kcmodal]')){const ind=$('#modalRoot .kit-modal').dataset.ind;const sc=$('#modalRoot .modal').scrollTop;kitModal(ind);const m=$('#modalRoot .modal');if(m)m.scrollTop=sc}else{renderCurrent();requestAnimationFrame(fitObMinis)}}
+document.addEventListener('click',e=>{if(e.target instanceof Element&&e.target.closest('[data-kcmore]')){e.stopPropagation();KCMORE=true;setKitCols(kitCols());return}const t=e.target instanceof Element&&e.target.closest('[data-kitcols]');if(!t)return;e.stopPropagation();const v=t.dataset.kitcols;setKitCols(v?{p:v.split('|')[0],a:v.split('|')[1]}:null)},true);
+document.addEventListener('change',e=>{const t=e.target;if(!(t instanceof Element)||!t.matches('[data-kitcol]'))return;const kc=kitCols()||{p:'#1D3557',a:'#E76F51'};setKitCols({...kc,[t.dataset.kitcol]:t.value.toUpperCase()})});
 function kitCards(ind,inModal){const ls=kitLayouts(ind);
- return `${inModal?'':kitBlank()+kitOr()}<div class="kl-grid">${Object.entries(ls).map(([lk,L])=>{const adds=(()=>{const r=[];[L.home,...(L.pages||[]).map(p=>p[2])].flat().forEach(x=>{const t=x.split(':')[0];const ru=rule(t);if(ru.addon&&!hasAddon(ru.addon)&&!r.includes(ru.addon))r.push(ru.addon)});return r.map(addonById).filter(a=>a&&a.enabled)})();
+ return `${inModal?'':kitBlank()+kitOr()}${kitColorBar(inModal)}<div class="kl-grid">${Object.entries(ls).map(([lk,L])=>{const adds=(()=>{const r=[];[L.home,...(L.pages||[]).map(p=>p[2])].flat().forEach(x=>{const t=x.split(':')[0];const ru=rule(t);if(ru.addon&&!hasAddon(ru.addon)&&!r.includes(ru.addon))r.push(ru.addon)});return r.map(addonById).filter(a=>a&&a.enabled)})();
   return `<div class="kl"><div class="kl-pv" role="button" tabindex="0" data-kituse="${ind}|${lk}" aria-label="Use the ${esc(L.name)} layout"><div class="st-mini">${kitPreview(ind,lk)}</div></div><div class="kl-b"><b>${esc(L.name)}</b><p>${esc(L.desc)}</p>${kitLook(ind,L)}<div class="kl-pages">${['Home',...(L.pages||[]).map(p=>p[0])].map(n=>`<span>${esc(n)}</span>`).join('')}</div>${adds.length?`<p class="kl-add">${ic('lock',12)} Includes ${adds.map(a=>`${esc(a.name)} (${money(a.price)}${a.billing==='monthly'?'/mo':''})`).join(', ')}</p>`:''}<button type="button" class="btn sm pri" data-kituse="${ind}|${lk}">Use this layout</button></div></div>`}).join('')}
   </div>`}
 function kitStart(){const cur=KPICK||state.biz.industry||'';
  if(!cur)return `<div class="es"><div class="es-card wide kit-start">${kitBlank()}<h4 class="kl-or">OR PICK YOUR TYPE OF BUSINESS FOR POPULAR LAYOUTS</h4><p>We’ll suggest layouts, pages and colors that fit. You can change everything later.</p>${kitTiles('')}</div></div>`;
  return `<div class="es"><div class="es-card wide kit-start"><div class="kit-top"><span class="kit-ic">${ic(kitOf(cur).icon,20)}</span><div><h3>${esc(kitTitle(cur))}</h3><p>Each one comes with pages, a menu and words written for you. Pick one to start.</p></div><button type="button" class="btn sm" data-kitchange>Change type</button></div>${kitCards(cur,false)}</div></div>`}
 function kitModal(ind){ask0();ind=ind||state.biz.industry||'other';
- $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal kit-modal" role="dialog" aria-modal="true" aria-labelledby="kitT"><div class="modal-h"><h2 id="kitT">${ic(kitOf(ind).icon,20)} ${esc(kitTitle(ind))}</h2><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal kit-modal" data-ind="${ind}" role="dialog" aria-modal="true" aria-labelledby="kitT"><div class="modal-h"><h2 id="kitT">${ic(kitOf(ind).icon,20)} ${esc(kitTitle(ind))}</h2><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
  <p class="muted">Using a layout replaces your pages with new ones, with words written for this kind of business. Undo brings your current pages back.</p>
  <details class="kit-types"><summary>Different type of business?</summary>${kitTiles(ind).replace(/data-kitpick=/g,'data-kitmodal=')}</details>
  ${kitCards(ind,true)}</div></div>`;requestAnimationFrame(fitObMinis)}
