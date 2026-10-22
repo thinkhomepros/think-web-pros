@@ -754,6 +754,9 @@ function renderPlans(){const c=cartCalc(),annual=state.cart.annual,p=admin.pos,p
  <div class="plans-h"><h1>Choose a plan for ${esc(state.brand.name)}</h1><p>A one-time design fee, then a monthly plan for hosting, updates and support. Add POS and card processing if you sell in person. Change any time.</p>
   <div class="seg" style="max-width:320px"><button type="button" data-annual="0" class="${annual?'':'on'}">Monthly</button><button type="button" data-annual="1" class="${annual?'on':''}">Yearly · 2 months free</button></div></div>
  <div class="tiers">${admin.tiers.map(t=>{const on=state.cart.tier===t.id;return `<div class="tier${on?' on':''}" role="radio" aria-checked="${on}" tabindex="0" data-tier="${t.id}"><div class="between"><h3>${esc(t.name)}</h3>${admin.popular===t.id?'<span class="badge acc">Most popular</span>':''}</div><div class="tier-price"><b class="num">${money(annual?t.monthly*10:t.monthly)}</b><span>/${annual?'year':'month'}</span></div><div class="tier-setup num">+ ${money(t.setup)} one-time design</div><ul>${t.features.filter(Boolean).map(f=>`<li>${ic('check',15)}<span>${esc(f)}</span></li>`).join('')}</ul><span class="tier-cta">${on?'Selected':'Choose '+esc(t.name)}</span></div>`}).join('')}</div>
+ <div class="custom-plan"><div class="cp-main"><div class="between"><h3>Custom</h3><span class="badge">Priced per job</span></div><p>For more elaborate designs: lots of pages, custom features, booking or ordering flows built around how you work, or a full rebrand. Tell us what you need and we'll send a quote.</p>
+  <ul>${['Designed with you by our team','No section limit','Custom features and integrations','Hosting and support plan to fit'].map(f=>`<li>${ic('check',15)}<span>${f}</span></li>`).join('')}</ul></div>
+  <button type="button" class="btn pri" data-quote>Request a quote</button></div>
  <div class="block"><div class="block-h"><div><h2>Add-ons</h2><p>Turn features on for this site. Included items come with your plan.</p></div></div>
   <div class="addons">${admin.addons.filter(a=>a.enabled).map(a=>{const inc=c.inc.has(a.id),on=state.cart.addons.includes(a.id);return `<label class="addon${on||inc?' on':''}${inc?' inc':''}"><input type="checkbox" id="ad-${a.id}" data-cartaddon="${a.id}" ${on||inc?'checked':''} ${inc?'disabled':''}><div><b>${esc(a.name)}</b><p>${esc(a.desc)}</p>${a.id==='logomaker'?`<button type="button" class="btn sm" data-logomaker style="justify-self:start;margin-top:4px">${ic('spark',13)} Try it</button>`:''}</div><span class="ad-price num">${inc?'Included':money(a.price)+(a.billing==='monthly'?'/mo':' once')}</span></label>`}).join('')}</div></div>
  <div class="block"><div class="block-h"><div><h2>Point of sale</h2><p>Ring up sales at the counter. Your menu, prices and stock sync with the website store, and online orders show up on the register.</p></div>${hasPOS()?`<button class="btn sm" data-posset="">Remove POS</button>`:''}</div>
@@ -781,6 +784,20 @@ function openCheckout(){if(!requireBiz())return;const c=cartCalc();
  <div class="sum-tot"><div class="big"><span>Due today</span><b class="num">${money(c.setup+(c.annual?c.yearly:0))}</b></div><div class="sum-line"><span>Then</span><span class="num">${money(c.annual?c.yearly:c.monthly)}${c.annual?'/year':'/month'}</span></div></div>
  <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Back</button><button class="btn pri" type="submit">Place order</button></div></form></div>`;
  setTimeout(()=>$('#co-name')?.focus(),30)}
+function openQuote(){const b=state.biz||{};
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal" id="quoteForm" role="dialog" aria-label="Request a quote"><div class="modal-h"><div><h2>Request a custom quote</h2><p class="muted">Custom plans are priced per job. Tell us about the site you have in mind and we'll reply with a quote, usually within one business day.</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+ <div class="grid2f"><label class="fld"><span>Your name</span><input type="text" id="qt-name" required autocomplete="name"></label><label class="fld"><span>Business</span><input type="text" id="qt-biz" required value="${esc(b.name||state.brand.name||'')}" autocomplete="organization"></label>
+ <label class="fld"><span>Email</span><input type="email" id="qt-email" required value="${esc(b.email||'')}" autocomplete="email"></label><label class="fld"><span>Phone</span><input type="text" inputmode="tel" id="qt-phone" value="${esc(b.phone||'')}" autocomplete="tel"></label></div>
+ <label class="fld"><span>What do you need?</span><textarea id="qt-details" rows="4" required placeholder="Pages, features, examples of sites you like, anything we should know"></textarea></label>
+ <div class="grid2f"><label class="fld"><span>Budget (optional)</span><select id="qt-budget"><option value="">Not sure yet</option><option>Under $2,500</option><option>$2,500 to $5,000</option><option>$5,000 to $10,000</option><option>Over $10,000</option></select></label>
+ <label class="fld"><span>When do you need it? (optional)</span><select id="qt-when"><option value="">Flexible</option><option>Within 2 weeks</option><option>Within a month</option><option>1 to 3 months</option></select></label></div>
+ <p class="muted" style="font-size:12px">Your current design is sent with the request so we can see where you're starting from.</p>
+ <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Cancel</button><button class="btn pri" type="submit">Send request</button></div></form></div>`;
+ setTimeout(()=>$('#qt-name')?.focus(),30)}
+function placeQuote(){const v=id=>$('#'+id).value.trim();const o={id:'TWP-'+(admin.nextOrder++),kind:'quote',at:Date.now(),business:v('qt-biz'),owner:v('qt-name'),email:v('qt-email'),phone:v('qt-phone'),plan:'custom',details:v('qt-details'),budget:v('qt-budget'),timeline:v('qt-when'),addons:[],pos:null,hw:{},setup:0,monthly:0,annual:false,status:'New',sections:state.sections.filter(s=>!s.hidden).map(s=>CATALOG[s.type].name),theme:THEMES[state.brand.theme]?.name};
+ admin.orders.push(o);save();
+ if(window.TWP)TWP.submitOrder(o,state);
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Quote requested"><div class="modal-h"><h2>Quote request sent</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Thanks, ${esc(o.owner.split(' ')[0]||'there')}. ${esc(admin.company)} will look over your request and email ${esc(o.email)} with a quote. Your request number is ${o.id}.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" data-closemodal>Keep designing</button></div></div></div>`}
 function placeOrder(){const c=cartCalc();const o={id:'TWP-'+(admin.nextOrder++),at:Date.now(),business:$('#co-biz').value.trim(),owner:$('#co-name').value.trim(),email:$('#co-email').value.trim(),phone:$('#co-phone').value.trim(),plan:c.t.id,addons:[...state.cart.addons],pos:state.cart.pos,hw:{...state.cart.hw},setup:c.setup+(c.annual?c.yearly:0),monthly:c.monthly,annual:c.annual,status:'New',sections:state.sections.filter(s=>!s.hidden).map(s=>CATALOG[s.type].name),theme:THEMES[state.brand.theme]?.name};
  admin.orders.push(o);admin.customers.push({id:uid(),business:o.business,owner:o.owner,plan:o.plan,addons:o.addons,pos:o.pos,vol:hasMerchant()?+state.cart.volume:0,status:'In build',mrr:c.monthly,since:Date.now()});save();
  if(window.TWP)TWP.submitOrder(o,state);
@@ -792,7 +809,7 @@ function adminKpis(){const act=admin.customers.filter(c=>c.status!=='Cancelled')
  const margin=act.reduce((n,c)=>{const v=+c.vol||0;if(!v)return n;const tx=v/(p.avgTicket||20);const r=p.rates[0];return n+v*(r.pct-p.cost.pct)/100+tx*(r.fixed-p.cost.fixed)},0);
  const recent=admin.orders.filter(o=>o.at>Date.now()-30*864e5).reduce((n,o)=>n+(+o.setup||0),0);
  return{mrr,live:admin.customers.filter(c=>c.status==='Live').length,recent,newCount:admin.orders.filter(o=>o.status==='New').length,margin,vol:act.reduce((n,c)=>n+(+c.vol||0),0),posCount:act.filter(c=>c.pos).length}}
-const planName=id=>(admin.tiers.find(t=>t.id===id)||{name:id}).name;
+const planName=id=>id==='custom'?'Custom (quote)':(admin.tiers.find(t=>t.id===id)||{name:id}).name;
 const adName=ids=>(ids||[]).map(i=>(addonById(i)||{name:i}).name).join(', ')||'None';
 function renderAdmin(){const t=state.adminTab,k=adminKpis();const tabs=[['overview','Overview'],['orders','Orders'],['customers','Customers'],['pricing','Plans & pricing'],['addons','Add-ons'],['pos','POS & payments'],['library','Themes & sections'],['settings','Settings']];
  let body='';
@@ -802,7 +819,7 @@ function renderAdmin(){const t=state.adminTab,k=adminKpis();const tabs=[['overvi
   <div class="card"><h3>Plan mix</h3><div class="mix">${counts.map((n,i)=>n?`<span style="flex:${n};background:${cols[i%4]}"></span>`:'').join('')}</div><div class="legend">${admin.tiers.map((x,i)=>`<span><i style="background:${cols[i%4]}"></i>${esc(x.name)} · ${counts[i]}</span>`).join('')}</div>
    <h3 style="margin-top:18px">Point of sale</h3><p class="muted">${k.posCount} of ${admin.customers.length} customers run a Think Web Pros register.</p></div></div>
   <div class="card"><h3>Latest orders <button class="btn sm" data-admintab="orders">All orders</button></h3>${[...admin.orders].reverse().slice(0,4).map(o=>`<div class="sum-line" style="padding:8px 0;border-bottom:1px solid var(--line)"><span><b style="color:var(--ink)">${esc(o.business)}</b> · ${esc(planName(o.plan))}${o.pos?' + '+esc(posPlan(o.pos)?.name||'POS'):''} ${o.sample?'<span class="badge ex">Example</span>':''}</span><span class="num">${money(o.setup)} + ${money(o.monthly)}/mo <span class="badge ${STATUS_CLS[o.status]||''}">${esc(o.status)}</span></span></div>`).join('')}</div>`}
- else if(t==='orders'){body=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Date</th><th>Business</th><th>Contact</th><th>Plan</th><th>Add-ons &amp; POS</th><th class="r">Due today</th><th class="r">Monthly</th><th>Status</th></tr></thead><tbody>${[...admin.orders].reverse().map(o=>{const i=admin.orders.indexOf(o);return `<tr class="${o.status==='New'&&!o.sample?'new':''}"><td><b>${o.id}</b>${o.sample?' <span class="badge ex">Example</span>':''}</td><td>${fmtDate(o.at)}</td><td>${esc(o.business)}</td><td>${esc(o.owner)}<br><span class="muted">${esc(o.email)}</span></td><td>${esc(planName(o.plan))}</td><td>${esc(adName(o.addons))}${o.pos?'<br>'+esc(posPlan(o.pos)?.name||''):''}${Object.entries(o.hw||{}).filter(([,q])=>q).map(([h,q])=>'<br>'+q+' × '+esc((admin.pos.hardware.find(x=>x.id===h)||{name:h}).name)).join('')}</td><td class="r">${money(o.setup)}</td><td class="r">${money(o.monthly)}</td><td><select class="inp sm" id="os-${i}" data-ostatus="${i}">${['New','In build','Live','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`}).join('')}</tbody></table></div>`}
+ else if(t==='orders'){body=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Date</th><th>Business</th><th>Contact</th><th>Plan</th><th>Add-ons &amp; POS</th><th class="r">Due today</th><th class="r">Monthly</th><th>Status</th></tr></thead><tbody>${[...admin.orders].reverse().map(o=>{const i=admin.orders.indexOf(o);return `<tr class="${o.status==='New'&&!o.sample?'new':''}"><td><b>${o.id}</b>${o.sample?' <span class="badge ex">Example</span>':''}</td><td>${fmtDate(o.at)}</td><td>${esc(o.business)}</td><td>${esc(o.owner)}<br><span class="muted">${esc(o.email)}</span></td><td>${esc(planName(o.plan))}${o.kind==='quote'?`<br><span class="muted">${esc([o.budget,o.timeline].filter(Boolean).join(' · ')||'No budget given')}</span>${o.details?`<br><span class="muted">${esc(o.details.length>140?o.details.slice(0,140)+'…':o.details)}</span>`:''}`:''}</td><td>${esc(adName(o.addons))}${o.pos?'<br>'+esc(posPlan(o.pos)?.name||''):''}${Object.entries(o.hw||{}).filter(([,q])=>q).map(([h,q])=>'<br>'+q+' × '+esc((admin.pos.hardware.find(x=>x.id===h)||{name:h}).name)).join('')}</td><td class="r">${o.kind==='quote'?'Quote':money(o.setup)}</td><td class="r">${o.kind==='quote'?'Quote':money(o.monthly)}</td><td><select class="inp sm" id="os-${i}" data-ostatus="${i}">${['New','In build','Live','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`}).join('')}</tbody></table></div>`}
  else if(t==='customers'){body=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th>Add-ons</th><th>POS</th><th class="r">Card volume/mo</th><th class="r">MRR</th><th>Status</th><th>Since</th></tr></thead><tbody>${admin.customers.map(c=>`<tr><td><b>${esc(c.business)}</b>${c.sample?' <span class="badge ex">Example</span>':''}</td><td>${esc(c.owner)}</td><td>${esc(planName(c.plan))}</td><td>${esc(adName(c.addons))}</td><td>${c.pos?esc(posPlan(c.pos)?.name||''):'<span class="muted">None</span>'}</td><td class="r">${c.vol?money(c.vol):'<span class="muted">None</span>'}</td><td class="r">${money(c.mrr)}</td><td><span class="badge ${STATUS_CLS[c.status]||''}">${esc(c.status)}</span></td><td>${fmtDate(c.since)}</td></tr>`).join('')}</tbody></table></div>`}
  else if(t==='pricing'){body=`<p class="muted" style="margin-bottom:12px">Edits apply right away to the plans page, the section limits in the designer, and the order total.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Plan</th><th>Design fee</th><th>Monthly</th><th>Max sections</th><th>Includes</th><th>Features (one per line)</th><th>Popular</th></tr></thead><tbody>${admin.tiers.map((x,i)=>`<tr><td><input class="inp sm" id="t-n-${i}" data-abind="tiers.${i}.name" value="${esc(x.name)}"></td><td><input class="inp sm" type="number" id="t-s-${i}" data-abind="tiers.${i}.setup" data-num value="${x.setup}"></td><td><input class="inp sm" type="number" id="t-m-${i}" data-abind="tiers.${i}.monthly" data-num value="${x.monthly}"></td><td><input class="inp sm" type="number" id="t-x-${i}" data-abind="tiers.${i}.maxSections" data-num value="${x.maxSections}"></td><td style="min-width:170px">${admin.addons.filter(a=>a.billing==='monthly').map(a=>`<label style="display:flex;gap:6px;font-size:12px"><input type="checkbox" id="ti-${i}-${a.id}" data-tinc="${i}|${a.id}" ${x.includes.includes(a.id)?'checked':''}>${esc(a.name)}</label>`).join('')}</td><td><textarea class="inp sm" id="t-f-${i}" rows="5" data-alines="tiers.${i}.features" style="min-width:220px">${esc(x.features.join('\n'))}</textarea></td><td><input type="radio" name="popular" id="t-p-${i}" data-popular="${x.id}" ${admin.popular===x.id?'checked':''} aria-label="Most popular"></td></tr>`).join('')}</tbody></table></div>`}
  else if(t==='addons'){const lmA=addonById('logomaker');body=`<div class="card" style="margin-bottom:16px"><div class="between"><h3>AI logo maker</h3><span class="badge">${state.aiLog||0} AI requests in this demo</span></div><p class="muted" style="margin:6px 0 12px">Customers get a few free AI requests, then the ${esc(lmA?lmA.name:'AI logo package')} (${lmA?money(lmA.price):''} once, price set in the table below) unlocks unlimited requests.</p><div class="row" style="gap:16px;flex-wrap:wrap;align-items:end"><label class="fld" style="margin:0"><span>Free AI requests per customer</span><input class="inp sm" type="number" min="0" max="20" id="ai-free" data-abind="aiFree" data-num value="${admin.aiFree??3}" style="width:110px"></label><button class="btn sm" data-airesettries>Reset my free requests</button></div></div><div class="between" style="margin-bottom:12px"><p class="muted">Turn add-ons off to hide them from customers. One-time items are added to the design fee.</p><button class="btn pri sm" data-newaddon>${ic('plus',13)} New add-on</button></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>On</th><th>Name</th><th>Description</th><th>Price</th><th>Billing</th><th></th></tr></thead><tbody>${admin.addons.map((a,i)=>`<tr><td><label class="switch"><input type="checkbox" id="a-en-${i}" data-abind="addons.${i}.enabled" data-hardafter ${a.enabled?'checked':''}><i></i></label></td><td><input class="inp sm" id="a-n-${i}" data-abind="addons.${i}.name" value="${esc(a.name)}"></td><td><input class="inp sm" id="a-d-${i}" data-abind="addons.${i}.desc" value="${esc(a.desc)}" style="min-width:260px"></td><td><input class="inp sm" type="number" id="a-p-${i}" data-abind="addons.${i}.price" data-num value="${a.price}"></td><td><select class="inp sm" id="a-b-${i}" data-abind="addons.${i}.billing" data-hardafter><option value="monthly" ${a.billing==='monthly'?'selected':''}>Monthly</option><option value="once" ${a.billing==='once'?'selected':''}>One time</option></select></td><td><button class="btn sm danger" data-deladdon="${i}">Delete</button></td></tr>`).join('')}</tbody></table></div>`}
@@ -887,6 +904,7 @@ document.addEventListener('click',e=>{const T=e.target;const q=s=>T.closest(s);l
  if(el=q('[data-hw]')){const[id,d]=el.dataset.hw.split('|');state.cart.hw[id]=Math.max(0,(state.cart.hw[id]||0)+(+d));hard();return}
  if(el=q('[data-annual]')){state.cart.annual=el.dataset.annual==='1';hard();return}
  if(el=q('[data-checkout]')){openCheckout();return}
+ if(el=q('[data-quote]')){openQuote();return}
  if(el=q('[data-wmove]')){const[k,d]=el.dataset.wmove.split('|');const o=state.dash.order,i=o.indexOf(k),j=i+(+d);if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];hard();return}
  if(el=q('[data-leadread]')){const l=state.leads.find(x=>x.id===el.dataset.leadread);if(l)l.read=true;hard();return}
  if(el=q('[data-newaddon]')){admin.addons.push({id:'custom-'+uid(),name:'New add-on',desc:'Describe what the customer gets.',price:10,billing:'monthly',enabled:true});hard();return}
@@ -955,6 +973,7 @@ document.addEventListener('change',e=>{const t=e.target;
  if(t.dataset.ostatus){const o=admin.orders[+t.dataset.ostatus];o.status=t.value;const c=admin.customers.find(c=>c.business===o.business);if(c&&t.value!=='New')c.status=t.value==='Cancelled'?'Cancelled':t.value;hard();return}});
 document.addEventListener('submit',e=>{const f=e.target;e.preventDefault();
  if(f.id==='coForm'){placeOrder();return}
+ if(f.id==='quoteForm'){placeQuote();return}
  if(f.matches('[data-lmform]')){lmAsk($('#lm-ask').value);return}
  if(f.id==='obForm'){OB.step=2;renderStart();$('#v-start').scrollTop=0;return}
  if(f.matches('[data-contact]')){const d=new FormData(f);state.leads.push({id:uid(),name:d.get('name'),email:d.get('email'),msg:d.get('msg'),at:Date.now(),read:false});f.reset();save();toast('Message sent. It is in the owner dashboard inbox.',{label:'Open dashboard',fn:()=>setTab('dashboard')});return}
@@ -979,7 +998,7 @@ document.addEventListener('dragover',e=>{
  if(list){e.preventDefault();clearDrop();const r=listIndex(list,'.secitem',e.clientY);if(r.el)r.el.classList.add(r.before?'drop-before':'drop-after');return}
  const cv=e.target.closest&&e.target.closest('#canvas');
  if(cv){e.preventDefault();showSiteDrop(e.clientY)}});
-function showSiteDrop(y){const cv=$('#canvas');clearDrop();const r=siteIndex(y);const dev=$('#device').getBoundingClientRect(),cr=cv.getBoundingClientRect();dropLine=document.createElement('div');dropLine.className='drop-line';dropLine.style.top=(r.top-cr.top+cv.scrollTop-2)+'px';dropLine.style.left=(dev.left-cr.left+8)+'px';dropLine.style.right='auto';dropLine.style.width=(dev.width-16)+'px';cv.appendChild(dropLine);return r}
+function showSiteDrop(y){const cv=$('#canvas');clearDrop();const r=siteIndex(y);const dev=$('#device').getBoundingClientRect(),cr=cv.getBoundingClientRect();dropLine=document.createElement('div');dropLine.className='drop-line';const z=devZ();dropLine.style.top=((r.top-cr.top)/z+cv.scrollTop-2)+'px';dropLine.style.left=((dev.left-cr.left)/z+8)+'px';dropLine.style.right='auto';dropLine.style.width=(dev.width/z-16)+'px';cv.appendChild(dropLine);return r}
 document.addEventListener('dragleave',e=>{if(e.target.classList&&e.target.classList.contains('over'))e.target.classList.remove('over')});
 document.addEventListener('drop',e=>{
  if(hasFiles(e)){const z=e.target.closest&&e.target.closest('#site [data-img],[data-drop-img]');if(z){e.preventDefault();clearDrop();const f=e.dataTransfer.files[0];loadInto(z.dataset.img||z.dataset.dropImg,f)}return}
@@ -1311,10 +1330,11 @@ window.addEventListener('resize',()=>{dsMenuClose();if(state.tab==='designs')fit
 function focusSection(id,force){requestAnimationFrame(()=>requestAnimationFrame(()=>{const n=$(`#site [data-sec="${id}"]`),cv=$('#canvas');if(!n||!cv)return;
  const cr=cv.getBoundingClientRect(),r=n.getBoundingClientRect();let bot=Math.min(cr.bottom,innerHeight);
  if(isNarrow())['#fInsp','#fLib'].forEach(s=>{const f=$(s);if(f&&!f.hidden){const t=f.getBoundingClientRect().top;if(t>cr.top+80)bot=Math.min(bot,t)}});
- const top=Math.max(cr.top,0),room=bot-top,pad=10;
+ let top=Math.max(cr.top,0);const fr=$('.dv-shell.framed');if(fr){const sb=fr.querySelector('.dv-sb'),ch=fr.querySelector('.device .chrome'),nb=fr.querySelector('.dv-nb');[sb,ch].forEach(x=>{if(x&&x.offsetHeight)top=Math.max(top,x.getBoundingClientRect().bottom)});if(nb&&nb.offsetHeight)bot=Math.min(bot,nb.getBoundingClientRect().top)}
+ const room=bot-top,pad=10;
  if(!force&&r.top>=top-4&&r.top<bot-Math.min(160,room*.4))return;
  const delta=r.height+pad*2<=room?(r.top-top)-(room-r.height)/2:(r.top-top)-pad;
- FS={id,until:Date.now()+900};cv.scrollTo({top:Math.max(0,cv.scrollTop+delta),behavior:'smooth'})}))}
+ FS={id,until:Date.now()+900};cv.scrollTo({top:Math.max(0,cv.scrollTop+delta/devZ()),behavior:'smooth'})}))}
 let FS=null;
 {const _sa=sectionAct;sectionAct=function(id,act){_sa(id,act);if(act==='edit'||act==='layout')focusSection(id,act==='edit')};
  const _ss=selectSection;selectSection=function(id){_ss(id);focusSection(id,false)}}
@@ -1648,6 +1668,87 @@ const KITS={
    visual:{name:'Photo forward',desc:'A big photo and gallery for businesses that are best seen.',style:'portfolio',home:['hero:overlay','gallery','about','services','contact'],pages:[['Gallery','image',['hero','portfolio:filter']],['Contact','phoneCall',['contact']]]}}}
 };
 
+/* ---------- more popular layouts: each pairs a style with its own color theme ---------- */
+Object.assign(THEMES,{
+ ink:{name:'Ink',colors:{p:'#E8E4DC',a:'#D4AF37',bg:'#0E0E10',sf:'#1A1A1E',tx:'#E8E4DC'},font:'syne',radius:2,btn:'square'},
+ espresso:{name:'Espresso',colors:{p:'#5B3A29',a:'#D9A066',bg:'#FAF6F0',sf:'#EFE4D6',tx:'#2E1F17'},font:'fraunces',radius:10,btn:'rounded'},
+ sage:{name:'Sage',colors:{p:'#5F7A61',a:'#C9A37A',bg:'#FAFAF6',sf:'#EBF0E8',tx:'#2C3A2D'},font:'cormorant',radius:18,btn:'pill'},
+ citrus:{name:'Citrus',colors:{p:'#D9480F',a:'#2B8A3E',bg:'#FFFCF5',sf:'#FFF0D6',tx:'#2D1E0F'},font:'fredoka',radius:20,btn:'pill'},
+ ocean:{name:'Ocean',colors:{p:'#0B6E99',a:'#2EC4B6',bg:'#FFFFFF',sf:'#EAF5FA',tx:'#0E2A3A'},font:'sora',radius:16,btn:'pill'},
+ slate:{name:'Slate',colors:{p:'#93C5FD',a:'#F59E0B',bg:'#111827',sf:'#1F2937',tx:'#E5E7EB'},font:'dmserif',radius:8,btn:'rounded'},
+ forest:{name:'Forest',colors:{p:'#1B4332',a:'#D4A373',bg:'#FBFAF5',sf:'#E8EFE6',tx:'#1B2A22'},font:'bitter',radius:6,btn:'rounded'}
+});
+const MORE_LAYOUTS={
+ photographer:{
+  minimal:{name:'Clean and minimal',desc:'White space, a photo wall and a short contact form.',style:'classic',theme:'folio',home:['hero:centered','portfolio:masonry','about:right','pricing:list','contact:centered'],pages:[['Work','image',['hero','portfolio:filter']],['Contact','phoneCall',['contact','faq']]]},
+  moody:{name:'Dark and moody',desc:'A dark gallery with a rotating slideshow and gold details.',style:'portfolio',theme:'ink',home:['hero:overlay','slideshow:full','portfolio:albums','testimonials:spotlight','contact'],pages:[['Galleries','image',['hero','portfolio:filter']],['Packages','card',['hero','pricing','faq']]]},
+  bold:{name:'Bold and modern',desc:'Big type, a scrolling ticker and packages front and center.',style:'loud',theme:'studio',home:['hero:marquee','portfolio:filter','pricing:cards','testimonials:carousel','cta','contact'],pages:[['Work','image',['hero','portfolio:masonry']],['Contact','phoneCall',['contact']]]}},
+ restaurant:{
+  diner:{name:'Neighborhood diner',desc:'Retro signage, a chalkboard menu and reviews from regulars.',style:'retro',theme:'diner',home:['hero:badge','menu:board','testimonials:carousel','map:wide','social:icons'],pages:[['Menu','fork',['hero','menu:classic']],['Visit','pin',['map','contact']]]},
+  brunch:{name:'Café and brunch',desc:'Bright and friendly with a photo menu and an Instagram feed.',style:'playful',theme:'citrus',home:['hero:bubble','menu:photos','gallery:mosaic','social:feed','map'],pages:[['Menu','fork',['hero','menu:tabs']],['Visit','pin',['map','faq','contact']]]},
+  night:{name:'Bar and night spot',desc:'Dark glass tiles, menu tabs and table reservations.',style:'tech',theme:'neon',home:['hero:bento','menu:tabs','slideshow:full','booking','map:wide'],pages:[['Menu','fork',['hero','menu:classic']],['Events','calendar',['hero','gallery','cta','contact']]]},
+  truck:{name:'Food truck',desc:'Loud and fun, with where to find you this week.',style:'loud',theme:'loud',home:['hero:marquee','menu:board','social:feed','map:wide','faq'],pages:[['Catering','calendar',['hero','services:cards','contact']]]}},
+ bakery:{
+  coffee:{name:'Coffee house',desc:'Editorial headline, menu tabs and a cozy photo grid.',style:'magazine',theme:'espresso',home:['hero:poster','menu:tabs','about:stacked','gallery','social:feed','map'],pages:[['Menu','cake',['hero','menu:classic']],['Visit','pin',['map','contact']]]},
+  cakes:{name:'Custom cakes',desc:'Soft colors, a cake gallery and an order request form.',style:'luxe',theme:'blush',home:['hero:arch','gallery:grid','services:menu','testimonials:spotlight','contact:centered'],pages:[['Cakes','cake',['hero','gallery','services:menu']],['Order','calendar',['contact','faq']]]},
+  market:{name:'Market stand',desc:'Simple and fresh, with this week’s menu and where to find you.',style:'classic',theme:'meadow',home:['hero:split','menu:classic','about:left','social:icons','map:side'],pages:[['Contact','phoneCall',['contact','faq']]]}},
+ salon:{
+  barber:{name:'Barbershop',desc:'Bold and sharp, with a price list, your barbers and booking.',style:'loud',theme:'studio',home:['hero:marquee','services:menu','team:grid','booking','map'],pages:[['Barbers','info',['hero','team','testimonials']],['Book','calendar',['booking','map']]]},
+  spa:{name:'Day spa',desc:'Calm greens, treatments, memberships and online booking.',style:'luxe',theme:'sage',home:['hero:arch','services:menu','pricing:cards','slideshow:framed','testimonials:spotlight','booking'],pages:[['Treatments','heartPulse',['hero','services:menu','faq']],['Book','calendar',['booking','map']]]},
+  nails:{name:'Nail and lash bar',desc:'Playful and colorful, with a lookbook and your feed.',style:'playful',theme:'candy',home:['hero:bubble','portfolio:filter','services:cards','pricing:list','social:feed','booking'],pages:[['Services','scissors',['hero','services:menu','pricing']],['Book','calendar',['booking','map']]]}},
+ home:{
+  urgent:{name:'Fast response',desc:'A call-now banner right under the headline, then services and reviews.',style:'classic',theme:'harbor',home:['hero:split','cta:band','services:grid','testimonials:carousel','map:wide','contact'],pages:[['Services','wrench',['hero','services','faq']],['Contact','phoneCall',['contact','map']]]},
+  family:{name:'Family owned',desc:'Warm and local, leading with your story and the people behind it.',style:'classic',theme:'workshop',home:['hero:split','about:right','services:cards','testimonials:spotlight','faq:two','contact'],pages:[['Our work','image',['hero','beforeafter','gallery']],['Contact','phoneCall',['contact','map']]]},
+  remodel:{name:'Premium remodels',desc:'Elegant before and after photos for high-end projects.',style:'luxe',theme:'estate',home:['hero:arch','beforeafter:side','gallery:mosaic','about','testimonials:spotlight','contact:centered'],pages:[['Projects','image',['hero','beforeafter','gallery']],['Contact','phoneCall',['contact']]]},
+  clean:{name:'Cleaning service',desc:'Fresh and friendly with services, answers and a quick quote.',style:'playful',theme:'ocean',home:['hero:bubble','services:cards','testimonials:carousel','faq','contact'],pages:[['Services','wrench',['hero','services','faq']],['Contact','phoneCall',['contact','map']]]}},
+ fitness:{
+  yoga:{name:'Yoga studio',desc:'Quiet and calm, with a class schedule and your teachers.',style:'luxe',theme:'sage',home:['hero:arch','services:menu','booking','team:round','pricing:list','testimonials'],pages:[['Schedule','calendar',['hero','booking']],['Pricing','card',['hero','pricing','faq']]]},
+  intense:{name:'Dark and intense',desc:'Glowing tiles, results and memberships for serious training.',style:'tech',theme:'neon',home:['hero:bento','pricing:cards','beforeafter','team','contact'],pages:[['Results','star',['hero','beforeafter','testimonials']],['Coaches','info',['hero','team']]]},
+  boutique:{name:'Boutique classes',desc:'Bright and upbeat with a rotating class strip and your feed.',style:'playful',theme:'citrus',home:['hero:bubble','slideshow:split','services:cards','pricing','social:feed'],pages:[['Classes','calendar',['hero','services:cards','booking']],['Contact','phoneCall',['contact','faq']]]}},
+ professional:{
+  modern:{name:'Modern firm',desc:'Dark, confident tiles with services and clear pricing.',style:'tech',theme:'slate',home:['hero:bento','services:cards','pricing:cards','testimonials','contact'],pages:[['Services','briefcase',['hero','services','faq']],['Contact','phoneCall',['contact','map']]]},
+  law:{name:'Law office',desc:'Classic and formal, with practice areas and your attorneys.',style:'luxe',theme:'estate',home:['hero:arch','services:menu','team:round','faq:two','contact:centered'],pages:[['Practice areas','briefcase',['hero','services','faq']],['Attorneys','info',['hero','team','about']]]},
+  onepage:{name:'One-page consultant',desc:'Everything on one page: who you are, what you do, and a call button.',style:'classic',theme:'ocean',home:['hero:centered','about:left','services:grid','cta:band','contact:split'],pages:[]}},
+ retail:{
+  showcase:{name:'Product showcase',desc:'Full-bleed photos, your store and a photo wall.',style:'portfolio',theme:'folio',home:['hero:overlay','shop','portfolio:masonry','social:feed'],pages:[['Shop','bag',['hero','shop']],['Visit','pin',['map','contact']]]},
+  vintage:{name:'Vintage shop',desc:'Retro badge, collections and how to find you.',style:'retro',theme:'diner',home:['hero:badge','portfolio:filter','about','map','social:icons'],pages:[['Shop','bag',['hero','shop']],['Visit','pin',['map','contact']]]},
+  gift:{name:'Gift shop',desc:'Soft and pretty, with gifts, photos and reviews.',style:'luxe',theme:'blush',home:['hero:arch','shop','gallery','testimonials','map'],pages:[['Shop','bag',['hero','shop']],['Contact','phoneCall',['contact','faq']]]}},
+ pet:{
+  mobile:{name:'Mobile groomer',desc:'Big and bright with packages and the areas you cover.',style:'loud',theme:'citrus',home:['hero:marquee','services:cards','pricing:cards','map:wide','contact'],pages:[['Packages','card',['hero','pricing','faq']]]},
+  trainer:{name:'Dog trainer',desc:'Your approach, training plans and booking a first session.',style:'classic',theme:'meadow',home:['hero:split','about','services:grid','pricing:list','testimonials:spotlight','booking'],pages:[['Training','paw',['hero','services','pricing','faq']],['Contact','phoneCall',['contact','map']]]},
+  boutique:{name:'Pet boutique',desc:'Editorial headline, treats and toys for sale, and your feed.',style:'magazine',theme:'paper',home:['hero:poster','shop','gallery','social:feed'],pages:[['Shop','bag',['hero','shop']],['Visit','pin',['map','contact']]]}},
+ health:{
+  clinic:{name:'Modern clinic',desc:'Friendly and clear, with services, booking and your team.',style:'playful',theme:'ocean',home:['hero:bubble','services:cards','booking','team:round','faq'],pages:[['Services','heartPulse',['hero','services','pricing']],['Book','calendar',['booking','map']]]},
+  therapy:{name:'Counseling practice',desc:'A gentle, story-first page with your approach and answers.',style:'magazine',theme:'sage',home:['hero:poster','about:stacked','services:menu','faq:two','contact'],pages:[['Approach','info',['hero','about','team']],['Contact','phoneCall',['contact','faq']]]},
+  medspa:{name:'Med spa',desc:'Soft and polished, with treatments, plans and a photo gallery.',style:'luxe',theme:'blush',home:['hero:arch','services:menu','pricing:cards','gallery','testimonials:spotlight','booking'],pages:[['Treatments','heartPulse',['hero','services:menu','faq']],['Book','calendar',['booking','map']]]}},
+ realestate:{
+  luxury:{name:'Luxury homes',desc:'Dark and dramatic, with homes in rows and a slideshow tour.',style:'portfolio',theme:'ink',home:['hero:overlay','listings:rows','slideshow:full','about','contact'],pages:[['Listings','house',['hero','listings']],['About','info',['hero','about','team']]]},
+  rentals:{name:'Property management',desc:'Services for owners, available rentals and tenant answers.',style:'classic',theme:'harbor',home:['hero:split','services:grid','listings:cards','faq:two','contact'],pages:[['Rentals','house',['hero','listings:rows']],['Owners','card',['hero','services:cards','cta','contact']]]},
+  team:{name:'Team brokerage',desc:'Editorial headline, your agents and featured homes.',style:'magazine',theme:'paper',home:['hero:poster','team:grid','listings','testimonials:spotlight','cta','contact'],pages:[['Agents','info',['hero','team','testimonials']],['Listings','house',['hero','listings:rows']]]}},
+ events:{
+  party:{name:'Party rentals',desc:'Colorful and fun, with what you rent, photos and prices.',style:'playful',theme:'candy',home:['hero:bubble','services:cards','gallery:mosaic','pricing:list','faq','contact'],pages:[['Rentals','card',['hero','services','pricing']],['Contact','phoneCall',['contact','map']]]},
+  planner:{name:'Modern planner',desc:'Editorial headline, collections and your story.',style:'magazine',theme:'paper',home:['hero:poster','portfolio:filter','about:stacked','testimonials:spotlight','contact'],pages:[['Gallery','image',['hero','portfolio:albums']],['Packages','card',['hero','pricing','faq']]]},
+  dj:{name:'DJ and entertainment',desc:'Dark glowing tiles, a slideshow and packages to book.',style:'tech',theme:'neon',home:['hero:bento','slideshow:full','pricing:cards','testimonials:carousel','booking'],pages:[['Packages','card',['hero','pricing','faq']],['Contact','phoneCall',['contact']]]}},
+ auto:{
+  quick:{name:'Quick service',desc:'Tires, oil and brakes with a call-now banner and directions.',style:'classic',theme:'trades',home:['hero:split','cta:band','services:cards','map:wide','testimonials'],pages:[['Services','wrench',['hero','services','faq']],['Visit','pin',['map','contact']]]},
+  custom:{name:'Custom shop',desc:'Dark glass tiles to show off builds and before and afters.',style:'tech',theme:'neon',home:['hero:bento','gallery:mosaic','beforeafter','services:grid','contact'],pages:[['Builds','image',['hero','gallery','beforeafter']],['Contact','phoneCall',['contact','map']]]},
+  mobile:{name:'Mobile detailing',desc:'Clean and friendly, with packages and we-come-to-you answers.',style:'playful',theme:'ocean',home:['hero:bubble','pricing:cards','beforeafter:slider','faq','contact'],pages:[['Packages','card',['hero','pricing','faq']]]}},
+ landscape:{
+  lawn:{name:'Lawn care',desc:'Friendly and bright, with seasonal plans up top.',style:'playful',theme:'meadow',home:['hero:bubble','pricing:cards','services:cards','testimonials:carousel','contact'],pages:[['Services','leaf',['hero','services','faq']],['Contact','phoneCall',['contact','map']]]},
+  hardscape:{name:'Design and hardscape',desc:'Editorial headline, project albums and side-by-side results.',style:'magazine',theme:'workshop',home:['hero:poster','portfolio:albums','beforeafter:side','about','contact'],pages:[['Projects','image',['hero','portfolio:filter']],['Contact','phoneCall',['contact']]]},
+  tree:{name:'Tree service',desc:'Deep greens, a big photo and a call-now banner.',style:'classic',theme:'forest',home:['hero:overlay','services:grid','cta:band','beforeafter','contact'],pages:[['Services','leaf',['hero','services','faq']],['Contact','phoneCall',['contact','map']]]}},
+ lessons:{
+  music:{name:'Music school',desc:'Editorial headline, lessons, teachers and booking.',style:'magazine',theme:'paper',home:['hero:poster','services:cards','team:round','pricing:list','booking'],pages:[['Teachers','info',['hero','team','testimonials']],['Contact','phoneCall',['contact','faq']]]},
+  camp:{name:'Kids camps',desc:'Bright and playful, with camp weeks, photos and answers for parents.',style:'playful',theme:'citrus',home:['hero:bubble','pricing:cards','gallery:mosaic','faq:two','contact'],pages:[['Camps','calendar',['hero','services','pricing']],['Contact','phoneCall',['contact','map']]]},
+  online:{name:'Online courses',desc:'Dark glass tiles, course list and pricing.',style:'tech',theme:'midnight',home:['hero:bento','services:grid','pricing:cards','testimonials:carousel','faq'],pages:[['Courses','book',['hero','services','pricing']]]}},
+ other:{
+  bold:{name:'Bold and modern',desc:'Big type, a scrolling ticker and a strong call to action.',style:'loud',theme:'studio',home:['hero:marquee','services:cards','testimonials:carousel','cta:band','contact'],pages:[['Contact','phoneCall',['contact','map']]]},
+  elegant:{name:'Elegant and calm',desc:'Centered, airy and refined.',style:'luxe',theme:'luxe',home:['hero:arch','about','services:menu','testimonials:spotlight','contact:centered'],pages:[['Services','grid4',['hero','services','faq']]]},
+  dark:{name:'Dark and sleek',desc:'Glowing glass tiles made for dark mode.',style:'tech',theme:'midnight',home:['hero:bento','services:cards','gallery','faq:two','contact'],pages:[['Contact','phoneCall',['contact','map']]]},
+  retro:{name:'Retro and fun',desc:'Diner signage, an emblem badge and checkered trim.',style:'retro',theme:'diner',home:['hero:badge','about','services:menu','testimonials','map'],pages:[['Contact','phoneCall',['contact','faq']]]}}
+};
+Object.entries(MORE_LAYOUTS).forEach(([k,ls])=>{if(KITS[k])Object.assign(KITS[k].layouts,ls)});
+
 /* ---------- industry sections: menu, portfolio, team, packages, before and after, listings ---------- */
 Object.assign(P,{
  cake:'<path d="M4 21h16M5 21v-8h14v8M5 16.5c2.3 1.2 4.7 1.2 7 0s4.7-1.2 7 0M12 13V9.5M12 7c-.9-.8-.9-2 0-3.2.9 1.2.9 2.4 0 3.2z"/>',
@@ -1827,12 +1928,16 @@ let KPICK=null;
 function kitTiles(cur){return `<div class="kt-grid" role="list">${Object.keys(INDUSTRIES).map(k=>{const K=kitOf(k);return `<button type="button" role="listitem" class="kt${cur===k?' on':''}" data-kitpick="${k}" title="${esc(INDUSTRIES[k].label)}">${ic(K.icon,22)}<b>${esc(K.short)}</b></button>`}).join('')}</div>`}
 function kitPreview(ind,lk){const L=kitLayouts(ind)[lk];const e=EDIT;const r=buildFromForm({...bizForm(),industry:ind},L.style,lk,{theme:true});const h=miniOf(r.brand,r.sections,3);EDIT=e;return h}
 const kitTitle=k=>k&&k!=='other'&&KITS[k]?`${KITS[k].short} layouts`:'Starter layouts';
+const kitBlank=()=>`<div class="kl kl-blank"><button type="button" class="kl-pv" data-start="blank" aria-label="Start with a blank page"><span class="es-ill blank"><i></i></span></button><div class="kl-b"><b>Blank page</b><p>Add each section yourself, with suggestions when you want them.</p><button type="button" class="btn sm" data-start="blank">Start blank</button></div></div>`;
+const kitOr=()=>`<h4 class="kl-or">OR CHOOSE FROM THESE POPULAR LAYOUTS</h4>`;
+function kitLook(ind,L){const tk=L.theme||kitOf(ind).theme||(STYLES[L.style]||STYLES.classic).theme,t=THEMES[tk]||THEMES.harbor;
+ return `<p class="kl-look"><span class="sw">${['p','a','sf'].map(c=>`<i style="background:${t.colors[c]}"></i>`).join('')}</span>${esc((STYLES[L.style]||STYLES.classic).name)} style · ${esc(t.name)} colors</p>`}
 function kitCards(ind,inModal){const ls=kitLayouts(ind);
- return `<div class="kl-grid">${Object.entries(ls).map(([lk,L])=>{const adds=(()=>{const r=[];[L.home,...(L.pages||[]).map(p=>p[2])].flat().forEach(x=>{const t=x.split(':')[0];const ru=rule(t);if(ru.addon&&!hasAddon(ru.addon)&&!r.includes(ru.addon))r.push(ru.addon)});return r.map(addonById).filter(a=>a&&a.enabled)})();
-  return `<div class="kl"><div class="kl-pv" role="button" tabindex="0" data-kituse="${ind}|${lk}" aria-label="Use the ${esc(L.name)} layout"><div class="st-mini">${kitPreview(ind,lk)}</div></div><div class="kl-b"><b>${esc(L.name)}</b><p>${esc(L.desc)}</p><div class="kl-pages">${['Home',...(L.pages||[]).map(p=>p[0])].map(n=>`<span>${esc(n)}</span>`).join('')}</div>${adds.length?`<p class="kl-add">${ic('lock',12)} Includes ${adds.map(a=>`${esc(a.name)} (${money(a.price)}${a.billing==='monthly'?'/mo':''})`).join(', ')}</p>`:''}<button type="button" class="btn sm pri" data-kituse="${ind}|${lk}">Use this layout</button></div></div>`}).join('')}
-  ${inModal?'':`<div class="kl kl-blank"><button type="button" class="kl-pv" data-start="blank" aria-label="Start with a blank page"><span class="es-ill blank"><i></i></span></button><div class="kl-b"><b>Blank page</b><p>Add each section yourself, with suggestions when you want them.</p><button type="button" class="btn sm" data-start="blank">Start blank</button></div></div>`}</div>`}
+ return `${inModal?'':kitBlank()+kitOr()}<div class="kl-grid">${Object.entries(ls).map(([lk,L])=>{const adds=(()=>{const r=[];[L.home,...(L.pages||[]).map(p=>p[2])].flat().forEach(x=>{const t=x.split(':')[0];const ru=rule(t);if(ru.addon&&!hasAddon(ru.addon)&&!r.includes(ru.addon))r.push(ru.addon)});return r.map(addonById).filter(a=>a&&a.enabled)})();
+  return `<div class="kl"><div class="kl-pv" role="button" tabindex="0" data-kituse="${ind}|${lk}" aria-label="Use the ${esc(L.name)} layout"><div class="st-mini">${kitPreview(ind,lk)}</div></div><div class="kl-b"><b>${esc(L.name)}</b><p>${esc(L.desc)}</p>${kitLook(ind,L)}<div class="kl-pages">${['Home',...(L.pages||[]).map(p=>p[0])].map(n=>`<span>${esc(n)}</span>`).join('')}</div>${adds.length?`<p class="kl-add">${ic('lock',12)} Includes ${adds.map(a=>`${esc(a.name)} (${money(a.price)}${a.billing==='monthly'?'/mo':''})`).join(', ')}</p>`:''}<button type="button" class="btn sm pri" data-kituse="${ind}|${lk}">Use this layout</button></div></div>`}).join('')}
+  </div>`}
 function kitStart(){const cur=KPICK||state.biz.industry||'';
- if(!cur)return `<div class="es"><div class="es-card wide kit-start"><h3>What kind of business is it?</h3><p>We’ll suggest layouts, pages and colors that fit. You can change everything later.</p>${kitTiles('')}<button type="button" class="linkbtn" data-start="blank">Or start with a blank page</button></div></div>`;
+ if(!cur)return `<div class="es"><div class="es-card wide kit-start">${kitBlank()}<h4 class="kl-or">OR PICK YOUR TYPE OF BUSINESS FOR POPULAR LAYOUTS</h4><p>We’ll suggest layouts, pages and colors that fit. You can change everything later.</p>${kitTiles('')}</div></div>`;
  return `<div class="es"><div class="es-card wide kit-start"><div class="kit-top"><span class="kit-ic">${ic(kitOf(cur).icon,20)}</span><div><h3>${esc(kitTitle(cur))}</h3><p>Each one comes with pages, a menu and words written for you. Pick one to start.</p></div><button type="button" class="btn sm" data-kitchange>Change type</button></div>${kitCards(cur,false)}</div></div>`}
 function kitModal(ind){ask0();ind=ind||state.biz.industry||'other';
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal kit-modal" role="dialog" aria-modal="true" aria-labelledby="kitT"><div class="modal-h"><h2 id="kitT">${ic(kitOf(ind).icon,20)} ${esc(kitTitle(ind))}</h2><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
@@ -1938,35 +2043,86 @@ const LOGO_D={left:'Logo left',center:'Logo centered'},LOGO_M={left:'Logo left',
 const logoD=()=>state.brand.header==='center'?'center':'left';
 const logoM=()=>state.brand.logoM==='center'?'center':'left';
 function logoIllus(kind,k){return kind==='d'?`<span class="mi mi-d lo-${k}"><i class="mi-logo"></i><span class="mi-links"><i class="mi-l on"></i><i class="mi-l"></i><i class="mi-l"></i></span></span>`:`<span class="mi mi-m lo-${k}"><i class="mi-logo"></i><i class="mi-burg"></i></span>`}
-function devPicks(kind){const isD=kind==='d',L=isD?LOGO_D:LOGO_M,cur=isD?logoD():logoM(),M=isD?MENU_D:MENU_M,cm=isD?menuD():menuM();
- return `<div class="sectitle">Logo</div><div class="mpick lpick" role="radiogroup" aria-label="Logo position on ${isD?'computers':'phones'}">${Object.entries(L).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cur}" class="mp${k===cur?' on':''}" data-logo${kind}="${k}">${logoIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>
- <div class="sectitle">Menu</div><div class="mpick" role="radiogroup" aria-label="Menu style on ${isD?'computers':'phones'}">${Object.entries(M).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cm}" class="mp${k===cm?' on':''}" data-menu${kind}="${k}">${menuIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function logoPick(kind){const isD=kind==='d',L=isD?LOGO_D:LOGO_M,cur=isD?logoD():logoM();
+ return `<div class="mpick lpick" role="radiogroup" aria-label="Logo position on ${isD?'computers':'phones'}">${Object.entries(L).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cur}" class="mp${k===cur?' on':''}" data-logo${kind}="${k}">${logoIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function menuPick(kind){const isD=kind==='d',M=isD?MENU_D:MENU_M,cm=isD?menuD():menuM();
+ return `<div class="mpick" role="radiogroup" aria-label="Menu style on ${isD?'computers':'phones'}">${Object.entries(M).map(([k,l])=>`<button type="button" role="radio" aria-checked="${k===cm}" class="mp${k===cm?' on':''}" data-menu${kind}="${k}">${menuIllus(kind,k)}<small>${l}</small></button>`).join('')}</div>`}
+function devPicks(kind){return `<div class="sectitle">Logo</div>${logoPick(kind)}<div class="sectitle">Menu</div>${menuPick(kind)}`}
 function ctaSwitch(){const hc=state.brand.ctaLabel!=='';return `<label class="bgx-sw" style="margin-top:10px"><input type="checkbox" data-hdrcta ${hc?'checked':''}><i></i><span>Show a button in the menu</span></label>`}
 function menuPickers(){const ph=state.device==='phone';
  return `<div class="hp-dev${ph?'':' cur'}"><div class="hp-h">${ic('desktop',15)}<b>On computers</b>${ph?`<button type="button" class="linkbtn" data-hdrdev="desktop">Preview</button>`:'<span class="hp-now">Showing</span>'}</div>${devPicks('d')}</div>
  <div class="hp-dev${ph?' cur':''}"><div class="hp-h">${ic('phone',15)}<b>On phones</b>${ph?'<span class="hp-now">Showing</span>':`<button type="button" class="linkbtn" data-hdrdev="phone">Preview</button>`}</div>${devPicks('m')}</div>
  ${ctaSwitch()}<p class="hint">Tip: click <b>Logo &amp; menu</b> on the page header to change these while you look at it.</p>`}
 
-/* header popover on the page: pick a device, see it, change it */
-function hdrPopHtml(){const ph=state.device==='phone';
- return `<div class="bp-h"><b>${ic('layout',14)} Logo &amp; menu</b><button type="button" class="iconbtn" data-bpclose aria-label="Close">${ic('x',16)}</button></div>
+/* header pane on the page: pick a device, see it, change it. Laid out as slides like the other bottom panes */
+function hdrPopHtml(){const ph=state.device==='phone',k=ph?'m':'d',hc=state.brand.ctaLabel!=='';
+ const slide=(cls,icon,title,body)=>`<section class="hp-slide ${cls}" aria-label="${title}"><h4>${ic(icon,14)}${title}</h4>${body}</section>`;
+ return `<div class="bp-h hp-top"><b>${ic('layout',14)} Logo &amp; menu</b>
  <div class="seg hp-seg" role="tablist" aria-label="Device"><button type="button" role="tab" aria-selected="${!ph}" class="${ph?'':'on'}" data-hdrdev="desktop">${ic('desktop',15)} Computer</button><button type="button" role="tab" aria-selected="${ph}" class="${ph?'on':''}" data-hdrdev="phone">${ic('phone',15)} Phone</button></div>
- <p class="hint" style="margin:0">Computers and phones each keep their own layout. The preview switches so you can see it.</p>
- ${devPicks(ph?'m':'d')}${ctaSwitch()}<div class="bp-act"><button type="button" class="btn sm pri" data-bpclose>Done</button></div>`}
-function openHdrPop(){ask0();const el=document.createElement('div');el.id='btnPop';el.className='bp hdr-pop';el.setAttribute('role','dialog');el.setAttribute('aria-label','Logo and menu');el.innerHTML=hdrPopHtml();document.body.appendChild(el);placeHdrPop()}
+ <small class="hp-note">Computers and phones each keep their own layout.</small>
+ <button type="button" class="btn sm pri hp-done" data-bpclose>Done</button><button type="button" class="iconbtn" data-bpclose aria-label="Close">${ic('x',16)}</button></div>
+ <div class="hp-jump dk-chips" role="tablist" aria-label="Jump to">${[['hp-logo','Logo'],['hp-menu','Menu'],['hp-cta','Menu button']].map(([c,l],i)=>`<button type="button" role="tab" data-hpgo="${c}" class="${i?'':'on'}" aria-selected="${!i}">${l}</button>`).join('')}</div>
+ <div class="hp-track" role="group" aria-label="Logo and menu settings for ${ph?'phones':'computers'}">
+ ${slide('hp-logo','image','Logo',logoPick(k))}
+ ${slide('hp-menu','menu',ph?'Menu on phones':'Menu on computers',menuPick(k))}
+ ${slide('hp-cta','link','Menu button',`${ctaSwitch()}<p class="hint">${hc?'Click the button on the page to change its words and where it goes.':'Add a button like “Call us” or “Book now” beside your menu.'}</p>`)}
+ </div>`}
+function openHdrPop(){ask0();const el=document.createElement('div');el.id='btnPop';el.className='bp hdr-pop';el.setAttribute('role','dialog');el.setAttribute('aria-label','Logo and menu');el.innerHTML=hdrPopHtml();document.body.appendChild(el);hpTrack(el);placeHdrPop()}
+/* narrow bottom pane: the chips show which slide you're on and jump between them */
+function hpTrack(el){const tr=el.querySelector('.hp-track');if(!tr)return;const mark=()=>{const x=tr.scrollLeft;let best=null,bd=1e9;tr.querySelectorAll('.hp-slide').forEach(s=>{const d=Math.abs(s.offsetLeft-tr.offsetLeft-16-x);if(d<bd){bd=d;best=s}});if(!best)return;el.querySelectorAll('[data-hpgo]').forEach(b=>{const on=best.classList.contains(b.dataset.hpgo);b.classList.toggle('on',on);b.setAttribute('aria-selected',on)})};
+ tr.addEventListener('scroll',()=>{clearTimeout(tr._t);tr._t=setTimeout(mark,60)},{passive:true});mark()}
 function placeHdrPop(){const el=$('#btnPop.hdr-pop');if(!el)return;if(innerWidth<=560){el.classList.add('sheet');return}const pb=$('#pagebar');const top=pb?pb.getBoundingClientRect().bottom+10:120;el.style.top=Math.max(8,Math.min(top,innerHeight-el.offsetHeight-8))+'px';el.style.left=Math.max(8,innerWidth-el.offsetWidth-16)+'px'}
-function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){el.innerHTML=hdrPopHtml();placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
+function refreshHdrPop(){const el=$('#btnPop.hdr-pop');if(el){const tr=el.querySelector('.hp-track'),x=tr?tr.scrollLeft:0;el.innerHTML=hdrPopHtml();const t2=el.querySelector('.hp-track');if(t2)t2.scrollLeft=x;hpTrack(el);placeHdrPop()}if(state.rightTab==='brand')renderInspector()}
 function setDevice(d){state.device=d;MOPEN=false;$('#device').dataset.device=d;$$('#deviceSeg button').forEach(b=>b.classList.toggle('on',b.dataset.device===d));save();hard();fitDevice()}
 
+/* ---------- device models: real screen sizes and frames for each kind of computer, tablet and phone ---------- */
+const DEVS={
+ desktop:[{k:'fit',n:'Fit my window',s:'Any computer',os:'any'},{k:'win',n:'Windows laptop',s:'1366 wide · Chrome or Edge',os:'win',w:1366},{k:'winhd',n:'Windows desktop',s:'1920 wide · Chrome or Edge',os:'win',w:1920},{k:'mba',n:'MacBook Air',s:'1470 wide · Safari',os:'mac',w:1470},{k:'mbp',n:'MacBook Pro 16"',s:'1728 wide · Safari',os:'mac',w:1728}],
+ tablet:[{k:'ipad',n:'iPad',s:'820 × 1180 · Safari',os:'ipados',w:820,h:1180},{k:'ipadmini',n:'iPad mini',s:'744 × 1133 · Safari',os:'ipados',w:744,h:1133},{k:'ipadpro',n:'iPad Pro 13"',s:'1032 × 1376 · Safari',os:'ipados',w:1032,h:1376},{k:'tabs9',n:'Samsung Galaxy Tab S9',s:'800 × 1280 · Chrome',os:'android',w:800,h:1280,nav:'keys'},{k:'fire',n:'Amazon Fire HD 10',s:'800 × 1280 · Silk',os:'android',w:800,h:1280,nav:'keys'}],
+ phone:[{k:'iphone',n:'iPhone 16',s:'393 × 852 · Safari',os:'ios',w:393,h:852,cut:'island'},{k:'iphonemax',n:'iPhone 16 Pro Max',s:'440 × 956 · Safari',os:'ios',w:440,h:956,cut:'island'},{k:'iphonese',n:'iPhone SE',s:'375 × 667 · Safari',os:'ios',w:375,h:667,cut:'home'},{k:'s24',n:'Samsung Galaxy S24',s:'360 × 780 · Chrome',os:'android',w:360,h:780,cut:'hole',nav:'keys'},{k:'a15',n:'Samsung Galaxy A15',s:'384 × 832 · Chrome',os:'android',w:384,h:832,cut:'drop',nav:'keys'},{k:'pixel',n:'Google Pixel 9',s:'412 × 923 · Chrome',os:'android',w:412,h:923,cut:'hole',nav:'swipe'}]};
+const devModel=t=>{t=t||state.device;const l=DEVS[t]||DEVS.desktop,k=(state.models||{})[t];return l.find(m=>m.k===k)||l[0]};
+/* tablet and phone previews on a screen with room to spare show the whole device, scrolling inside its screen */
+const devFramed=()=>state.tab==='builder'&&state.device!=='desktop'&&innerWidth>700;
+const SB_IC=`<span class="dv-ic"><svg width="17" height="11" viewBox="0 0 17 11" aria-hidden="true"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="15" height="11" viewBox="0 0 15 11" aria-hidden="true"><path d="M7.5 10.5 5 7.8a3.6 3.6 0 0 1 5 0zM2.6 5.4a7 7 0 0 1 9.8 0l-1.3 1.3a5.2 5.2 0 0 0-7.2 0zM.2 3a10.4 10.4 0 0 1 14.6 0l-1.3 1.3a8.6 8.6 0 0 0-12 0z"/></svg><svg width="24" height="11" viewBox="0 0 24 11" aria-hidden="true"><rect x=".5" y=".5" width="20" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="15" height="7" rx="1.8"/><path d="M22 3.8v3.4a1.8 1.8 0 0 0 0-3.4z" opacity=".45"/></svg></span>`;
+function devShell(){const cv=$('#canvas');if(!cv)return null;let sh=cv.parentElement;if(sh.classList.contains('dv-shell'))return sh;sh=document.createElement('div');sh.className='dv-shell';cv.before(sh);sh.appendChild(cv);
+ const sb=document.createElement('div');sb.className='dv-sb';sb.setAttribute('aria-hidden','true');cv.insertBefore(sb,cv.firstChild);
+ const nb=document.createElement('div');nb.className='dv-nb';nb.setAttribute('aria-hidden','true');cv.appendChild(nb);
+ const ch=$('#device .chrome');if(ch&&!ch.querySelector('.dv-win'))ch.insertAdjacentHTML('beforeend','<span class="dv-win" aria-hidden="true"><i>&#8211;</i><i>&#9633;</i><i>&#10005;</i></span>');return sh}
+function devFrame(){const sh=devShell(),d=$('#device');if(!sh||!d)return;const m=devModel(),on=devFramed();
+ sh.classList.toggle('framed',on);d.dataset.os=m.os;sh.dataset.os=m.os;sh.dataset.cut=m.cut||'';sh.dataset.nav=m.nav||'';sh.dataset.dev=state.device;sh.dataset.model=m.k;
+ if(!on){sh.style.zoom='';sh.style.removeProperty('--sw');sh.style.removeProperty('--sh');return}
+ sh.style.setProperty('--sw',m.w+'px');sh.style.setProperty('--sh',m.h+'px');
+ const sb=sh.querySelector('.dv-sb'),nb=sh.querySelector('.dv-nb'),ipad=m.os==='ipados';
+ sb.innerHTML=`<b>9:41</b>${ipad?'<span class="dv-date">Tue Oct 21</span>':''}<span class="dv-cut"></span>${SB_IC}`;
+ const url=($('#urlbar')||{}).textContent||'';
+ nb.innerHTML=m.os==='ios'?`<span class="dv-url">${ic('lock',11)}${esc(url.replace(/^https?:\/\//,''))}</span>${m.cut==='home'?'':'<i class="dv-home"></i>'}`:m.nav==='keys'?'<span class="dv-keys"><i class="k-r"></i><i class="k-h"></i><i class="k-b"></i></span>':'<i class="dv-home"></i>'}
+/* fit the whole device in the space left between the Sections list and the edit pane */
+function devZoom(){const sh=$('.dv-shell');if(!sh||!sh.classList.contains('framed'))return;sh.style.zoom='';sh.style.translate='';const pv=sh.parentElement;if(!pv)return;
+ const vis=x=>x&&!x.hidden&&x.offsetWidth>0;const ins=$('#fInsp'),lib=$('#fLib'),dm=$('.dock-modal'),bp=$('#btnPop');
+ const pr=vis(dm)?dm.offsetWidth:vis(bp)&&document.body.classList.contains('one-bar')?bp.offsetWidth:vis(ins)&&ins.classList.contains('dock')?ins.offsetWidth:0;
+ const pl=vis(lib)&&innerWidth>1020?lib.getBoundingClientRect().right+12:0;
+ let aw=pv.clientWidth-pl-pr-32,ah=pv.clientHeight-32;[...pv.children].forEach(c=>{if(c!==sh&&getComputedStyle(c).position!=='absolute'&&getComputedStyle(c).position!=='fixed')ah-=c.offsetHeight});
+ let z=Math.min(1,aw/sh.offsetWidth,ah/sh.offsetHeight);if(!(z>0))z=1;if(z<1)sh.style.zoom=z.toFixed(4);
+ const shift=(pl-pr)/2/z;if(shift)sh.style.translate=shift.toFixed(1)+'px 0'}
+const devZ=()=>{const sh=$('.dv-shell.framed');return sh&&+sh.style.zoom||1};
 /* a computer or tablet preview on a small screen: show the real wide layout, shrunk to fit */
-const DEV_W={desktop:1200,tablet:820};
-function fitDevice(){const d=$('#device'),cv=$('#canvas');if(!d||!cv)return;d.style.zoom='';d.style.width='';d.style.maxWidth='';d.classList.remove('fitted');const w=DEV_W[state.device];if(!w||state.tab!=='builder')return;
- const cs=getComputedStyle(cv);const avail=cv.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);if(avail>=780||avail<=0)return;
- d.style.width=w+'px';d.style.maxWidth='none';d.style.zoom=(avail/w).toFixed(4);d.classList.add('fitted')}
+function fitDevice(){const d=$('#device'),cv=$('#canvas');if(!d||!cv)return;devFrame();d.style.zoom='';d.style.width='';d.style.maxWidth='';d.classList.remove('fitted');if(state.tab!=='builder')return;
+ if(devFramed()){devZoom();return}
+ const m=devModel();if(state.device==='phone'){d.style.maxWidth=m.w+'px';return}const w=m.w;if(!w)return;
+ const cs=getComputedStyle(cv);const avail=cv.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight);if(avail<=0)return;
+ d.style.width=w+'px';d.style.maxWidth='none';if(avail>=w)return;d.style.zoom=(avail/w).toFixed(4);d.classList.add('fitted')}
+/* the model picker: a small arrow beside Computer, Tablet and Phone, and an item in the More menu on smaller screens */
+function dvMenuHtml(){return [['desktop','Computer'],['tablet','Tablet'],['phone','Phone']].map(([t,l])=>`<div class="obm-h">${l}</div>`+DEVS[t].map(m=>obItem(`data-dvmodel="${t}|${m.k}"`,t,esc(m.n),esc(m.s),state.device===t&&devModel(t).k===m.k)).join('')).join('')}
+renderBuilder=(o=>function(){o.apply(this,arguments);const sg=$('#deviceSeg');if(sg&&!sg.querySelector('[data-dvpick]')){const m=devModel();sg.insertAdjacentHTML('beforeend',`<button type="button" class="dv-pick" data-dvpick aria-haspopup="menu" aria-label="Pick a device: ${esc(m.n)}" title="Pick a device to preview: ${esc(m.n)}">${ic('chev',13)}</button>`)}})(renderBuilder);
+moreMenuHtml=(o=>function(){let h=o.apply(this,arguments);if(OBW()<=900){const m=devModel();h=h.replace('<div class="obm-h">Design</div>',obItem('data-dvpick',state.device,'Pick a device',esc(m.n))+'<div class="obm-h">Design</div>')}return h})(moreMenuHtml);
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;let el;
+ if(el=t.closest('[data-dvpick]')){e.stopPropagation();const inMenu=!!el.closest('.ob-menu'),btn=inMenu?$('#obMore'):el;if(!inMenu&&OBM&&OBM.btn===el)return;setTimeout(()=>obMenu(btn,dvMenuHtml()),30);return}
+ if(el=t.closest('[data-dvmodel]')){e.stopPropagation();const[d,k]=el.dataset.dvmodel.split('|');state.models={...(state.models||{}),[d]:k};const sg=$('#deviceSeg [data-dvpick]');if(sg)sg.remove();setDevice(d);dockSync();return}},true);
 addEventListener('resize',()=>{clearTimeout(fitDevice._t);fitDevice._t=setTimeout(fitDevice,120)});
 
 document.addEventListener('click',e=>{const T0=e.target;if(!(T0 instanceof Element))return;const q=s=>T0.closest(s);let el;
  if(q('[data-hdredit]')){e.preventDefault();e.stopPropagation();openHdrPop();return}
+ if(el=q('[data-hpgo]')){e.stopPropagation();const p=el.closest('#btnPop'),tr=p&&p.querySelector('.hp-track'),s=tr&&tr.querySelector('.'+el.dataset.hpgo);if(s)tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});return}
  if(el=q('[data-hdrdev]')){e.stopPropagation();setDevice(el.dataset.hdrdev);refreshHdrPop();return}
  if(el=q('[data-logod]')){e.stopPropagation();snap();const v=el.dataset.logod;state.brand.header=v==='center'?'center':(state.brand.header==='call'?'call':'left');hard();refreshHdrPop();return}
  if(el=q('[data-logom]')){e.stopPropagation();snap();state.brand.logoM=el.dataset.logom;hard();refreshHdrPop();return}
@@ -2035,6 +2191,17 @@ setInterval(()=>{const B=state.brand;if(B&&B.logo&&B._lcSrc!==B.logo.length+':'+
 /* ---------- undo, redo, save; whole-section vs inside editing; text color ---------- */
 function histBtns(){const u=$('#undoBtn'),r=$('#redoBtn'),s=$('#saveBtn');if(u)u.disabled=!hist.length;if(r)r.disabled=!fut.length;if(s){s.classList.toggle('dirty',DIRTY);s.title=DIRTY?'Save this design (you have changes that are not saved yet)':'Saved to My designs'}}
 saveDesign=(o=>async function(x){const r=await o(x);if(r!==false){DIRTY=false;histBtns()}return r})(saveDesign);
+/* autosave: once a design is in My designs, keep its saved copy current every minute and when the page is left; brand-new designs wait for a first Save */
+const AUTO_MS=60000;let autoBusy=false,autoFailed=false,autoTipT=null;
+async function autoSave(){if(autoBusy||!designsReady||!curDesign()||!isDirty())return;autoBusy=true;const d=curDesign(),prev={at:d.at,data:d.data};
+ try{d.at=Date.now();d.data=designData();await designStore(d);autoFailed=false;DIRTY=false;histBtns();autoTip();if(state.tab==='designs')renderDesigns();const st=$('#dsMenu .ds-state');if(st){st.className='ds-state ok';st.textContent='All changes saved'}}
+ catch(e){Object.assign(d,prev);if(!autoFailed){autoFailed=true;toast('Autosave could not keep your changes. Browser storage is full. Delete an old design or use smaller photos.')}}
+ finally{autoBusy=false}}
+function autoTip(){const b=$('#saveBtn');if(!b)return;let t=b.querySelector('.as-tip');if(!t){t=document.createElement('span');t.className='as-tip';t.setAttribute('role','status');b.appendChild(t)}
+ t.textContent='Autosaved';b.title='Autosaved to My designs at '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});t.classList.add('on');clearTimeout(autoTipT);autoTipT=setTimeout(()=>t.classList.remove('on'),2500)}
+setInterval(autoSave,AUTO_MS);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoSave()});
+addEventListener('pagehide',autoSave);
 
 /* a click inside the page either selects the whole section (controls open) or an item inside it (controls fold away) */
 const INNER='[data-edit],[data-editb],[data-img],a,button,input,select,textarea,label,[data-ss],[role=button],.btn';
@@ -2089,9 +2256,9 @@ let dockOn=()=>state.tab==='builder'&&state.inspOpen&&state.rightTab==='section'
 function dockSync(){const on=dockOn(),p=$('#fInsp');if(!p)return;const was=p.classList.contains('dock');p.classList.toggle('dock',on);document.body.classList.toggle('dock-on',on);dockSide();if(!on){const n=$('#fInsp .dk-nav');if(n)n.remove()}if(on&&!was)requestAnimationFrame(dockReveal)}
 /* tablet and phone previews are tall, so on a wide screen the edit panes sit on the right instead of across the bottom */
 let DK_SIDE=null;
-function dockSide(){const b=document.body,cv=$('#canvas'),side=state.tab==='builder'&&state.device!=='desktop'&&innerWidth>760;b.classList.toggle('dock-side',side);
- if(side&&cv)b.style.setProperty('--dktop',Math.max(0,Math.round(cv.getBoundingClientRect().top))+'px');
- const k=side+'|'+b.classList.contains('dock-on');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
+function dockSide(){const b=document.body,cv=$('#canvas'),side=devFramed();b.classList.toggle('dock-side',side);
+ if(side&&cv){let t=0;[$('.prevbar'),$('#pagebar')].forEach(x=>{if(x&&x.offsetParent)t=Math.max(t,x.getBoundingClientRect().bottom)});b.style.setProperty('--dktop',Math.max(0,Math.round(t))+'px')}
+ const k=[side,b.classList.contains('dock-on'),state.libOpen,!!$('.dock-modal'),!!$('#btnPop')].join('|');if(k!==DK_SIDE){DK_SIDE=k;requestAnimationFrame(()=>fitDevice())}}
 function dkSlide(key,title,nodes,icon){const s=document.createElement('section');s.className='dk-slide';s.dataset.dk=key;s.setAttribute('aria-label',title);s.innerHTML=`<h4>${icon?ic(icon,14):''}${esc(title)}</h4>`;nodes.forEach(n=>s.appendChild(n));return s}
 function dockify(){const ins=$('#inspector');if(!ins||ins.querySelector(':scope>.dk-track'))return;const kids=[...ins.children];if(!kids.length)return;
  const slides=[];let words=[],wn=0,last=null;const used={};const key=k=>{used[k]=(used[k]||0)+1;return used[k]>1?k+used[k]:k};
@@ -2118,7 +2285,7 @@ function dkMark(k){DKKEY=k;$$('#fInsp .dk-chips [data-dkgo]').forEach(b=>{const 
 function dkGo(k){const tr=$('#inspector .dk-track'),s=tr&&tr.querySelector(`[data-dk="${k}"]`);if(!s)return;DK_LOCK=true;tr.scrollTo({left:s.offsetLeft-tr.offsetLeft-16,behavior:'smooth'});dkMark(k);setTimeout(()=>{DK_LOCK=false},450)}
 /* keep the picked section in view above the dock */
 function dockReveal(){const s=$(`#site .sec[data-sec="${state.selected}"]`),cv=$('#canvas'),p=$('#fInsp');if(!s||!cv||!p)return;const r=s.getBoundingClientRect(),c=cv.getBoundingClientRect(),bottom=document.body.classList.contains('dock-side')?c.bottom:p.getBoundingClientRect().top;
- if(r.top<c.top+8||r.top>bottom-80)cv.scrollBy({top:r.top-c.top-12,behavior:'smooth'})}
+ const ft=$('.dv-shell.framed')?(state.device==='phone'&&devModel().os==='ios'?60:96)*devZ():0;if(r.top<c.top+ft+8||r.top>bottom-80)cv.scrollBy({top:(r.top-c.top-ft-12)/devZ(),behavior:'smooth'})}
 renderInspector=(o=>function(){o.apply(this,arguments);dockSync();if(dockOn()&&state.rightTab==='section')dockify()})(renderInspector);
 openPanel=(o=>function(){o.apply(this,arguments);dockSync()})(openPanel);
 selectSection=(o=>function(id){const prev=state.selected;o(id);if(prev!==id)DKKEY=null;if(dockOn())requestAnimationFrame(dockReveal)})(selectSection);
@@ -2272,7 +2439,7 @@ document.addEventListener('pointerdown',e=>{const r=e.target instanceof Element&
 
 /* ---------- init ---------- */
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
-const h=(location.hash||'').slice(1);if(['builder','designs','dashboard','plans','admin'].includes(h))state.tab=h;
+const h=(location.hash||'').slice(1);if(['builder','designs','dashboard','plans','admin'].includes(h))state.tab=h;if(h==='quote')state.tab='plans';
 designsLoad();
 if(!$('#v-'+state.tab))state.tab='builder';
 if(isNarrow()){state.libOpen=false;state.inspOpen=false}
@@ -2280,5 +2447,6 @@ if(innerWidth<=760&&state.device!=='phone')state.device='phone';
 pagesInit();
 if(!state.announce||state.announce.v!==2)state.announce={on:false,text:'',v:2,style:'bar',speed:'normal',size:'md',where:'all',close:false};
 hard();
+if(h==='quote')openQuote();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(state.tab==='dashboard')fitMini()});
 })();
