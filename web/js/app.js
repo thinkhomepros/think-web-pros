@@ -2035,6 +2035,17 @@ setInterval(()=>{const B=state.brand;if(B&&B.logo&&B._lcSrc!==B.logo.length+':'+
 /* ---------- undo, redo, save; whole-section vs inside editing; text color ---------- */
 function histBtns(){const u=$('#undoBtn'),r=$('#redoBtn'),s=$('#saveBtn');if(u)u.disabled=!hist.length;if(r)r.disabled=!fut.length;if(s){s.classList.toggle('dirty',DIRTY);s.title=DIRTY?'Save this design (you have changes that are not saved yet)':'Saved to My designs'}}
 saveDesign=(o=>async function(x){const r=await o(x);if(r!==false){DIRTY=false;histBtns()}return r})(saveDesign);
+/* autosave: once a design is in My designs, keep its saved copy current every minute and when the page is left; brand-new designs wait for a first Save */
+const AUTO_MS=60000;let autoBusy=false,autoFailed=false,autoTipT=null;
+async function autoSave(){if(autoBusy||!designsReady||!curDesign()||!isDirty())return;autoBusy=true;const d=curDesign(),prev={at:d.at,data:d.data};
+ try{d.at=Date.now();d.data=designData();await designStore(d);autoFailed=false;DIRTY=false;histBtns();autoTip();if(state.tab==='designs')renderDesigns();const st=$('#dsMenu .ds-state');if(st){st.className='ds-state ok';st.textContent='All changes saved'}}
+ catch(e){Object.assign(d,prev);if(!autoFailed){autoFailed=true;toast('Autosave could not keep your changes. Browser storage is full. Delete an old design or use smaller photos.')}}
+ finally{autoBusy=false}}
+function autoTip(){const b=$('#saveBtn');if(!b)return;let t=b.querySelector('.as-tip');if(!t){t=document.createElement('span');t.className='as-tip';t.setAttribute('role','status');b.appendChild(t)}
+ t.textContent='Autosaved';b.title='Autosaved to My designs at '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});t.classList.add('on');clearTimeout(autoTipT);autoTipT=setTimeout(()=>t.classList.remove('on'),2500)}
+setInterval(autoSave,AUTO_MS);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')autoSave()});
+addEventListener('pagehide',autoSave);
 
 /* a click inside the page either selects the whole section (controls open) or an item inside it (controls fold away) */
 const INNER='[data-edit],[data-editb],[data-img],a,button,input,select,textarea,label,[data-ss],[role=button],.btn';

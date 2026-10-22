@@ -67,7 +67,7 @@ window.TWP_HELP = (function () {
         tab: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone. Undo, Redo and Save are in the top bar, the sun button flips light and dark, and Designs holds everything you have saved.',
         ph: 'Tap ⋯ to preview your site as a Computer, Tablet or Phone, show the dark version, save, or open My designs. Undo and Save are in the top bar.'
       },
-      tips: ['A pink dot on Save means you have changes that are not saved to My designs yet.', 'On a computer, Ctrl+Z undoes and Ctrl+Shift+Z redoes (Cmd on a Mac).']
+      tips: ['A pink dot on Save means you have changes that are not saved to My designs yet. After the first save, changes are autosaved every minute.', 'On a computer, Ctrl+Z undoes and Ctrl+Shift+Z redoes (Cmd on a Mac).']
     },
     {
       id: 'launch', img: 8, title: 'Launch when you love it',
@@ -215,8 +215,8 @@ window.TWP_HELP = (function () {
       keys: 'undo redo mistake back revert oops ctrl z',
       body: '<p>Use <b>Undo</b> and <b>Redo</b> in the top bar. <span data-only="ph">On a phone, Redo is in the <b>⋯</b> menu.</span><span data-only="pc"> Keyboard: Ctrl+Z to undo and Ctrl+Shift+Z to redo (Cmd on a Mac).</span> Big changes like a new layout also show an <b>Undo</b> button in the message at the bottom of the screen.</p>' },
     { id: 'save-design', cat: 'save', title: 'Save your design and open it later',
-      keys: 'save saved designs my designs keep later copy open come back lost work',
-      body: '<p>Choose <b>Save</b> in the top bar to save to <b>My designs</b>. A pink dot on Save means you have unsaved changes. <b>Save as a copy</b> keeps the current version and starts a copy, and <b>New design</b> starts fresh. Find all of these in the <b>Designs</b> menu <span data-only="touch">or the <b>⋯</b> menu</span>.</p><p>Open <b>My designs</b> to switch between saved designs.</p>' },
+      keys: 'save saved designs my designs keep later copy open come back lost work autosave auto save automatic',
+      body: '<p>Choose <b>Save</b> in the top bar to save to <b>My designs</b>. A pink dot on Save means you have unsaved changes. Once a design is saved, your changes are also saved for you every minute and when you leave the page, and a small <b>Autosaved</b> note shows under Save. <b>Save as a copy</b> keeps the current version and starts a copy, and <b>New design</b> starts fresh. Find all of these in the <b>Designs</b> menu <span data-only="touch">or the <b>⋯</b> menu</span>.</p><p>Open <b>My designs</b> to switch between saved designs.</p>' },
     { id: 'where-saved', cat: 'save', title: 'Where is my design stored?',
       keys: 'storage browser device lost cleared another computer account sync',
       body: '<p>For now your designs are saved in this browser on this device. They stay put when you close the tab, but clearing your browser data or switching devices will not bring them along. When you check out, your design is sent to us with your order, so your finished site does not depend on this browser.</p>' },
