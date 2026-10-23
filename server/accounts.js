@@ -96,7 +96,7 @@ async function claimSlug(db, name, shopId) {
   return slug;
 }
 
-export function addAccountRoutes(app, { db, counter, humanOnly = (req, res, next) => next() }) {
+export function addAccountRoutes(app, { db, counter, humanOnly = (req, res, next) => next(), mailer = null, origin = () => '' }) {
   const signupLimit = rateLimit(counter, 'signup', [{ windowSec: 3600, max: 5 }, { windowSec: 86_400, max: 20 }], 'Too many new accounts from here. Please try again later.');
   const loginLimit = rateLimit(counter, 'login', [{ windowSec: 900, max: 20 }], 'Too many sign-in attempts. Please wait 15 minutes.');
 
@@ -145,6 +145,39 @@ export function addAccountRoutes(app, { db, counter, humanOnly = (req, res, next
     if (token && token.length <= 200) await db.del(`session:${sha(token)}`);
     setCookie(req, res, '', 0);
     res.json({ ok: true });
+  });
+
+  // forgot password: a one-hour link by email. The answer is the same whether or not the email has an account.
+  const resetLimit = rateLimit(counter, 'reset', [{ windowSec: 3600, max: 5 }], 'Too many reset requests. Please wait an hour.');
+  app.post('/api/account/forgot', resetLimit, humanOnly, async (req, res) => {
+    if (!mailer) return res.status(503).json({ error: 'Password reset by email isn’t switched on yet. Contact Think Web Pros to reset it.' });
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const userId = EMAIL.test(email) ? await db.get(`user-email:${email}`) : null;
+    if (userId) {
+      const token = randomBytes(32).toString('base64url');
+      await db.set(`reset:${sha(token)}`, { userId }, { ttlSec: 3600 });
+      const link = `${origin(req)}/builder?reset=${token}`;
+      await mailer.send({
+        to: email,
+        subject: 'Reset your Think Web Pros password',
+        html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#24202a"><p>Someone asked to reset the password for your Think Web Pros account. If it was you, choose a new one here (the link works for one hour):</p><p><a href="${link}" style="display:inline-block;background:#C2287C;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none">Choose a new password</a></p><p style="color:#6b6470">If it wasn’t you, ignore this email and nothing changes.</p></div>`,
+        text: `Reset your Think Web Pros password (the link works for one hour):\n${link}\n\nIf it wasn't you, ignore this email.`,
+      }).catch((err) => console.error('Reset email failed:', err.message));
+    }
+    res.json({ ok: true });
+  });
+  app.post('/api/account/reset', loginLimit, async (req, res) => {
+    const token = String(req.body?.token || '');
+    const password = String(req.body?.password || '');
+    if (password.length < 8 || password.length > 200) return res.status(400).json({ error: 'Use a password of at least 8 characters.' });
+    const r = token && token.length <= 200 ? await db.get(`reset:${sha(token)}`) : null;
+    const user = r ? await db.get(`user:${r.userId}`) : null;
+    if (!user) return res.status(400).json({ error: 'That reset link has expired. Ask for a new one.' });
+    await db.del(`reset:${sha(token)}`);
+    await db.set(`user:${user.id}`, { ...user, password: await hashPassword(password) });
+    const session = await startSession(db, { userId: user.id, shopId: user.shopId });
+    setCookie(req, res, session, SESSION_DAYS * 86_400);
+    res.json({ user: { id: user.id, email: user.email }, shop: publicShop(await db.get(`shop:${user.shopId}`)) });
   });
 
   app.get('/api/account/me', async (req, res) => {
