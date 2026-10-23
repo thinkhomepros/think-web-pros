@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { addAccountRoutes } from './accounts.js';
 import { createDb } from './db.js';
 import { addImportRoutes } from './importer.js';
+import { addPosRoutes } from './pos.js';
 import { addReportRoutes, createReportFiles } from './reports.js';
 import { priceOrder, priceQuote } from './catalog.js';
 import { describeSession } from './payments.js';
@@ -33,7 +34,7 @@ function publicPayment(p) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {} }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, pos = {} }) {
   const { stripe = null, paypal = null, zelle = null } = payments;
   const app = express();
   app.disable('x-powered-by');
@@ -334,6 +335,14 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
   // owner logins and live shops (accounts.js, shop.js); the register's routes build on the same db
   addAccountRoutes(app, { db, counter, humanOnly });
   addShopRoutes(app, { db, counter, humanOnly, hooks: shopHooks });
+  // in-person register and kitchen screen (pos.js). pos: { terminal, mailer, texter, appFee } from pos-env.js
+  addPosRoutes(app, {
+    db,
+    ...pos,
+    receiptBase: (publicUrl || '').replace(/\/$/, ''),
+    pairLimit: rateLimit(counter, 'pos-pair', [{ windowSec: 600, max: 10 }]),
+    loginLimit: rateLimit(counter, 'pos-login', [{ windowSec: 600, max: 60 }]),
+  });
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
   // a published shop's site: the studio page opens it in site mode (see TWP.site in platform.js)
