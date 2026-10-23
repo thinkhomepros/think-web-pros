@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { addAccountRoutes } from './accounts.js';
 import { addConnectRoutes, addConnectWebhook } from './connect.js';
+import { orderHooks } from './notify.js';
 import { createDb } from './db.js';
 import { addImportRoutes } from './importer.js';
 import { addReportRoutes, createReportFiles } from './reports.js';
@@ -34,7 +35,7 @@ function publicPayment(p) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, connect = null }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, connect = null, notify = {} }) {
   const { stripe = null, paypal = null, zelle = null } = payments;
   const app = express();
   app.disable('x-powered-by');
@@ -63,7 +64,21 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
 
   // card payments for shops go to each shop's own Stripe account (connect.js); emails and the like join via shopHooks
   const origin = (req) => (publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
-  const hooks = { ...shopHooks, ...(connect ? { checkout: (shop, order, req) => connect.checkout(shop, order, origin(req)) } : {}) };
+  // messages sent outside a request (webhooks) link to the address the site was last reached at
+  let seenOrigin = publicUrl ? publicUrl.replace(/\/$/, '') : '';
+  app.use((req, res, next) => {
+    if (!publicUrl && req.get('host')) seenOrigin = origin(req);
+    next();
+  });
+  const notes = orderHooks({ ...notify, origin: () => seenOrigin });
+  const hooks = {
+    ...notes,
+    ...shopHooks,
+    // an order is confirmed (pay at pickup, or once the card payment lands): receipts, plus anything else that
+    // wants it, like the register's kitchen screen (shopHooks.placed)
+    placed: (shop, order) => Promise.all([notes.placed(shop, order), shopHooks.placed?.(shop, order)]),
+    ...(connect ? { checkout: (shop, order, req) => connect.checkout(shop, order, origin(req)) } : {}),
+  };
   addConnectWebhook(app, { connect, db, hooks });
 
   const humanOnly = human ? human.middleware : (req, res, next) => next();
@@ -337,7 +352,7 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
   addImportRoutes(app, { readStore, limit: importLimit });
 
   // owner logins and live shops (accounts.js, shop.js); the register's routes build on the same db
-  addAccountRoutes(app, { db, counter, humanOnly });
+  addAccountRoutes(app, { db, counter, humanOnly, mailer: notify.mailer || null, origin });
   addShopRoutes(app, { db, counter, humanOnly, hooks });
   addConnectRoutes(app, { connect, db, origin });
 

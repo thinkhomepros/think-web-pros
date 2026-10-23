@@ -73,6 +73,26 @@ Then a shop owner signs in to the Studio, opens their name in the main menu, and
 
 A shopper's unpaid card checkout holds the stock for 30 minutes, then the order is cancelled and the items go back on the shelf.
 
+## 7. Receipts, order alerts and password resets (email and texts)
+
+Shoppers get a receipt and a note when their order is ready, out for delivery, shipped or cancelled. Shop owners get an email for each new order (they can turn it off), and "Forgot your password?" works. All of it is off until these are set.
+
+**Email (Resend, free for 3,000 emails a month):**
+1. Sign up at [resend.com](https://resend.com).
+2. Go to **Domains > Add Domain** and add the domain you send from (for example `thinkwebpros.com`). Resend shows a few DNS records; add them where your domain is managed and wait until Resend says **Verified**.
+3. Go to **API Keys > Create API Key** (Sending access), copy it, and add it in Vercel as `RESEND_API_KEY`.
+4. Add `EMAIL_FROM`, for example `Think Web Pros <orders@thinkwebpros.com>` (it must use the verified domain). Replies go to the shop owner's email automatically.
+5. Redeploy.
+
+**Texts (Twilio, optional):** shoppers who give a phone number get a text when their order is ready, and owners can have new orders texted to them (set in their account panel).
+1. Sign up at [twilio.com](https://www.twilio.com), buy a US phone number, and finish **A2P 10DLC** registration for it (US carriers block texts from unregistered numbers; approval takes a few days).
+2. From the Twilio console home, copy the **Account SID** and **Auth Token** into Vercel as `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`, and add the number as `TWILIO_FROM` (like `+12075550142`).
+3. Redeploy.
+
+## 8. Sales tax
+
+Each shop owner sets their own sales tax rate in their account panel (**Orders and tax**). It's added to goods (not delivery or shipping) at checkout and shows on receipts. Owners should use their city and state's combined rate, and file and pay the tax themselves.
+
 ## Custom quotes
 
 Quote requests appear in **Admin > Orders > Payments** as **Needs a price**. Type the design fee and, if there is one, the monthly price, and click **Set price**. The pay link is copied for you; paste it into an email to the customer. The same **Copy pay link** button works for any unpaid order, such as a customer whose card was declined.
