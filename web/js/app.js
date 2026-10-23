@@ -255,10 +255,12 @@ function save(){const B=state.brand;if(B&&B.pal&&B.mode)B.pal[B.mode]={...B.colo
 const tierById=id=>admin.tiers.find(t=>t.id===id)||admin.tiers[0];
 const addonById=id=>admin.addons.find(a=>a.id===id);
 const rule=t=>admin.sections[t]||{enabled:true,addon:null};
+// The in-store register isn't built yet: POS plans and hardware show as "Coming soon" and can't be bought. Set true when it ships.
+const POS_READY=false;
 const posPlan=id=>admin.pos.plans.find(p=>p.id===id);
 function curTier(){return tierById(state.cart.tier)}
 function hasAddon(id){const a=addonById(id);if(!a||!a.enabled)return false;return state.cart.addons.includes(id)||(curTier().includes||[]).includes(id)}
-const hasPOS=()=>!!(state.cart.pos&&posPlan(state.cart.pos));
+const hasPOS=()=>!!(POS_READY&&state.cart.pos&&posPlan(state.cart.pos));
 const hasMerchant=()=>state.cart.merchant||hasPOS();
 const sec=id=>state.sections.find(s=>s.id===id);
 const firstOf=t=>state.sections.find(s=>s.type===t&&!s.hidden);
@@ -268,8 +270,8 @@ function cartCalc(){
  const t=curTier(),inc=new Set(t.includes||[]);const annual=state.cart.annual;
  let setup=t.setup,monthly=t.monthly;const lines=[{label:`${t.name} plan`,m:t.monthly},{label:`${t.name} site design`,o:t.setup}];
  state.cart.addons.map(addonById).filter(a=>a&&a.enabled&&!inc.has(a.id)).forEach(a=>{if(a.billing==='once'){setup+=a.price;lines.push({label:a.name,o:a.price})}else{monthly+=a.price;lines.push({label:a.name,m:a.price})}});
- const pp=state.cart.pos&&posPlan(state.cart.pos);if(pp){monthly+=pp.price;lines.push({label:pp.name,m:pp.price})}
- let hwTotal=0;Object.entries(state.cart.hw||{}).forEach(([id,q])=>{const h=admin.pos.hardware.find(x=>x.id===id);if(h&&q>0){hwTotal+=h.price*q;lines.push({label:`${h.name}${q>1?' × '+q:''}`,o:h.price*q})}});
+ const pp=hasPOS()&&posPlan(state.cart.pos);if(pp){monthly+=pp.price;lines.push({label:pp.name,m:pp.price})}
+ let hwTotal=0;Object.entries(POS_READY&&state.cart.hw||{}).forEach(([id,q])=>{const h=admin.pos.hardware.find(x=>x.id===id);if(h&&q>0){hwTotal+=h.price*q;lines.push({label:`${h.name}${q>1?' × '+q:''}`,o:h.price*q})}});
  setup+=hwTotal;if(hasMerchant()&&admin.pos.merchantMonthly){monthly+=admin.pos.merchantMonthly;lines.push({label:'Merchant account',m:admin.pos.merchantMonthly})}
  return{t,inc,setup,monthly,yearly:monthly*10,annual,lines,proc:hasMerchant()?processing():null};
 }
@@ -865,10 +867,10 @@ function renderPlans(){const c=cartCalc(),annual=state.cart.annual,p=admin.pos,p
   ${state.keep?`<span class="badge ok">${ic('check',13)} Kept</span>`:`<button type="button" class="btn" data-storage>Keep my designs</button>`}</div>
  <div class="block"><div class="block-h"><div><h2>Add-ons</h2><p>Turn features on for this site. Included items come with your plan.</p></div></div>
   <div class="addons">${admin.addons.filter(a=>a.enabled).map(a=>{const inc=c.inc.has(a.id),on=state.cart.addons.includes(a.id);return `<label class="addon${on||inc?' on':''}${inc?' inc':''}"><input type="checkbox" id="ad-${a.id}" data-cartaddon="${a.id}" ${on||inc?'checked':''} ${inc?'disabled':''}><div><b>${esc(a.name)}</b><p>${esc(a.desc)}</p>${a.id==='logomaker'?`<button type="button" class="btn sm" data-logomaker style="justify-self:start;margin-top:4px">${ic('spark',13)} Try it</button>`:''}</div><span class="ad-price num">${inc?'Included':money(a.price)+(a.billing==='monthly'?'/mo':' once')}</span></label>`}).join('')}</div></div>
- <div class="block"><div class="block-h"><div><h2>Point of sale</h2><p>Ring up sales at the counter. Your menu, prices and stock sync with the website store, and online orders show up on the register.</p></div>${hasPOS()?`<button class="btn sm" data-posset="">Remove POS</button>`:''}</div>
-  <div class="tiers">${p.plans.filter(x=>x.enabled).map(x=>{const on=state.cart.pos===x.id;return `<div class="tier${on?' on':''}" role="radio" aria-checked="${on}" tabindex="0" data-posset="${x.id}"><h3>${esc(x.name)}</h3><div class="tier-price"><b class="num">${money(x.price)}</b><span>/month</span></div><p class="muted" style="font-size:13px">${esc(x.desc)}</p><span class="tier-cta">${on?'Selected':'Add '+esc(x.name)}</span></div>`}).join('')}</div>
+ <div class="block"><div class="block-h"><div><h2>Point of sale${POS_READY?'':' <span class="soon-badge">Coming soon</span>'}</h2><p>Ring up sales at the counter. Your menu, prices and stock sync with the website store, and online orders show up on the register.${POS_READY?'':' We\'re finishing the register now. These plans and devices can\'t be ordered yet.'}</p></div>${hasPOS()?`<button class="btn sm" data-posset="">Remove POS</button>`:''}</div>
+  <div class="tiers${POS_READY?'':' soon'}">${p.plans.filter(x=>x.enabled).map(x=>{const on=hasPOS()&&state.cart.pos===x.id;return POS_READY?`<div class="tier${on?' on':''}" role="radio" aria-checked="${on}" tabindex="0" data-posset="${x.id}">`:`<div class="tier" aria-disabled="true"><h3>${esc(x.name)}</h3><div class="tier-price"><b class="num">${money(x.price)}</b><span>/month</span></div><p class="muted" style="font-size:13px">${esc(x.desc)}</p><span class="tier-cta">${!POS_READY?'Coming soon':on?'Selected':'Add '+esc(x.name)}</span></div>`}).join('')}</div>
   <div class="sectitle" style="margin-top:18px">Hardware</div>
-  <div class="pos-grid">${p.hardware.filter(h=>h.enabled).map(h=>{const q=state.cart.hw[h.id]||0;return `<div class="hw"><span class="hw-ic">${ic(h.icon||'card',24)}</span><div><b>${esc(h.name)}</b><p>${esc(h.desc)}</p><p class="num" style="color:var(--ink);font-weight:700;margin-top:4px">${money(h.price)}</p></div><div class="qty"><button type="button" class="iconbtn" data-hw="${h.id}|-1" ${q?'':'disabled'} aria-label="Fewer">${ic('down',14)}</button><span class="num">${q}</span><button type="button" class="iconbtn" data-hw="${h.id}|1" aria-label="More">${ic('up',14)}</button></div></div>`}).join('')}</div></div>
+  <div class="pos-grid${POS_READY?'':' soon'}">${p.hardware.filter(h=>h.enabled).map(h=>{const q=state.cart.hw[h.id]||0;return `<div class="hw"><span class="hw-ic">${ic(h.icon||'card',24)}</span><div><b>${esc(h.name)}</b><p>${esc(h.desc)}</p><p class="num" style="color:var(--ink);font-weight:700;margin-top:4px">${money(h.price)}</p></div>${POS_READY?`<div class="qty"><button type="button" class="iconbtn" data-hw="${h.id}|-1" ${q?'':'disabled'} aria-label="Fewer">${ic('down',14)}</button><span class="num">${q}</span><button type="button" class="iconbtn" data-hw="${h.id}|1" aria-label="More">${ic('up',14)}</button></div>`:'<span class="soon-badge">Coming soon</span>'}</div>`}).join('')}</div></div>
  <div class="block"><div class="block-h"><div><h2>Merchant services</h2><p>Card processing for the register, your website store and booking deposits. No monthly fee; you pay a rate per sale, taken out before deposit.</p></div>
   <label class="switch"><input type="checkbox" id="merch" data-merchant ${hasMerchant()?'checked':''} ${hasPOS()?'disabled':''}><i></i> ${hasPOS()?'Included with POS':'Accept cards'}</label></div>
   <div class="rates"><table><thead><tr><th>Payment type</th><th>Rate</th></tr></thead><tbody>${p.rates.map(r=>`<tr><td>${esc(r.name)}</td><td class="num"><b>${r.pct}% + ${Math.round(r.fixed*100)}¢</b></td></tr>`).join('')}</tbody></table>
@@ -1041,8 +1043,8 @@ document.addEventListener('click',e=>{const T=e.target;const q=s=>T.closest(s);l
  if(el=q('[data-lmidea]')){LM={...lmIdeas[+el.dataset.lmidea]};renderLogoMaker();return}
  if(el=q('[data-lmuse]')){lmUse();return}
  if(el=q('[data-tier]')){state.cart.tier=el.dataset.tier;hard();return}
- if(el=q('[data-posset]')){state.cart.pos=el.dataset.posset||null;if(state.cart.pos){state.cart.merchant=true;toast(`${posPlan(state.cart.pos).name} added. Card processing is included.`)}hard();return}
- if(el=q('[data-hw]')){const[id,d]=el.dataset.hw.split('|');state.cart.hw[id]=Math.max(0,(state.cart.hw[id]||0)+(+d));hard();return}
+ if(el=q('[data-posset]')){if(!POS_READY)return;state.cart.pos=el.dataset.posset||null;if(state.cart.pos){state.cart.merchant=true;toast(`${posPlan(state.cart.pos).name} added. Card processing is included.`)}hard();return}
+ if(el=q('[data-hw]')){if(!POS_READY)return;const[id,d]=el.dataset.hw.split('|');state.cart.hw[id]=Math.max(0,(state.cart.hw[id]||0)+(+d));hard();return}
  if(el=q('[data-annual]')){state.cart.annual=el.dataset.annual==='1';hard();return}
  if(el=q('[data-checkout]')){openCheckout();return}
  if(el=q('[data-quote]')){openQuote();return}

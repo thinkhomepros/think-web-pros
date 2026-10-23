@@ -328,6 +328,9 @@ main{flex:1;min-height:0;position:relative}
 .tier li{display:flex;gap:7px;align-items:flex-start}
 .tier li svg{color:var(--accent);flex:none;margin-top:1px}
 .tier-cta{margin-top:auto;text-align:center;padding:9px;border-radius:9px;background:var(--panel-2);font-weight:700;font-size:13px}
+.soon-badge{display:inline-block;vertical-align:middle;font-size:11px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:99px;background:var(--panel-2);color:var(--muted);white-space:nowrap}
+.tiers.soon .tier{cursor:default;opacity:.72}
+.pos-grid.soon .hw{opacity:.72}
 .tier.on .tier-cta{background:var(--accent);color:var(--accent-ink)}
 .custom-plan{margin-top:12px;border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;background:var(--panel);padding:18px;display:flex;gap:20px;align-items:center}
 .custom-plan .cp-main{flex:1;display:grid;gap:8px}
