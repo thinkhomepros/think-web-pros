@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { addAccountRoutes } from './accounts.js';
 import { addConnectRoutes, addConnectWebhook } from './connect.js';
+import { addShippingRoutes } from './shipping.js';
 import { orderHooks } from './notify.js';
 import { createDb } from './db.js';
 import { addImportRoutes } from './importer.js';
@@ -36,7 +37,7 @@ function publicPayment(p) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, connect = null, notify = {}, pos = {} }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, connect = null, notify = {}, pos = {}, shipping = {}, fetchImpl }) {
   const { stripe = null, paypal = null, zelle = null } = payments;
   const app = express();
   app.disable('x-powered-by');
@@ -366,6 +367,7 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
     pairLimit: rateLimit(counter, 'pos-pair', [{ windowSec: 600, max: 10 }]),
     loginLimit: rateLimit(counter, 'pos-login', [{ windowSec: 600, max: 60 }]),
   });
+  addShippingRoutes(app, { db, shipping, hooks, fetchImpl });
 
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
   // a published shop's site: the studio page opens it in site mode (see TWP.site in platform.js)
