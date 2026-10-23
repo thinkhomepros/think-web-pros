@@ -3,10 +3,14 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { addAccountRoutes } from './accounts.js';
+import { createDb } from './db.js';
 import { addImportRoutes } from './importer.js';
 import { addReportRoutes, createReportFiles } from './reports.js';
 import { priceOrder, priceQuote } from './catalog.js';
 import { describeSession } from './payments.js';
+import { activateShopByEmail, addShopRoutes, updateShop } from './shop.js';
+import { publicShop } from './accounts.js';
 import { checkOrder, createCounter, isBot, rateLimit, sameOrigin, securityHeaders } from './security.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -29,7 +33,7 @@ function publicPayment(p) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {} }) {
   const { stripe = null, paypal = null, zelle = null } = payments;
   const app = express();
   app.disable('x-powered-by');
@@ -129,6 +133,14 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
   const origin = (req) => (publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
   async function setPayment(id, patch, note) {
+    const r = await recordPayment(id, patch, note);
+    // a paid website plan opens the owner's shop for publishing
+    if (r?.payment?.status === 'paid' && (r.order?.kind || 'order') === 'order') {
+      await activateShopByEmail(db, r.order.email, `order ${r.number || r.id}`).catch((err) => console.error('Shop not turned on:', err.message));
+    }
+    return r;
+  }
+  async function recordPayment(id, patch, note) {
     return store.updateOrder(id, (r) => {
       if (!r.payment) return r;
       // a late or repeated event never takes an order back from paid to waiting
@@ -301,6 +313,17 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
     res.json({ ...summary, payLink: record.payment ? `${origin(req)}/builder?pay=${record.id}` : null });
   });
 
+  // shops owners have opened; Admin can turn one on without a paid order (a deal, a test, or a Zelle payment)
+  app.get('/api/admin/shops', requireAdmin, async (req, res) => {
+    const ids = await db.zrange('shops', { limit: 500 });
+    res.json((await db.getMany(ids.map((id) => `shop:${id}`))).filter(Boolean).map(publicShop));
+  });
+  app.patch('/api/admin/shops/:id', requireAdmin, async (req, res) => {
+    if (typeof req.body?.active !== 'boolean') return res.status(400).json({ error: 'active must be true or false' });
+    const shop = /^[0-9a-f-]{36}$/.test(req.params.id) ? await updateShop(db, req.params.id, (s) => ({ ...s, active: req.body.active, activatedBy: 'Admin' })) : null;
+    shop ? res.json(publicShop(shop)) : res.status(404).json({ error: 'not found' });
+  });
+
   const reportLimit = rateLimit(counter, 'reports', [{ windowSec: 3600, max: reportsPerHour }, { windowSec: 86_400, max: reportsPerHour * 4 }], 'You’ve sent several reports already. Please wait a while and try again.');
   addReportRoutes(app, { reports, limit: reportLimit, humanOnly, requireAdmin });
 
@@ -308,7 +331,13 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
   const importLimit = rateLimit(counter, 'import', [{ windowSec: 600, max: 10 }, { windowSec: 86_400, max: 40 }], 'You’ve imported several stores already. Please wait a few minutes and try again.');
   addImportRoutes(app, { readStore, limit: importLimit });
 
+  // owner logins and live shops (accounts.js, shop.js); the register's routes build on the same db
+  addAccountRoutes(app, { db, counter, humanOnly });
+  addShopRoutes(app, { db, counter, humanOnly, hooks: shopHooks });
+
   app.use('/api', (req, res) => res.status(404).json({ error: 'not found' }));
+  // a published shop's site: the studio page opens it in site mode (see TWP.site in platform.js)
+  app.get('/s/:slug', (req, res) => res.sendFile(path.join(WEB_DIR, 'builder.html')));
   // the old studio guide page now lives inside the studio as the tour and Help panel
   app.get(['/guide', '/guide.html'], (req, res) => res.redirect(301, '/builder'));
   app.use(express.static(WEB_DIR, { extensions: ['html'] }));

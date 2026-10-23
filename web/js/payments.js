@@ -150,9 +150,12 @@ const getTok=()=>{try{return sessionStorage.getItem(TOKEN)||''}catch(e){return''
 const setTok=v=>{try{v?sessionStorage.setItem(TOKEN,v):sessionStorage.removeItem(TOKEN)}catch(e){}};
 const PAY_LABEL={paid:['Paid','ok'],unpaid:['Not paid','gold'],pending:['Checkout opened','gold'],processing:['Bank payment clearing','acc'],awaiting_zelle:['Waiting for Zelle','gold'],failed:['Failed','bad'],past_due:['Past due','bad'],cancelled:['Cancelled','']};
 const METHOD={card:'Card / wallet',paypal:'PayPal / Venmo',zelle:'Zelle'};
-let adminRows=null,adminErr='';
+let adminRows=null,adminErr='',adminShops=null;
+/* owners' shops: a paid plan turns a shop on for publishing; Admin can also turn one on or off here */
+function shopsHtml(){if(!getTok()||!adminShops)return'';
+ return `<div class="card" style="margin-bottom:16px"><h3>Shops</h3><p class="muted">Owner accounts. A shop can publish its site once it’s on (paid plans turn on by themselves).</p>${adminShops.length?`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Shop</th><th>Owner email</th><th>Site</th><th>Cards</th><th>On</th></tr></thead><tbody>${adminShops.map(s=>`<tr><td><b>${esc(s.name)}</b></td><td>${esc(s.email)}</td><td>${s.published?`<a href="/s/${esc(s.slug)}" target="_blank" rel="noopener">/s/${esc(s.slug)}</a>`:'<span class="muted">Not published</span>'}</td><td>${s.payments&&s.payments.chargesEnabled?'Taking cards':'<span class="muted">Not set up</span>'}</td><td><button type="button" class="btn sm${s.active?'':' pri'}" data-shopon="${s.id}|${s.active?0:1}">${s.active?'Turn off':'Turn on'}</button></td></tr>`).join('')}</tbody></table></div>`:'<p class="muted">No shops yet.</p>'}</div>`}
 
-TWP.mountAdmin=el=>{if(!el)return;el.innerHTML=adminHtml();if(getTok()&&!adminRows&&!adminErr)loadAdmin(el)};
+TWP.mountAdmin=el=>{if(!el)return;el.innerHTML=adminHtml()+shopsHtml();if(getTok()&&!adminRows&&!adminErr)loadAdmin(el)};
 function adminHtml(){
  const head=`<div class="between" style="margin-bottom:10px"><div><h3>Payments</h3><p class="muted">Real orders from your website, with what’s been paid. Mark Zelle payments paid here once they arrive, and price custom quotes to send a pay link.</p></div>${getTok()?'<div class="row"><button type="button" class="btn sm" data-srvload>Refresh</button><button type="button" class="btn sm" data-srvout>Lock</button></div>':''}</div>`;
  if(!getTok())return `<div class="card" style="margin-bottom:16px">${head}<form id="srvTokForm" class="row" style="gap:8px;flex-wrap:wrap"><input class="inp sm" type="password" id="srvTok" placeholder="Admin password (ADMIN_TOKEN)" autocomplete="current-password" style="max-width:300px" aria-label="Admin password"><button class="btn pri sm" type="submit">Show orders</button></form>${adminErr?`<p class="limit-note" style="margin-top:8px">${esc(adminErr)}</p>`:''}</div>`;
@@ -167,7 +170,8 @@ async function adminCall(path,opts={}){return api(path,{...opts,headers:{Authori
 async function loadAdmin(el){
  adminErr='';
  try{adminRows=await adminCall('/api/orders')}catch(e){adminRows=null;if(e.status===401){setTok('');adminErr='That password didn’t work. It’s the ADMIN_TOKEN set in Vercel.'}else adminErr=e.message}
- el=el&&el.isConnected?el:$('#srvOrders');if(el)el.innerHTML=adminHtml();
+ try{adminShops=getTok()?await adminCall('/api/admin/shops'):null}catch(e){adminShops=null}
+ el=el&&el.isConnected?el:$('#srvOrders');if(el)el.innerHTML=adminHtml()+shopsHtml();
 }
 document.addEventListener('submit',e=>{
  const f=e.target;
@@ -179,6 +183,8 @@ document.addEventListener('submit',e=>{
 },true);
 document.addEventListener('click',e=>{
  if(e.target.closest('[data-srvload]')){loadAdmin($('#srvOrders'));return}
+ const so=e.target.closest('[data-shopon]');
+ if(so){const[id,on]=so.dataset.shopon.split('|');adminCall(`/api/admin/shops/${id}`,{method:'PATCH',body:{active:on==='1'}}).then(()=>loadAdmin($('#srvOrders'))).catch(err=>alert(err.message));return}
  if(e.target.closest('[data-srvout]')){setTok('');adminRows=null;TWP.mountAdmin($('#srvOrders'));return}
  const b=e.target.closest('[data-srvpaid]');
  if(b&&confirm('Mark this order paid? Do this once the money has arrived.'))adminCall(`/api/orders/${b.dataset.srvpaid}`,{method:'PATCH',body:{paymentStatus:'paid'}}).then(()=>loadAdmin($('#srvOrders'))).catch(err=>alert(err.message));

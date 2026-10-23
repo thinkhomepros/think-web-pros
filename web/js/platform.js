@@ -6,6 +6,7 @@
      Cloudflare Turnstile (usually without the visitor seeing anything) and sends the request again with the token.
    - Every form in a popup gets a hidden 'company_url' field. People never see it; bots fill it in, and the server
      quietly drops orders that have it.
+   - TWP.site is the shop's slug when this page is a published shop site (/s/<slug>).
    Paying for an order lives in payments.js. */
 (()=>{
 'use strict';
@@ -65,6 +66,8 @@ if(!window.claude){
 const send=body=>{const hp=honeypot();return guardedFetch('/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(hp?{...body,order:{...body.order,hp}}:body)})};
 window.TWP=Object.assign(window.TWP||{},{
  fetch:guardedFetch,
+ // a published shop's address, /s/<slug>: the studio opens that shop's site for shoppers instead of the editor
+ site:(location.pathname.match(/^\/s\/([a-z0-9-]{1,60})\/?$/)||[])[1]||null,
  // Resolves to { id, number, payment } or null. A design too big for the host (Vercel takes 4.5 MB) is dropped
  // so the order and payment still go through; our team asks for the photos afterwards.
  submitOrder(order,design){

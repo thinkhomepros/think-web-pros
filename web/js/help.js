@@ -2,6 +2,8 @@
    Content lives in help-content.js. This file only touches the DOM, so it stays independent of app.js. */
 (function () {
   'use strict';
+  // a published shop's site is for shoppers: no studio tour or help
+  if (window.TWP && window.TWP.site) return;
   var H = window.TWP_HELP;
   if (!H) return;
   var $ = function (s, r) { return (r || document).querySelector(s); };

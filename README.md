@@ -33,7 +33,7 @@ Set environment variables in your shell or host (the server doesn't read `.env` 
 - `ANTHROPIC_API_KEY` turns on the live AI logo maker. Without it, the logo maker uses its built-in quick ideas.
 - `ADMIN_TOKEN` unlocks `GET /api/orders` and the problem reports in Admin. Without it, orders can be placed but not read over the API.
 - `DATA_DIR` is where orders are saved (default `data/`) when Redis isn't set up.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (or Vercel's `KV_REST_API_URL` and `KV_REST_API_TOKEN`) keep orders in Redis.
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (or Vercel's `KV_REST_API_URL` and `KV_REST_API_TOKEN`) keep orders, owner accounts, shops, stock and shop orders in Redis. Without Redis they are files under `DATA_DIR` (on Vercel that is `/tmp`, which is wiped, so connect Redis before real use).
 - Payments: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV`, `ZELLE_RECIPIENT`, `ZELLE_NAME`. Each way to pay shows up once its keys are set. See [docs/payments-setup.md](docs/payments-setup.md).
 - `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` turn on the bot check, and `AI_PER_DAY` / `AI_DAILY_TOTAL` change the AI limits. See Security below.
 
@@ -73,6 +73,14 @@ Before taking real orders, add Upstash Redis under **Storage** so orders last; w
 | PATCH | `/api/reports/:id` | `{ status }`: `New`, `In progress` or `Fixed`. |
 | POST | `/api/import/store` | `{ url }` → `{ source, products }`: reads a store's public product list (Shopify and Big Cartel `/products.json`, WooCommerce Store API, or schema.org Product data on the page) for the studio's product import. Public https addresses only, 10 per 10 minutes per visitor. Product CSV files are read in the browser by `web/js/import.js`. |
 | PATCH | `/api/orders/:id` | Admin: `{ paymentStatus: 'paid' }`, `{ quote: { setup, monthly } }` (returns a `payLink`), or `{ status }`. |
+| POST | `/api/account/signup` · `/login` · `/logout` | Owner accounts (`server/accounts.js`). `{ email, password, business }`; a login is a 30-day HttpOnly cookie, or `Authorization: Bearer <token>` for a register. |
+| GET | `/api/account/me` | The signed-in owner and their shop. |
+| PUT | `/api/shop/site` | Owner: `{ design }` publishes the site to `/s/<slug>` and turns its store products into the shop's catalog. Needs a paid plan (or Admin turning the shop on). |
+| GET/PUT | `/api/shop/stock` | Owner: real stock counts, `{ "<productId>" or "<productId>\|<size / color>": n }`. |
+| GET/PATCH | `/api/shop/orders[/:id]` | Owner: live orders; `{ status }` (cancelling puts stock back once). |
+| GET | `/api/sites/:slug` | Public: a published site, its shop name and stock. `/s/<slug>` opens it. |
+| POST | `/api/sites/:slug/orders` | Public: a shopper's order. Priced on the server from the catalog, stock taken all-or-nothing. |
+| GET/PATCH | `/api/admin/shops[/:id]` | Admin: list shops, `{ active }` turns one on or off. |
 
 ## Security
 

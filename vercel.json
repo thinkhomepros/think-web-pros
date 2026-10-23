@@ -18,6 +18,10 @@
   ],
   "rewrites": [
     {
+      "source": "/s/:slug",
+      "destination": "/builder"
+    },
+    {
       "source": "/api/:path*",
       "destination": "/api"
     }
