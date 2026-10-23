@@ -33,7 +33,7 @@ test('owner publishes, shopper orders on the live site, owner sees it', async (t
     const expose = async (page) => {
       await page.route('**/js/app.js', async (r) => {
         const res = await r.fetch();
-        const body = (await res.text()).replace(/\}\)\(\);\s*$/, "Object.defineProperty(window,'state',{get(){return state}});window.hard=hard;window.T_={buildFromForm,bizForm,shopSecs,smartSection,acct:()=>ACCT};})();");
+        const body = (await res.text()).replace(/\}\)\(\);\s*$/, "Object.defineProperty(window,'state',{get(){return state}});window.hard=hard;window.T_={buildFromForm,bizForm,shopSecs,smartSection,acct:()=>ACCT,live:liveRefresh};})();");
         await r.fulfill({ response: res, body });
       });
       await page.route(/fonts\.(googleapis|gstatic)/, (r) => r.abort());
@@ -101,6 +101,21 @@ test('owner publishes, shopper orders on the live site, owner sees it', async (t
     const orders = await owner.evaluate(() => fetch('/api/shop/orders').then((r) => r.json()));
     assert.equal(orders.length, 1);
     assert.equal(orders[0].name, 'Sam Shopper');
+
+    // the owner takes the cash at pickup, gives some back, and the Money tab adds it up
+    await owner.evaluate(async () => { await T_.live(); const b = document.createElement('button'); b.dataset.stv = 'orders'; document.body.append(b); b.click(); b.remove(); });
+    await owner.click('[data-markpaid]');
+    await owner.waitForSelector('[data-refund]');
+    await owner.click('[data-refund]');
+    await owner.fill('#rf-amt', '2');
+    await owner.click('#refundForm [type=submit]');
+    await owner.waitForFunction(() => /Partly refunded/.test(document.querySelector('#v-dashboard .stp-acts')?.innerText || ''));
+    await owner.click('[data-stv="money"]');
+    await owner.waitForSelector('.stp-kpis');
+    const total = orders[0].total;
+    const kpis = await owner.locator('.stp-kpis').innerText();
+    assert.ok(kpis.includes('$' + (total - 2).toFixed(2)), `net sales after the refund: ${kpis}`);
+    assert.match(kpis, /Refunds/);
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

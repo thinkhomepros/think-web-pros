@@ -87,11 +87,27 @@ describe('card payments for shops', () => {
     assert.equal(paid.payment.status, 'paid');
     assert.equal(paid.payment.intent, 'pi_1');
 
+    // refunds go back through Stripe on the shop's account; the last one cancels the order and restocks
+    const oid = o.body.order.id;
+    assert.equal((await call('POST', `/api/shop/orders/${oid}/refund`, { amount: 40 })).status, 400, 'no more than was paid');
+    const part = await call('POST', `/api/shop/orders/${oid}/refund`, { amount: 10 });
+    assert.deepEqual([part.body.payment.status, part.body.payment.refunded, part.body.status], ['partly_refunded', 10, 'new']);
+    const rc = fake.calls.filter((c) => c.name === 'refunds.create');
+    assert.deepEqual(rc[0].args, [{ payment_intent: 'pi_1', amount: 1000, refund_application_fee: true }, { stripeAccount: 'acct_123' }]);
+    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 3);
+    const rest = await call('POST', `/api/shop/orders/${oid}/refund`, {});
+    assert.deepEqual([rest.body.payment.status, rest.body.payment.refunded, rest.body.status], ['refunded', 33, 'cancelled']);
+    assert.equal(fake.calls.filter((c) => c.name === 'refunds.create')[1].args[0].amount, 2300);
+    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 5, 'stock back after the full refund');
+    assert.equal((await call('POST', `/api/shop/orders/${oid}/refund`, {})).status, 400, 'nothing left');
+    const rep = (await call('GET', '/api/shop/report?days=7')).body;
+    assert.deepEqual([rep.gross, rep.refunds, rep.net, rep.fees], [33, 33, 0, 6]);
+
     // an abandoned checkout gives the stock back
     const o2 = await call('POST', '/api/sites/mug-shop/orders', { order: { name: 'Bo', email: 'bo@x.co', method: 'pickup', lines: [{ id: 'mug', qty: 3 }] } });
-    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 0);
+    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 2);
     await hook({ type: 'checkout.session.expired', data: { object: { id: 'cs_2', metadata: { shopId, orderId: o2.body.order.id } } } });
-    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 3);
+    assert.equal((await call('GET', '/api/shop/stock')).body.mug, 5);
     const gone = (await call('GET', '/api/shop/orders')).body.find((x) => x.id === o2.body.order.id);
     assert.deepEqual([gone.status, gone.payment.status], ['cancelled', 'abandoned']);
 

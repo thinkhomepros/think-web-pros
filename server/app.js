@@ -77,7 +77,7 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
     // an order is confirmed (pay at pickup, or once the card payment lands): receipts, plus anything else that
     // wants it, like the register's kitchen screen (shopHooks.placed)
     placed: (shop, order) => Promise.all([notes.placed(shop, order), shopHooks.placed?.(shop, order)]),
-    ...(connect ? { checkout: (shop, order, req) => connect.checkout(shop, order, origin(req)) } : {}),
+    ...(connect ? { checkout: (shop, order, req) => connect.checkout(shop, order, origin(req)), refund: (shop, intent, amountCents) => connect.refund(shop, intent, amountCents) } : {}),
   };
   addConnectWebhook(app, { connect, db, hooks });
 

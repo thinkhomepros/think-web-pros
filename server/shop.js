@@ -162,6 +162,35 @@ export function priceShopOrder(catalog, input, { taxRate = 0 } = {}) {
 }
 
 const ownerView = (o) => o;
+
+// Money from orders that were paid (or are pay at pickup and not cancelled). Amounts in dollars.
+export function salesReport(orders, days) {
+  const day = (t) => new Date(t).toISOString().slice(0, 10);
+  const r = { days, orders: 0, gross: 0, refunds: 0, tax: 0, fees: 0, tips: 0, net: 0, unpaid: 0, bySource: {}, byPay: {}, byDay: {} };
+  for (const o of orders) {
+    const pay = o.payment || {};
+    if (pay.status === 'abandoned' || pay.status === 'failed') continue;
+    if (o.status === 'cancelled' && !pay.refunded) continue;
+    if (pay.status === 'unpaid') {
+      r.unpaid += o.total;
+      continue;
+    }
+    r.orders++;
+    r.gross += o.total;
+    r.refunds += pay.refunded || 0;
+    r.tax += o.tax || 0;
+    r.fees += o.fee || 0;
+    r.tips += o.tip || 0;
+    const src = o.source === 'pos' ? 'In store' : 'Website';
+    r.bySource[src] = (r.bySource[src] || 0) + o.total - (pay.refunded || 0);
+    const how = pay.paidWith || pay.method || 'card';
+    r.byPay[how] = (r.byPay[how] || 0) + o.total - (pay.refunded || 0);
+    r.byDay[day(o.at)] = (r.byDay[day(o.at)] || 0) + o.total - (pay.refunded || 0);
+  }
+  for (const k of ['gross', 'refunds', 'tax', 'fees', 'tips', 'unpaid']) r[k] = Math.round(r[k] * 100) / 100;
+  r.net = Math.round((r.gross - r.refunds) * 100) / 100;
+  return r;
+}
 // What a shopper may see about their own order.
 export function shopperView(o) {
   if (!o) return null;
@@ -283,6 +312,58 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     // tell the shopper when it's ready, shipped or cancelled
     if (was !== status && hooks.status) hooks.status(req.shop, o).catch((err) => console.error('Status note failed:', err.message));
     res.json(o);
+  });
+
+  // money in and out: refunds (card refunds go back through Stripe), marking pay-at-pickup orders paid, and a report
+  app.post('/api/shop/orders/:id/refund', owner, async (req, res) => {
+    const o = await db.get(`shop:${req.shop.id}:order:${req.params.id}`);
+    if (!o) return res.status(404).json({ error: 'not found' });
+    const paid = ['paid', 'partly_refunded'].includes(o.payment?.status);
+    if (!paid) return res.status(400).json({ error: 'This order hasn’t been paid, so there’s nothing to refund. Cancel it instead.' });
+    const left = Math.round((o.total - (o.payment.refunded || 0)) * 100) / 100;
+    const amount = req.body?.amount == null ? left : Math.round(Number(req.body.amount) * 100) / 100;
+    if (!(amount > 0) || amount > left + 0.001) return res.status(400).json({ error: `Refund between $0.01 and $${left.toFixed(2)}.` });
+    let refund = { amount, by: o.payment.method };
+    if (o.payment.intent) {
+      if (!hooks.refund) return res.status(503).json({ error: 'Card refunds aren’t switched on. Refund it from your Stripe dashboard.' });
+      try {
+        refund = { ...refund, ...(await hooks.refund(req.shop, o.payment.intent, Math.round(amount * 100))), amount };
+      } catch (err) {
+        console.error('Refund failed:', err.message);
+        return res.status(502).json({ error: `Stripe didn’t refund it: ${err.message}` });
+      }
+    }
+    const full = amount >= left - 0.001;
+    let back = null;
+    const next = await updateOrder(db, req.shop.id, o.id, (x) => {
+      const refunded = Math.round(((x.payment.refunded || 0) + amount) * 100) / 100;
+      x.payment = { ...x.payment, refunded, status: refunded >= x.total - 0.001 ? 'refunded' : 'partly_refunded', refunds: [...(x.payment.refunds || []), { at: Date.now(), amount, id: refund.id || null }] };
+      if (full && req.body?.restock !== false && !x.stockReturned) {
+        back = x.lines;
+        x.stockReturned = true;
+      }
+      if (full) x.status = 'cancelled';
+      return x;
+    });
+    if (back) await db.putStock(req.shop.id, back);
+    if (full && hooks.status) hooks.status(req.shop, next).catch((err) => console.error('Status note failed:', err.message));
+    res.json(next);
+  });
+  app.post('/api/shop/orders/:id/paid', owner, async (req, res) => {
+    const method = ['cash', 'card', 'other'].includes(req.body?.method) ? req.body.method : 'cash';
+    const o = await updateOrder(db, req.shop.id, req.params.id, (x) => {
+      if (x.payment.status !== 'paid') x.payment = { ...x.payment, status: 'paid', paidWith: method, paidAt: Date.now() };
+      return x;
+    });
+    o ? res.json(o) : res.status(404).json({ error: 'not found' });
+  });
+  // sales for the last N days: what came in, refunds, tax and delivery collected, by day and by where it was sold
+  app.get('/api/shop/report', owner, async (req, res) => {
+    const days = Math.max(1, Math.min(366, Number(req.query.days) || 30));
+    const since = Date.now() - days * 86_400_000;
+    const ids = await db.zrange(`shop:${req.shop.id}:orders`, { limit: 5000 });
+    const orders = (await db.getMany(ids.map((id) => `shop:${req.shop.id}:order:${id}`))).filter((o) => o && o.at >= since);
+    res.json(salesReport(orders, days));
   });
 
   /* public: the live site, its stock, and placing orders */
