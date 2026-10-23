@@ -163,6 +163,19 @@ describe('accounts and live shops', () => {
     await call('PATCH', `/api/shop/orders/${ok.body.order.id}`, { status: 'cancelled' });
     assert.deepEqual((await call('GET', '/api/shop/stock')).body, { loaf: 3, 'tee|M / Sage': 2 }, 'put back once');
 
+    // pay at pickup: refunds only once it's paid, then the money report counts it
+    const two = await call('POST', '/api/sites/harbor-and-pine/orders', { order: { name: 'Al', email: 'al@x.co', method: 'pickup', pay: 'later', lines: [{ id: 'loaf', qty: 1 }] } }, 'shopper');
+    assert.equal((await call('POST', `/api/shop/orders/${two.body.order.id}/refund`, {})).status, 400);
+    let rep = (await call('GET', '/api/shop/report')).body;
+    assert.deepEqual([rep.orders, rep.unpaid], [0, 9]);
+    const cash = await call('POST', `/api/shop/orders/${two.body.order.id}/paid`, { method: 'cash' });
+    assert.deepEqual([cash.body.payment.status, cash.body.payment.paidWith], ['paid', 'cash']);
+    const back = await call('POST', `/api/shop/orders/${two.body.order.id}/refund`, { amount: 4, restock: false });
+    assert.equal(back.body.payment.refunded, 4);
+    rep = (await call('GET', '/api/shop/report?days=1')).body;
+    assert.deepEqual([rep.orders, rep.gross, rep.refunds, rep.net, rep.unpaid, rep.byPay.cash, rep.bySource.Website], [1, 9, 4, 5, 0, 5, 5]);
+    assert.equal((await call('GET', '/api/shop/report', null, 'shopper')).status, 401);
+
     const shopperSees = await call('GET', `/api/sites/harbor-and-pine/orders/${ok.body.order.id}`, null, 'shopper');
     assert.equal(shopperSees.body.email, undefined);
     assert.equal(shopperSees.body.status, 'cancelled');
