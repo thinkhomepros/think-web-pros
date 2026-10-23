@@ -3824,7 +3824,7 @@ function acctPanel(){const sh=ACCT.shop,live=isLive(),pay=sh.payments||{};
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal acct-modal" role="dialog" aria-label="Your shop"><div class="modal-h"><div><h2>${esc(sh.name)}</h2><p class="muted">Signed in as ${esc(ACCT.user.email)}</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
   <div class="acct-card"><b>Your site</b>${live?`<p>Live at <a href="${esc(liveUrl())}" target="_blank" rel="noopener">${esc(liveUrl().replace(/^https?:\/\//,''))}</a>. Last published ${esc(new Date(sh.published.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'<p>Not published yet. Publishing puts this design online and opens your store for real orders.</p>'}
    ${sh.active?`<button type="button" class="btn pri" data-pubsite>${live?'Publish changes':'Publish my site'}</button>`:`<p>Your site goes online once your plan is paid. Use the same email (${esc(ACCT.user.email)}) when you check out.</p><button type="button" class="btn pri" data-acctplans>Choose a plan</button>`}</div>
-  <div class="acct-card"><b>Card payments</b><p>${pay.chargesEnabled?'Connected. Card payments go straight to your bank account.':pay.connected?'Almost there: finish the payment setup to take cards.':'Not set up yet. Until then shoppers can order and pay at pickup.'}</p><span id="payConnect"></span></div>
+  <div class="acct-card" id="payCard">${payCardHtml(pay)}</div>
   <div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn sm" data-signout>Sign out</button></div></div></div>`;
  document.dispatchEvent(new CustomEvent('twp:acctpanel',{detail:ACCT}))}
 async function publishSite(btn){if(!ACCT){openAcct('up');return}
@@ -3834,6 +3834,16 @@ async function publishSite(btn){if(!ACCT){openAcct('up');return}
   closeModal();toast(`Your site is live at ${liveUrl().replace(/^https?:\/\//,'')}`,{label:'Open it',fn:()=>window.open(liveUrl(),'_blank','noopener')});liveRefresh()}
  catch(e){if(btn){btn.disabled=false;btn.textContent='Try again'}
   if(e.data&&e.data.code==='plan_needed'){closeModal();toast(e.message,{label:'See plans',fn:()=>{state.tab='plans';hard()}});return}toast(e.message)}}
+// card payments: each shop connects its own Stripe account (server/connect.js); money goes straight to the owner
+function payCardHtml(p){const head='<b>Card payments</b>';
+ if(p.available===false)return head+'<p>Card payments aren’t switched on for Think Web Pros yet. Shoppers can order and pay at pickup.</p>';
+ if(p.chargesEnabled)return head+`<p>${ic('check',14)} Taking cards, Apple Pay and Google Pay. Money goes straight to your bank through your own Stripe account${p.testMode?' (test mode: no real money moves)':''}.</p><a class="btn sm" href="https://dashboard.stripe.com/" target="_blank" rel="noopener">Open my Stripe dashboard</a>`;
+ if(p.connected)return head+'<p>Almost there. Stripe needs a few more details before you can take cards.</p><button type="button" class="btn pri" data-payconnect>Finish card setup</button>';
+ return head+'<p>Take cards, Apple Pay and Google Pay on your site. Stripe sets up your account in about 5 minutes and pays out to your bank. Until then shoppers can order and pay at pickup.</p><button type="button" class="btn pri" data-payconnect>Set up card payments</button>'}
+async function payStatus(){try{const p=await acctApi('/api/shop/payments');if(p.shop&&ACCT)ACCT.shop=p.shop;const c=$('#payCard');if(c)c.innerHTML=payCardHtml(p);return p}catch(e){return null}}
+document.addEventListener('twp:acctpanel',()=>payStatus());
+document.addEventListener('click',async e=>{const b=e.target instanceof Element&&e.target.closest('[data-payconnect]');if(!b)return;e.preventDefault();b.disabled=true;b.textContent='Opening Stripe…';
+ try{const d=await acctApi('/api/shop/payments/connect',{method:'POST'});location.href=d.url}catch(x){b.disabled=false;b.textContent='Try again';toast(x.message)}});
 function livePushStock(xs){if(!isLive())return;const counts={};
  xs.forEach(x=>{if(!x||!x.id)return;const vs=x.vstock&&typeof x.vstock==='object'?x.vstock:{};const keys=Object.keys(vs);
   keys.forEach(vk=>{counts[x.id+'|'+vk]=hasV(vs[vk])?+vs[vk]:null});counts[x.id]=keys.some(vk=>hasV(vs[vk]))?null:hasV(x.stock)?+x.stock:null});
@@ -3893,7 +3903,10 @@ async function bootSite(){document.body.classList.add('site-mode');let d;
  if(paid||q.get('pay'))history.replaceState(null,'',location.pathname)}
 fullOff=(o=>function(){if(SITE)return;return o.apply(this,arguments)})(fullOff);
 fitDevice=(o=>function(){o.apply(this,arguments);const d=$('#device');if(SITE&&d){d.style.zoom='';d.style.width='100%';d.style.maxWidth='none';d.classList.remove('fitted')}})(fitDevice);
-if(!SITE)acctApi('/api/account/me').then(d=>{ACCT=d;acctPaint();liveRefresh()}).catch(()=>acctPaint());
+if(!SITE)acctApi('/api/account/me').then(d=>{ACCT=d;acctPaint();liveRefresh();
+ // back from Stripe's setup pages
+ const c=new URLSearchParams(location.search).get('connect');if(c){history.replaceState(null,'',location.pathname+location.hash);payStatus().then(p=>{toast(p&&p.chargesEnabled?'Card payments are on. Shoppers can pay by card now.':'Stripe still needs a few details. Open your account to finish.',{label:'Open',fn:()=>openAcct()})})}
+}).catch(()=>acctPaint());
 
 /* ---------- init ---------- */
 if(SITE)bootSite();else{
