@@ -2,6 +2,8 @@
    Content lives in help-content.js. This file only touches the DOM, so it stays independent of app.js. */
 (function () {
   'use strict';
+  // a published shop's site is for shoppers: no studio tour or help
+  if (window.TWP && window.TWP.site) return;
   var H = window.TWP_HELP;
   if (!H) return;
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -255,6 +257,8 @@
     if (OPEN_TOUR || !inStudio()) return;
     if (store.get('tour') === 'off' || session.get('tourseen')) return;
     if (/[?&]tour=0\b/.test(location.search)) return;
+    // someone who came from a pay link or back from checkout is here to pay, not to tour
+    if (window.TWP && window.TWP.payScreen) return;
     session.set('tourseen', '1');
     setTimeout(function () { if (inStudio()) openTour(true); }, 600);
   }

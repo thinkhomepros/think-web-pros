@@ -2015,6 +2015,15 @@ body.one-bar.dock-side #btnPop.hdr-pop{grid-template-columns:minmax(0,1fr)}
 .kc-chip .sw i{flex:1;display:block}
 .kit-modal .kc-bar{--tx:var(--ink);--bg-s:var(--panel-2);--p:var(--accent)}
 .kc-chip.kc-more{border-style:dashed;padding-left:10px}
+/* checkout: how to pay */
+.pay-methods{border:0;padding:0;margin:14px 0 0;display:grid;gap:8px}
+.pay-methods legend{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;padding:0}
+.pay-opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:var(--panel)}
+.pay-opt:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pay-opt input{margin-top:3px;accent-color:var(--accent)}
+.pay-opt span{display:grid;gap:2px}
+.pay-opt b{color:var(--ink);font-size:14px}
+.pay-opt small{color:var(--muted);font-size:12px;line-height:1.4}
 
 /* click-to-edit: page background strip under the footer, and a flash on the control a click jumped to */
 .site .pgbg-add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-top:1px dashed color-mix(in srgb,var(--tx) 22%,transparent);background:color-mix(in srgb,var(--tx) 3%,var(--bg-s));color:color-mix(in srgb,var(--tx) 55%,transparent);font:600 12.5px/1 'Figtree',system-ui,sans-serif;padding:10px 12px;cursor:pointer;transition:background .15s,color .15s}

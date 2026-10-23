@@ -25,7 +25,7 @@ test('news layouts build, stories open, and an ad request can be approved into a
   try { browser = await pw.chromium.launch(); } catch { t.skip('No Chromium to run'); return; }
   const server = createServer(async (req, res) => {
     const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-    try { res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); res.end(await readFile(path.join(WEB, path.normalize(p)))); }
+    try { const body = await readFile(path.join(WEB, path.normalize(p))); res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' }); res.end(body); }
     catch { res.writeHead(404); res.end(); }
   }).listen(0);
   try {

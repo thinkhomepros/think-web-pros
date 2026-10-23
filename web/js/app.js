@@ -5,6 +5,8 @@ const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelect
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const clone=o=>JSON.parse(JSON.stringify(o));
+// a published shop's site (/s/<slug>): shoppers see the site only, nothing is saved in their browser but the cart
+const SITE=(window.TWP&&TWP.site)||null;let SITE_TAX=0,SITE_CARDS=false;
 const money=(n,dec)=>{n=Number(n)||0;const d=dec!=null?dec:(Math.round(n*100)%100?2:0);return (n<0?'-$':'$')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})};
 const getPath=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
 function setPath(o,p,v){const ks=p.split('.');const last=ks.pop();const t=ks.reduce((a,k)=>a[k],o);if(t)t[last]=v;}
@@ -240,7 +242,7 @@ function defaultAdmin(){
 /* ---------- state + storage ---------- */
 const KEY='twp-studio-v3';
 let state=defaultState(), admin=defaultAdmin();
-try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);if(d&&d.state&&d.state.v===3&&d.admin&&d.admin.v===3){
+try{const raw=SITE?null:localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);if(d&&d.state&&d.state.v===3&&d.admin&&d.admin.v===3){
   const ds=defaultState();state={...ds,...d.state,brand:{...ds.brand,...d.state.brand},cart:{...ds.cart,...d.state.cart},biz:{...ds.biz,...(d.state.biz||{}),show:{...ds.biz.show,...((d.state.biz||{}).show||{})}},dash:{...ds.dash,...d.state.dash}};
   const da=defaultAdmin();admin={...da,...d.admin,pos:{...da.pos,...(d.admin.pos||{})}};
   if(!d.state.brand.pal){state.brand.pal=themePal(state.brand.theme);state.brand.pal.light={...state.brand.colors};state.brand.mode='light'}
@@ -249,7 +251,7 @@ try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);if(d&&d.
   const lm=admin.addons.find(a=>a.id==='logomaker');if(lm&&lm.name==='Logo maker'){const n=da.addons.find(a=>a.id==='logomaker');lm.name=n.name;lm.desc=n.desc}
 }}}catch(e){}
 let saveT=null,warnedQuota=false;
-function save(){const B=state.brand;if(B&&B.pal&&B.mode)B.pal[B.mode]={...B.colors};clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({state,admin}))}catch(e){if(!warnedQuota&&e&&e.name==='QuotaExceededError'){warnedQuota=true;toast('Your photos are too large to keep after you close this page. Try smaller images.')}}},350)}
+function save(){if(SITE)return;const B=state.brand;if(B&&B.pal&&B.mode)B.pal[B.mode]={...B.colors};clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify({state,admin}))}catch(e){if(!warnedQuota&&e&&e.name==='QuotaExceededError'){warnedQuota=true;toast('Your photos are too large to keep after you close this page. Try smaller images.')}}},350)}
 
 /* ---------- derived ---------- */
 const tierById=id=>admin.tiers.find(t=>t.id===id)||admin.tiers[0];
@@ -879,18 +881,17 @@ function renderPlans(){const c=cartCalc(),annual=state.cart.annual,p=admin.pos,p
   <div class="between"><span class="muted">Estimated processing</span><b class="num">${money(pr.fees,2)}/mo · ${pr.eff.toFixed(2)}%</b></div></div></div></div>
  </div>
  <aside class="summary"><h3>Your order</h3><div class="sum-lines">${c.lines.map(l=>`<div class="sum-line"><span>${esc(l.label)}</span><span class="num">${l.o!=null?money(l.o)+' once':money(annual?l.m*10:l.m)+(annual?'/yr':'/mo')}</span></div>`).join('')}</div>
-  <div class="sum-tot"><div class="big"><span>Due today</span><b class="num">${money(c.setup+(annual?c.yearly:0))}</b></div><div class="sum-line"><span>Then</span><span class="num">${money(annual?c.yearly:c.monthly)}${annual?'/year':'/month'}</span></div>${c.proc?`<div class="sum-line"><span>Card processing (est.)</span><span class="num">${money(c.proc.fees,2)}/mo from sales</span></div>`:''}</div>
+  <div class="sum-tot"><div class="big"><span>Due today</span><b class="num">${money(c.setup+(annual?c.yearly:c.monthly))}</b></div><div class="sum-line"><span>Then</span><span class="num">${money(annual?c.yearly:c.monthly)}${annual?'/year':'/month'}</span></div>${c.proc?`<div class="sum-line"><span>Card processing (est.)</span><span class="num">${money(c.proc.fees,2)}/mo from sales</span></div>`:''}</div>
   ${state.sections.filter(s=>!s.hidden).length>c.t.maxSections?`<div class="limit-note">Your page has more sections than ${esc(c.t.name)} allows. Hide some or pick a bigger plan.</div>`:''}
   <button class="btn pri" data-checkout style="width:100%;padding:12px">Check out</button><p class="muted" style="font-size:12px">Your design is saved with the order and our team reviews it before launch.</p></aside></div>`}
 function openCheckout(){if(!requireBiz())return;const c=cartCalc();
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal" id="coForm" role="dialog" aria-label="Checkout"><div class="modal-h"><h2>Check out</h2><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
- <p class="demo-note">Prototype checkout. No card is charged; the order goes to your admin dashboard. Real payments would connect to Stripe or your processor here.</p>
  <div class="grid2f"><label class="fld"><span>Your name</span><input type="text" id="co-name" required value=""></label><label class="fld"><span>Business</span><input type="text" id="co-biz" required value="${esc(state.brand.name)}"></label>
  <label class="fld"><span>Email</span><input type="email" id="co-email" required></label><label class="fld"><span>Phone</span><input type="text" id="co-phone"></label></div>
  ${hasAddon('domain')?`<label class="fld"><span>Domain you would like</span><input type="text" id="co-domain" value="${slug(state.brand.name)}.com"></label>`:''}
- <div class="grid2f"><label class="fld"><span>Card number</span><input type="text" id="co-card" inputmode="numeric" placeholder="4242 4242 4242 4242"></label><label class="fld"><span>Expiry / CVC</span><input type="text" id="co-exp" placeholder="12/28 · 123"></label></div>
- <div class="sum-tot"><div class="big"><span>Due today</span><b class="num">${money(c.setup+(c.annual?c.yearly:0))}</b></div><div class="sum-line"><span>Then</span><span class="num">${money(c.annual?c.yearly:c.monthly)}${c.annual?'/year':'/month'}</span></div></div>
- <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Back</button><button class="btn pri" type="submit">Place order</button></div></form></div>`;
+ <div class="sum-tot"><div class="big"><span>Due today</span><b class="num">${money(c.setup+(c.annual?c.yearly:c.monthly))}</b></div><div class="sum-line"><span>Then</span><span class="num">${money(c.annual?c.yearly:c.monthly)}${c.annual?'/year':'/month'}</span></div></div>
+ ${window.TWP&&TWP.payPicker?TWP.payPicker():''}
+ <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Back</button><button class="btn pri" type="submit">${window.TWP&&TWP.paymentsOn&&TWP.paymentsOn()?'Continue to payment':'Place order'}</button></div></form></div>`;
  setTimeout(()=>$('#co-name')?.focus(),30)}
 function openQuote(){const b=state.biz||{};
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal" id="quoteForm" role="dialog" aria-label="Request a quote"><div class="modal-h"><div><h2>Request a custom quote</h2><p class="muted">Custom plans are priced per job. Tell us about the site you have in mind and we'll reply with a quote, usually within one business day.</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
@@ -907,8 +908,13 @@ function placeQuote(){const v=id=>$('#'+id).value.trim();const o={id:'TWP-'+(adm
  if(window.TWP)TWP.submitOrder(o,state);
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Quote requested"><div class="modal-h"><h2>Quote request sent</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Thanks, ${esc(o.owner.split(' ')[0]||'there')}. ${esc(admin.company)} will look over your request and email ${esc(o.email)} with a quote. Your request number is ${o.id}.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" data-closemodal>Keep designing</button></div></div></div>`}
 function placeOrder(){const c=cartCalc();const o={id:'TWP-'+(admin.nextOrder++),at:Date.now(),business:$('#co-biz').value.trim(),owner:$('#co-name').value.trim(),email:$('#co-email').value.trim(),phone:$('#co-phone').value.trim(),plan:c.t.id,addons:[...state.cart.addons],pos:state.cart.pos,hw:{...state.cart.hw},setup:c.setup+(c.annual?c.yearly:0),monthly:c.monthly,annual:c.annual,status:'New',sections:state.sections.filter(s=>!s.hidden).map(s=>CATALOG[s.type].name),theme:THEMES[state.brand.theme]?.name};
- admin.orders.push(o);admin.customers.push({id:uid(),business:o.business,owner:o.owner,plan:o.plan,addons:o.addons,pos:o.pos,vol:hasMerchant()?+state.cart.volume:0,status:'In build',mrr:c.monthly,since:Date.now()});state.keep={kind:'plan',order:o.id,at:Date.now()};save();
- if(window.TWP)TWP.submitOrder(o,state);
+ admin.orders.push(o);admin.customers.push({id:uid(),business:o.business,owner:o.owner,plan:o.plan,addons:o.addons,pos:o.pos,vol:hasMerchant()?+state.cart.volume:0,status:'In build',mrr:c.monthly,since:Date.now()});save();
+ const method=window.TWP&&TWP.chosenMethod?TWP.chosenMethod():null;
+ const sent=window.TWP?TWP.submitOrder(o,state):null;
+ // with payments switched on, the order goes to the server first and then straight to the chosen way to pay; designs are kept once payment starts
+ if(method&&sent){$('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Saving order"><div class="modal-h"><h2>Saving your order</h2></div><p class="muted">One moment…</p></div></div>`;
+  sent.then(r=>{if(r&&r.id){o.serverId=r.id;o.number=r.number;state.keep={kind:'plan',order:o.id,at:Date.now()};save();TWP.startPayment(r.id,method)}else $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Order not sent"><div class="modal-h"><h2>We couldn't reach our server</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Your order wasn't sent and you haven't been charged. Check your connection and try again.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn pri" data-closemodal>Close</button></div></div></div>`});return}
+ state.keep={kind:'plan',order:o.id,at:Date.now()};save();
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Order placed"><div class="modal-h"><h2>Order ${o.id} placed</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Thanks, ${esc(o.owner.split(' ')[0]||'there')}. ${esc(admin.company)} has your design and will email ${esc(o.email)} with a launch date. Your designs are now kept with your plan, so they no longer expire.</p><p class="muted" style="margin-top:10px">This order now shows in the Admin tab, which is your side of the business.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" data-closemodal>Keep designing</button><button class="btn pri" data-tab="admin" data-admintab="orders">See it in Admin</button></div></div></div>`}
 
 /* ---------- admin ---------- */
@@ -927,7 +933,7 @@ function renderAdmin(){const t=state.adminTab,k=adminKpis();const rpNew=RP.list?
   <div class="card"><h3>Plan mix</h3><div class="mix">${counts.map((n,i)=>n?`<span style="flex:${n};background:${cols[i%4]}"></span>`:'').join('')}</div><div class="legend">${admin.tiers.map((x,i)=>`<span><i style="background:${cols[i%4]}"></i>${esc(x.name)} · ${counts[i]}</span>`).join('')}</div>
    <h3 style="margin-top:18px">Point of sale</h3><p class="muted">${k.posCount} of ${admin.customers.length} customers run a Think Web Pros register.</p></div></div>
   <div class="card"><h3>Latest orders <button class="btn sm" data-admintab="orders">All orders</button></h3>${[...admin.orders].reverse().slice(0,4).map(o=>`<div class="sum-line" style="padding:8px 0;border-bottom:1px solid var(--line)"><span><b style="color:var(--ink)">${esc(o.business)}</b> · ${esc(planName(o.plan))}${o.pos?' + '+esc(posPlan(o.pos)?.name||'POS'):''} ${o.sample?'<span class="badge ex">Example</span>':''}</span><span class="num">${money(o.setup)} + ${money(o.monthly)}/mo <span class="badge ${STATUS_CLS[o.status]||''}">${esc(o.status)}</span></span></div>`).join('')}</div>`}
- else if(t==='orders'){body=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Date</th><th>Business</th><th>Contact</th><th>Plan</th><th>Add-ons &amp; POS</th><th class="r">Due today</th><th class="r">Monthly</th><th>Status</th></tr></thead><tbody>${[...admin.orders].reverse().map(o=>{const i=admin.orders.indexOf(o);return `<tr class="${o.status==='New'&&!o.sample?'new':''}"><td><b>${o.id}</b>${o.sample?' <span class="badge ex">Example</span>':''}</td><td>${fmtDate(o.at)}</td><td>${esc(o.business)}</td><td>${esc(o.owner)}<br><span class="muted">${esc(o.email)}</span></td><td>${esc(planName(o.plan))}${o.kind==='quote'?`<br><span class="muted">${esc([o.budget,o.timeline].filter(Boolean).join(' · ')||'No budget given')}</span>${o.details?`<br><span class="muted">${esc(o.details.length>140?o.details.slice(0,140)+'…':o.details)}</span>`:''}`:''}</td><td>${esc(adName(o.addons))}${o.pos?'<br>'+esc(posPlan(o.pos)?.name||''):''}${Object.entries(o.hw||{}).filter(([,q])=>q).map(([h,q])=>'<br>'+q+' × '+esc((admin.pos.hardware.find(x=>x.id===h)||{name:h}).name)).join('')}</td><td class="r">${o.kind==='quote'?'Quote':money(o.setup)}${o.kind==='storage'?`<br><span class="muted">${o.designs||0} saved design${o.designs===1?'':'s'}</span>`:''}</td><td class="r">${o.kind==='quote'?'Quote':money(o.monthly)}</td><td><select class="inp sm" id="os-${i}" data-ostatus="${i}">${['New','In build','Live','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`}).join('')}</tbody></table></div>`}
+ else if(t==='orders'){body=`<div id="srvOrders"></div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Order</th><th>Date</th><th>Business</th><th>Contact</th><th>Plan</th><th>Add-ons &amp; POS</th><th class="r">Due today</th><th class="r">Monthly</th><th>Status</th></tr></thead><tbody>${[...admin.orders].reverse().map(o=>{const i=admin.orders.indexOf(o);return `<tr class="${o.status==='New'&&!o.sample?'new':''}"><td><b>${o.id}</b>${o.sample?' <span class="badge ex">Example</span>':''}</td><td>${fmtDate(o.at)}</td><td>${esc(o.business)}</td><td>${esc(o.owner)}<br><span class="muted">${esc(o.email)}</span></td><td>${esc(planName(o.plan))}${o.kind==='quote'?`<br><span class="muted">${esc([o.budget,o.timeline].filter(Boolean).join(' · ')||'No budget given')}</span>${o.details?`<br><span class="muted">${esc(o.details.length>140?o.details.slice(0,140)+'…':o.details)}</span>`:''}`:''}</td><td>${esc(adName(o.addons))}${o.pos?'<br>'+esc(posPlan(o.pos)?.name||''):''}${Object.entries(o.hw||{}).filter(([,q])=>q).map(([h,q])=>'<br>'+q+' × '+esc((admin.pos.hardware.find(x=>x.id===h)||{name:h}).name)).join('')}</td><td class="r">${o.kind==='quote'?'Quote':money(o.setup)}${o.kind==='storage'?`<br><span class="muted">${o.designs||0} saved design${o.designs===1?'':'s'}</span>`:''}</td><td class="r">${o.kind==='quote'?'Quote':money(o.monthly)}</td><td><select class="inp sm" id="os-${i}" data-ostatus="${i}">${['New','In build','Live','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`}).join('')}</tbody></table></div>`}
  else if(t==='reports')body=reportsHtml();
  else if(t==='customers'){body=`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Business</th><th>Owner</th><th>Plan</th><th>Add-ons</th><th>POS</th><th class="r">Card volume/mo</th><th class="r">MRR</th><th>Status</th><th>Since</th></tr></thead><tbody>${admin.customers.map(c=>`<tr><td><b>${esc(c.business)}</b>${c.sample?' <span class="badge ex">Example</span>':''}</td><td>${esc(c.owner)}</td><td>${esc(planName(c.plan))}</td><td>${esc(adName(c.addons))}</td><td>${c.pos?esc(posPlan(c.pos)?.name||''):'<span class="muted">None</span>'}</td><td class="r">${c.vol?money(c.vol):'<span class="muted">None</span>'}</td><td class="r">${money(c.mrr)}</td><td><span class="badge ${STATUS_CLS[c.status]||''}">${esc(c.status)}</span></td><td>${fmtDate(c.since)}</td></tr>`).join('')}</tbody></table></div>`}
  else if(t==='pricing'){body=`<p class="muted" style="margin-bottom:12px">Edits apply right away to the plans page, the section limits in the designer, and the order total.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Plan</th><th>Design fee</th><th>Monthly</th><th>Max sections</th><th>Includes</th><th>Features (one per line)</th><th>Popular</th></tr></thead><tbody>${admin.tiers.map((x,i)=>`<tr><td><input class="inp sm" id="t-n-${i}" data-abind="tiers.${i}.name" value="${esc(x.name)}"></td><td><input class="inp sm" type="number" id="t-s-${i}" data-abind="tiers.${i}.setup" data-num value="${x.setup}"></td><td><input class="inp sm" type="number" id="t-m-${i}" data-abind="tiers.${i}.monthly" data-num value="${x.monthly}"></td><td><input class="inp sm" type="number" id="t-x-${i}" data-abind="tiers.${i}.maxSections" data-num value="${x.maxSections}"></td><td style="min-width:170px">${admin.addons.filter(a=>a.billing==='monthly').map(a=>`<label style="display:flex;gap:6px;font-size:12px"><input type="checkbox" id="ti-${i}-${a.id}" data-tinc="${i}|${a.id}" ${x.includes.includes(a.id)?'checked':''}>${esc(a.name)}</label>`).join('')}</td><td><textarea class="inp sm" id="t-f-${i}" rows="5" data-alines="tiers.${i}.features" style="min-width:220px">${esc(x.features.join('\n'))}</textarea></td><td><input type="radio" name="popular" id="t-p-${i}" data-popular="${x.id}" ${admin.popular===x.id?'checked':''} aria-label="Most popular"></td></tr>`).join('')}</tbody></table></div>
@@ -944,7 +950,7 @@ function renderAdmin(){const t=state.adminTab,k=adminKpis();const rpNew=RP.list?
   <div class="card"><h3>Section library</h3><p class="muted" style="margin-bottom:8px">Turn sections off, or make any section a paid add-on.</p>${Object.entries(CATALOG).map(([kk,c])=>`<div class="sum-line" style="padding:7px 0;border-bottom:1px solid var(--line);align-items:center"><span class="row" style="color:var(--ink)">${thumb(kk)}<b>${c.name}</b></span><span class="row"><select class="inp sm" id="sr-a-${kk}" data-abind="sections.${kk}.addon" data-hardafter aria-label="Requires add-on" style="width:150px"><option value="">Free</option>${admin.addons.map(a=>`<option value="${a.id}" ${rule(kk).addon===a.id?'selected':''}>Needs ${esc(a.name)}</option>`).join('')}</select><label class="switch"><input type="checkbox" id="sr-e-${kk}" data-abind="sections.${kk}.enabled" data-hardafter ${rule(kk).enabled?'checked':''}><i></i></label></span></div>`).join('')}</div></div>`}
  else{body=`<div class="card" style="max-width:560px"><h3>Business settings</h3><label class="fld"><span>Company name (shown on customer sites)</span><input type="text" id="s-co" data-abind="company" value="${esc(admin.company)}"></label><label class="fld"><span>Free site address domain</span><input type="text" id="s-dom" data-abind="domain" value="${esc(admin.domain)}"></label>
   <h3 style="margin-top:20px">Demo data</h3><p class="muted" style="margin-bottom:10px">Clears the design, orders and pricing in this browser and restores the sample setup.</p><button class="btn danger" data-reset>Reset demo</button></div>`}
- $('#v-admin').innerHTML=`<div class="admin"><div class="admin-h"><div><h1>${esc(admin.company)} admin</h1><p class="muted">Your side of the business: orders, customers, pricing and what customers can use.</p></div><span class="badge">Only you see this</span></div><nav class="subnav">${tabs.map(([kk,l])=>`<button type="button" data-admintab="${kk}" class="${t===kk?'on':''}">${l}</button>`).join('')}</nav>${body}</div>`}
+ $('#v-admin').innerHTML=`<div class="admin"><div class="admin-h"><div><h1>${esc(admin.company)} admin</h1><p class="muted">Your side of the business: orders, customers, pricing and what customers can use.</p></div><span class="badge">Only you see this</span></div><nav class="subnav">${tabs.map(([kk,l])=>`<button type="button" data-admintab="${kk}" class="${t===kk?'on':''}">${l}</button>`).join('')}</nav>${body}</div>`;if(t==='orders'&&window.TWP&&TWP.mountAdmin)TWP.mountAdmin($('#srvOrders'))}
 
 /* ---------- problem reports (Admin › Problem reports) ----------
    Visitors send them with "Report a problem" (js/report.js). They are kept on the server, so reading them needs the
@@ -2242,7 +2248,7 @@ const DEVS={
  phone:[{k:'iphone',n:'iPhone 16',s:'393 × 852 · Safari',os:'ios',w:393,h:852,cut:'island'},{k:'iphonemax',n:'iPhone 16 Pro Max',s:'440 × 956 · Safari',os:'ios',w:440,h:956,cut:'island'},{k:'iphonese',n:'iPhone SE',s:'375 × 667 · Safari',os:'ios',w:375,h:667,cut:'home'},{k:'s24',n:'Samsung Galaxy S24',s:'360 × 780 · Chrome',os:'android',w:360,h:780,cut:'hole',nav:'keys'},{k:'a15',n:'Samsung Galaxy A15',s:'384 × 832 · Chrome',os:'android',w:384,h:832,cut:'drop',nav:'keys'},{k:'pixel',n:'Google Pixel 9',s:'412 × 923 · Chrome',os:'android',w:412,h:923,cut:'hole',nav:'swipe'}]};
 const devModel=t=>{t=t||state.device;const l=DEVS[t]||DEVS.desktop,k=(state.models||{})[t];return l.find(m=>m.k===k)||l[0]};
 /* tablet and phone previews on a screen with room to spare show the whole device, scrolling inside its screen */
-const devFramed=()=>state.tab==='builder'&&state.device!=='desktop'&&innerWidth>700;
+const devFramed=()=>!SITE&&state.tab==='builder'&&state.device!=='desktop'&&innerWidth>700;
 const SB_IC=`<span class="dv-ic"><svg width="17" height="11" viewBox="0 0 17 11" aria-hidden="true"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg><svg width="15" height="11" viewBox="0 0 15 11" aria-hidden="true"><path d="M7.5 10.5 5 7.8a3.6 3.6 0 0 1 5 0zM2.6 5.4a7 7 0 0 1 9.8 0l-1.3 1.3a5.2 5.2 0 0 0-7.2 0zM.2 3a10.4 10.4 0 0 1 14.6 0l-1.3 1.3a8.6 8.6 0 0 0-12 0z"/></svg><svg width="24" height="11" viewBox="0 0 24 11" aria-hidden="true"><rect x=".5" y=".5" width="20" height="10" rx="3" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="15" height="7" rx="1.8"/><path d="M22 3.8v3.4a1.8 1.8 0 0 0 0-3.4z" opacity=".45"/></svg></span>`;
 function devShell(){const cv=$('#canvas');if(!cv)return null;let sh=cv.parentElement;if(sh.classList.contains('dv-shell'))return sh;sh=document.createElement('div');sh.className='dv-shell';cv.before(sh);sh.appendChild(cv);
  const sb=document.createElement('div');sb.className='dv-sb';sb.setAttribute('aria-hidden','true');cv.insertBefore(sb,cv.firstChild);
@@ -2353,7 +2359,7 @@ function histBtns(){const u=$('#undoBtn'),r=$('#redoBtn'),s=$('#saveBtn');if(u)u
 saveDesign=(o=>async function(x){const r=await o(x);if(r!==false){DIRTY=false;histBtns()}return r})(saveDesign);
 /* autosave: once a design is in My designs, keep its saved copy current every minute and when the page is left; brand-new designs wait for a first Save */
 const AUTO_MS=60000;let autoBusy=false,autoFailed=false,autoTipT=null;
-async function autoSave(){if(autoBusy||!designsReady||!curDesign()||!isDirty())return;autoBusy=true;const d=curDesign(),prev={at:d.at,data:d.data};
+async function autoSave(){if(SITE||autoBusy||!designsReady||!curDesign()||!isDirty())return;autoBusy=true;const d=curDesign(),prev={at:d.at,data:d.data};
  try{d.at=Date.now();d.data=designData();await designStore(d);autoFailed=false;DIRTY=false;histBtns();autoTip();if(state.tab==='designs')renderDesigns();const st=$('#dsMenu .ds-state');if(st){st.className='ds-state ok';st.textContent='All changes saved'}}
  catch(e){Object.assign(d,prev);if(!autoFailed){autoFailed=true;toast('Autosave could not keep your changes. Browser storage is full. Delete an old design or use smaller photos.')}}
  finally{autoBusy=false}}
@@ -2791,23 +2797,27 @@ function holdTick(){if(!designsReady)return;
 /* Design storage checkout: same order flow as plans, shows in Admin > Orders */
 function openStorage(){const b=state.biz||{},n=DESIGNS.length+(curDesign()||!state.sections.length?0:1);
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal" id="storageForm" role="dialog" aria-label="Design storage"><div class="modal-h"><div><h2>Keep my designs</h2><p class="muted">Not ready to choose a plan? Design storage turns saving on and keeps all your designs for <b>${money(storagePrice())}/month</b>. Cancel any time, and it stops when you choose a plan.</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
- <p class="demo-note">Prototype checkout. No card is charged yet; the order goes to the admin dashboard. Designs stay in this browser until accounts are added.</p>
  <div class="grid2f"><label class="fld"><span>Your name</span><input type="text" id="st-name" required autocomplete="name"></label><label class="fld"><span>Business</span><input type="text" id="st-biz" required value="${esc(b.name||state.brand.name||'')}" autocomplete="organization"></label>
  <label class="fld"><span>Email</span><input type="email" id="st-email" required value="${esc(b.email||'')}" autocomplete="email"></label><label class="fld"><span>Phone</span><input type="text" inputmode="tel" id="st-phone" value="${esc(b.phone||'')}" autocomplete="tel"></label></div>
- <div class="grid2f"><label class="fld"><span>Card number</span><input type="text" id="st-card" inputmode="numeric" placeholder="4242 4242 4242 4242"></label><label class="fld"><span>Expiry / CVC</span><input type="text" id="st-exp" placeholder="12/28 · 123"></label></div>
  <div class="sum-tot"><div class="big"><span>Design storage</span><b class="num">${money(storagePrice())}/month</b></div><div class="sum-line"><span>Designs kept</span><span class="num">${n?n+' now, and any you add':'Every design you save'}</span></div></div>
- <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Cancel</button><button class="btn pri" type="submit">Start Design storage</button></div></form></div>`;
+ ${window.TWP&&TWP.payPicker?TWP.payPicker():''}
+ <div class="row" style="justify-content:flex-end;margin-top:14px"><button type="button" class="btn" data-closemodal>Cancel</button><button class="btn pri" type="submit">${window.TWP&&TWP.paymentsOn&&TWP.paymentsOn()?'Continue to payment':'Start Design storage'}</button></div></form></div>`;
  setTimeout(()=>$('#st-name')?.focus(),30)}
 function placeStorage(){const v=id=>$('#'+id).value.trim();const o={id:'TWP-'+(admin.nextOrder++),kind:'storage',at:Date.now(),business:v('st-biz'),owner:v('st-name'),email:v('st-email'),phone:v('st-phone'),plan:'storage',addons:[],pos:null,hw:{},setup:0,monthly:storagePrice(),annual:false,status:'New',designs:DESIGNS.length+(curDesign()||!state.sections.length?0:1)};
  admin.orders.push(o);admin.customers.push({id:uid(),business:o.business,owner:o.owner,plan:'storage',addons:[],pos:null,vol:0,status:'Live',mrr:o.monthly,since:Date.now()});
+ const method=window.TWP&&TWP.chosenMethod?TWP.chosenMethod():null;
+ const sent=window.TWP?TWP.submitOrder(o,state):null;
+ // with payments switched on, designs are kept once payment starts
+ if(method&&sent){save();$('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Saving order"><div class="modal-h"><h2>Saving your order</h2></div><p class="muted">One moment…</p></div></div>`;
+  sent.then(r=>{if(r&&r.id){o.serverId=r.id;o.number=r.number;state.keep={kind:'storage',order:o.id,at:Date.now()};save();holdPill();TWP.startPayment(r.id,method)}else $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Order not sent"><div class="modal-h"><h2>We couldn't reach our server</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Design storage wasn't started and you haven't been charged. Check your connection and try again.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn pri" data-closemodal>Close</button></div></div></div>`});return}
  state.keep={kind:'storage',order:o.id,at:Date.now()};save();
- if(window.TWP)TWP.submitOrder(o,state);holdPill();if(state.tab==='designs')renderDesigns();
+ holdPill();if(state.tab==='designs')renderDesigns();
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal" role="dialog" aria-label="Design storage started"><div class="modal-h"><h2>Your designs are kept</h2><button class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div><p>Thanks, ${esc(o.owner.split(' ')[0]||'there')}. Design storage is on at ${money(o.monthly)}/month, so nothing you save expires. ${esc(admin.company)} will email ${esc(o.email)} a receipt. Order ${o.id}.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn pri" data-closemodal>Keep designing</button></div></div></div>`}
 document.addEventListener('click',e=>{const t=e.target instanceof Element&&e.target;if(!t)return;
  if(t.closest('[data-holdinfo]')){e.stopPropagation();holdInfo();return}
  if(t.closest('[data-storage]')){e.stopPropagation();openStorage();return}},true);
 document.addEventListener('submit',e=>{if(e.target.id==='storageForm'){e.preventDefault();e.stopPropagation();placeStorage()}},true);
-(function holdStartup(){const go=()=>{if(!designsReady){setTimeout(go,100);return}holdMigrate();const r=holdPurge();if(r.saved||r.cleared){HOLD_ASKED=holdStart()||0;toast(`Without a plan, saving is free for ${holdHours()}. ${r.saved?(r.saved===1?'1 saved design was':r.saved+' saved designs were')+' deleted':''}${r.saved&&r.cleared?' and the open design was cleared':r.cleared?'The open design was cleared':''}.`,{label:'Why?',fn:holdInfo})}else if(holdLeft()<=0)HOLD_ASKED=holdStart();holdTick();setInterval(holdTick,1000)};go()})();
+(function holdStartup(){if(SITE)return;const go=()=>{if(!designsReady){setTimeout(go,100);return}holdMigrate();const r=holdPurge();if(r.saved||r.cleared){HOLD_ASKED=holdStart()||0;toast(`Without a plan, saving is free for ${holdHours()}. ${r.saved?(r.saved===1?'1 saved design was':r.saved+' saved designs were')+' deleted':''}${r.saved&&r.cleared?' and the open design was cleared':r.cleared?'The open design was cleared':''}.`,{label:'Why?',fn:holdInfo})}else if(holdLeft()<=0)HOLD_ASKED=holdStart();holdTick();setInterval(holdTick,1000)};go()})();
 
 /* ---------- full screen: hide the studio and show the site edge to edge, the way a visitor sees it ---------- */
 Object.assign(P,{full:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',fullx:'<path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>'});
@@ -2861,7 +2871,7 @@ Object.assign(CATALOG.shop,{name:'Online store',desc:'Products, cart, pickup, de
 const BADGES={'':'No badge',new:'New',best:'Best seller',limited:'Limited edition',order:'Made to order',handmade:'Handmade',local:'Local',gf:'Gluten-free',vegan:'Vegan'};
 const YN={yes:'Yes',no:'No'};
 const STORE_SET={sub:'',pickup:'yes',payLater:'yes',delivery:'no',deliveryFee:'$5',deliveryArea:'Within 5 miles',shipping:'yes',shipFee:'$6',freeOver:'$75',notice:0,slots:'',codes:'WELCOME10 = 10%',subOff:10};
-const PB=o=>({name:'New product',price:'$10',compare:'',image:null,images:[],desc:'',collection:'',stock:'',daily:'',badge:'',kind:'item',opt1:'',opt1v:'',opt2:'',opt2v:'',preorder:'no',lead:0,sub:'no',rating:'',reviews:'',boxSize:6,boxFrom:'',...o});
+const PB=o=>({id:uid(),name:'New product',price:'$10',compare:'',image:null,images:[],desc:'',collection:'',stock:'',daily:'',badge:'',kind:'item',opt1:'',opt1v:'',opt2:'',opt2v:'',preorder:'no',lead:0,sub:'no',rating:'',reviews:'',boxSize:6,boxFrom:'',...o});
 const STORES={
  bakery:{set:{sub:'Order by 6pm for pickup tomorrow. Custom cakes need a few days.',delivery:'yes',deliveryFee:'$6',shipping:'no',notice:0,codes:'SWEET10 = 10%\nFIRSTBOX = $5'},products:[
   PB({name:'Country sourdough',price:'$9',collection:'Bread',daily:24,badge:'best',desc:'36-hour ferment, a crackling crust and a soft, open crumb. Baked every morning.',opt1:'Slicing',opt1v:'Whole loaf, Sliced',sub:'yes',rating:4.9,reviews:128}),
@@ -2938,10 +2948,11 @@ genData=(o=>function(type,F){if(type!=='shop')return o.apply(this,arguments);con
 const num$=v=>{const n=parseFloat(String(v??'').replace(/[^0-9.]/g,''));return isFinite(n)?n:0};
 const hasV=v=>String(v??'').trim()!=='';
 const spLS=(k,v)=>{try{if(v===undefined)return JSON.parse(localStorage.getItem(k)||'null');localStorage.setItem(k,JSON.stringify(v))}catch(e){return null}};
-let CART=Array.isArray(spLS('twp-cart-v1'))?spLS('twp-cart-v1'):[];
+const CART_KEY=SITE?'twp-cart-s-'+SITE:'twp-cart-v1';
+let CART=Array.isArray(spLS(CART_KEY))?spLS(CART_KEY):[];
 const WISH=new Set(spLS('twp-wish-v1')||[]);
 const SPF={};let SPV=null,SP_REMIND=false;const SP_BACK=CART.length>0;
-const cartSave=()=>spLS('twp-cart-v1',CART);
+const cartSave=()=>spLS(CART_KEY,CART);
 const cartCount=()=>CART.reduce((n,l)=>n+l.qty,0);
 const wkey=x=>slug(state.brand.name)+'|'+String(x.name||'');
 function spSec(id){const s=sec(id);if(s)return s;const f=state.pages&&findSecAny(id);return f?f.s:null}
@@ -3047,7 +3058,7 @@ function spMethods(d){return [['pickup','Pickup',d.pickup==='yes'],['delivery','
 function spTotals(d){const F=SPV.f,sub=CART.reduce((a,l)=>a+l.unit*l.qty,0),m=F.method||(spMethods(d)[0]||['pickup'])[0];const code=F.code&&spCodes(d)[F.code];
  let fee=0;if(m==='delivery')fee=num$(d.deliveryFee);if(m==='ship')fee=num$(d.freeOver)&&sub>=num$(d.freeOver)?0:num$(d.shipFee);
  let disc=0;if(code){if(code.pct)disc=sub*code.pct/100;if(code.amt)disc=Math.min(sub,code.amt);if(code.ship&&m!=='pickup')fee=0}
- disc=Math.round(disc*100)/100;return{sub,fee,disc,total:Math.max(0,sub-disc+fee),m,code}}
+ disc=Math.round(disc*100)/100;const tax=SITE_TAX?Math.round((sub-disc)*SITE_TAX)/100:0;return{sub,fee,disc,tax,total:Math.max(0,sub-disc+fee+tax),m,code}}
 function spCartView(){const d=spStore(),F=SPV.f,t=spTotals(d),n=cartCount(),ms=spMethods(d);
  const head=`<div class="sp-dh"><h2>${SPV.step==='done'?'Order placed':SPV.step==='details'?'Checkout':`Your cart <small>(${n})</small>`}</h2><button type="button" class="sp-x" data-spclose aria-label="Close" data-spfocus>${ic('x',20)}</button></div>`;
  if(SPV.step==='done'){const o=SPV.done;return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Order placed">${head}<div class="sp-scroll"><div class="sp-done">${ic('check',30)}<h3>Thanks, ${esc(o.name.split(' ')[0]||'friend')}!</h3><p>Order <b>#${o.no}</b> is in. ${o.method==='ship'?'We will email tracking when it ships.':o.method==='delivery'?`We will deliver it ${esc(o.when)}.`:`It will be ready for pickup ${esc(o.when)}.`}</p><p class="muted">A receipt is on its way to ${esc(o.email)}.</p>${EDIT_DEMO()}<button type="button" class="sbtn" data-spclose>Keep shopping</button></div></div></aside>`}
@@ -3059,7 +3070,7 @@ function spCartView(){const d=spStore(),F=SPV.f,t=spTotals(d),n=cartCount(),ms=s
    <div class="sp-sum">${n} item${n===1?'':'s'} · ${t.m==='ship'?'Shipping':t.m==='delivery'?`Delivery ${esc(F.when||'')}`:`Pickup ${esc(F.when||'')}`}<b>${money(t.total,2)}</b></div>
    <label>Name<input required data-spin="name" autocomplete="name" value="${esc(F.name||'')}"></label><label>Email<input required type="email" data-spin="email" autocomplete="email" value="${esc(F.email||'')}"></label><label>Phone (for pickup texts)<input type="tel" data-spin="phone" autocomplete="tel" value="${esc(F.phone||'')}"></label>
    ${need?`<label>${t.m==='ship'?'Shipping address':'Delivery address'}<textarea required rows="2" data-spin="addr" autocomplete="street-address">${esc(F.addr||'')}</textarea></label>`:''}
-   <fieldset class="sp-pay"><legend>Pay with</legend>${[['card','Card, Apple Pay or Google Pay'],['paypal','PayPal or Venmo'],...(t.m==='pickup'&&d.payLater==='yes'?[['later','Pay at pickup']]:[])].map(([k,l])=>`<label class="${(F.pay||'card')===k?'on':''}"><input type="radio" name="sppay" value="${k}" data-sppay ${(F.pay||'card')===k?'checked':''}> ${l}</label>`).join('')}</fieldset>
+   <fieldset class="sp-pay"><legend>Pay with</legend>${(o=>{const cur=o.some(x=>x[0]===F.pay)?F.pay:(o[0]||[''])[0];return o.length?o.map(([k,l])=>`<label class="${cur===k?'on':''}"><input type="radio" name="sppay" value="${k}" data-sppay ${cur===k?'checked':''}> ${l}</label>`).join(''):'<p class="sp-note">This shop isn’t taking online payments yet. Please call to order.</p>'})(spPayOpts(t,d))}</fieldset>
    ${EDIT_DEMO()}<button type="submit" class="sbtn sp-go">Place order · ${money(t.total,2)}</button></form></aside>`}
  const dates=t.m==='ship'?[]:spDates(d),lead=spLead(d),iso=F.date&&dates.some(x=>isoD(x)===F.date)?F.date:(dates[0]?isoD(dates[0]):''),slots=spSlots(d,iso);if(iso!==F.date){F.date=iso;F.slot=''}
  const preWhy=CART.find(l=>l.pre&&+l.lead===lead&&lead>0);
@@ -3069,19 +3080,19 @@ function spCartView(){const d=spStore(),F=SPV.f,t=spTotals(d),n=cartCount(),ms=s
    ${t.m!=='ship'?`<h3>${t.m==='pickup'?'Pickup':'Delivery'} day</h3>${dates.length?`<div class="sp-days">${dates.map(x=>{const k=isoD(x);return `<button type="button" class="${k===iso?'on':''}" data-spdate="${k}"><small>${x.toLocaleDateString('en-US',{weekday:'short'})}</small><b>${x.getDate()}</b><small>${x.toLocaleDateString('en-US',{month:'short'})}</small></button>`}).join('')}</div>${preWhy?`<p class="sp-note">${ic('calendar',14)} The earliest day is ${dayLbl(dates[0])} because ${esc(preWhy.name)} needs ${lead} day${lead===1?'':'s'} notice.</p>`:''}<h3>Time</h3>${slots.length?`<div class="sp-slots">${slots.map(x=>`<button type="button" class="${F.slot===x?'on':''}" data-spslot="${esc(x)}">${esc(slotLbl(x))}</button>`).join('')}</div>`:`<p class="sp-note">No times left that day. Pick another day.</p>`}`:`<p class="sp-note">Pickup days come from your business hours. Add open hours to take orders.</p>`}`:''}</div>`:''}
   <div class="sp-blk"><label class="sp-notes">Notes for the shop<textarea rows="2" data-spin="note" placeholder="${t.m==='pickup'?'Name for the cake, allergies, or who is picking up':'Gate code, gift note, anything we should know'}">${esc(F.note||'')}</textarea></label>
    <div class="sp-code"><input data-spin="codeIn" placeholder="Discount or promo code" value="${esc(F.codeIn||'')}" aria-label="Discount code"><button type="button" class="sbtn sm ghost" data-spcode>Apply</button></div>${F.code?`<p class="sp-ok">${ic('tag',14)} ${esc(F.code)} applied <button type="button" data-spuncode>Remove</button></p>`:F.codeErr?`<p class="sp-err">${esc(F.codeErr)}</p>`:''}</div>
-  <div class="sp-tot"><div><span>Subtotal</span><b>${money(t.sub,2)}</b></div>${t.disc?`<div class="disc"><span>Discount</span><b>−${money(t.disc,2)}</b></div>`:''}${t.m!=='pickup'?`<div><span>${t.m==='ship'?'Shipping':'Delivery'}</span><b>${t.fee?money(t.fee,2):'Free'}</b></div>`:''}<div class="big"><span>Total</span><b>${money(t.total,2)}</b></div><small class="muted">Taxes are added at payment if they apply.</small></div></div>
+  <div class="sp-tot"><div><span>Subtotal</span><b>${money(t.sub,2)}</b></div>${t.disc?`<div class="disc"><span>Discount</span><b>−${money(t.disc,2)}</b></div>`:''}${t.m!=='pickup'?`<div><span>${t.m==='ship'?'Shipping':'Delivery'}</span><b>${t.fee?money(t.fee,2):'Free'}</b></div>`:''}${t.tax?`<div><span>Sales tax</span><b>${money(t.tax,2)}</b></div>`:''}<div class="big"><span>Total</span><b>${money(t.total,2)}</b></div>${SITE?'':'<small class="muted">Taxes are added at payment if they apply.</small>'}</div></div>
   <div class="sp-foot"><button type="button" class="sbtn sp-go" data-spstep="details" ${t.m!=='ship'&&(!F.date||!F.slot)?'disabled':''}>Check out · ${money(t.total,2)}</button>${t.m!=='ship'&&(!F.date||!F.slot)?`<small class="muted">Pick a ${t.m==='pickup'?'pickup':'delivery'} time to continue.</small>`:''}</div></aside>`}
-const EDIT_DEMO=()=>`<p class="sp-demo">${ic('info',14)} Preview checkout: no card is charged. When your store goes live, payments go to your own account and orders show in your dashboard.</p>`;
+const EDIT_DEMO=()=>SITE?'':`<p class="sp-demo">${ic('info',14)} Preview checkout: no card is charged. When your store goes live, payments go to your own account and orders show in your dashboard.</p>`;
 function spAddLine(s,k,opt){const x=s.data.items[k],o=pOpts(x),sel=opt.sel||[],plan=opt.plan||'once',d=s.data;
  const parts=o.map((g,i)=>`${g.name}: ${(g.vals[sel[i]||0]||{}).label||''}`);
  if(x.kind==='box'){const picks=Object.entries(opt.box||{}).filter(([,q])=>q>0).map(([j,q])=>`${q}× ${d.items[+j].name}`);parts.push(picks.join(', '))}
  if(x.kind==='gift'&&opt.gift){if(opt.gift.to)parts.push('To '+opt.gift.to);if(opt.gift.msg)parts.push('“'+opt.gift.msg+'”')}
- const line={sid:s.id,k,name:x.name,opts:parts.filter(Boolean).join(' · '),unit:unitPrice(x,sel,plan,d),qty:opt.qty||1,sub:plan==='sub',every:plan==='sub'?(opt.every||'Every week'):'',pre:x.preorder==='yes',lead:+x.lead||0,fixed:x.kind!=='item'};
+ const line={sid:s.id,k,pid:x.id,name:x.name,opts:parts.filter(Boolean).join(' · '),unit:unitPrice(x,sel,plan,d),qty:opt.qty||1,sub:plan==='sub',every:plan==='sub'?(opt.every||'Every week'):'',pre:x.preorder==='yes',lead:+x.lead||0,fixed:x.kind!=='item'};
  const same=CART.find(l=>!l.fixed&&l.sid===line.sid&&l.k===k&&l.opts===line.opts&&l.sub===line.sub&&l.every===line.every);
  line.vk=vKey(x,sel);const L=leftV(s,x,k,sel);if(isFinite(L)&&line.qty>L){toast(L?`Only ${L} left`:'Sold out');return false}
  if(same)same.qty+=line.qty;else CART.push(line);cartSave();renderSites();
  toast(`Added ${x.name} to your cart`,{label:'View cart',fn:spOpenCart});return true}
-function spPlace(){const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.name||'').trim(),em=(F.email||'').trim();if(!nm||!/^\S+@\S+\.\S+$/.test(em)){toast('Add your name and a valid email');return}
+function spPlace(){if(SITE){sitePlace();return}const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.name||'').trim(),em=(F.email||'').trim();if(!nm||!/^\S+@\S+\.\S+$/.test(em)){toast('Add your name and a valid email');return}
  state.shopOrders=state.shopOrders||[];const no=1001+state.shopOrders.length;const when=t.m==='ship'?'':`${dayLbl(fromIso(F.date))} at ${slotLbl(F.slot)}`;
  const o={no,at:Date.now(),name:nm,email:em,phone:F.phone||'',addr:F.addr||'',method:t.m,date:F.date||'',slot:F.slot||'',when,note:F.note||'',code:F.code||'',pay:F.pay||'card',lines:CART.map(l=>({name:l.name,opts:l.opts,qty:l.qty,unit:l.unit,sub:l.sub,every:l.every,sid:l.sid,k:l.k,vk:l.vk||''})),subtotal:t.sub,discount:t.disc,fee:t.fee,total:Math.round(t.total*100)/100,status:'new',demo:true};
  state.shopOrders.push(o);stockMove(o,-1);
@@ -3098,7 +3109,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element
  if(el=q('[data-spadd]')){e.preventDefault();const[id,k]=el.dataset.spadd.split('|');const s=spSec(id);if(s){spNorm(s);spAddLine(s,+k,{})}return}
  if((el=q('[data-spcard]'))&&!q('#site.edit')&&!q('button,a,input,select,textarea')){const[id,k]=el.dataset.spcard.split('|');spOpen(id,+k);return}
  if(el=q('[data-liadd]')){const[id,path]=el.dataset.liadd.split('|');if(path==='items'&&el.classList.contains('sp-addtile')){const s=sec(id);if(s&&s.type==='shop')setTimeout(()=>{state.selected=id;state.rightTab='section';if(!state.inspOpen)openPanel('insp');renderInspector();const n=(sec(id).data.items||[]).length-1;requestAnimationFrame(()=>{if(!jumpTo(`[data-limove^="${id}|items|${n}|"]`)){const b=$(`#inspector [data-limove^="${id}|items|${n}|"]`);if(b){b.scrollIntoView({block:'center'});jumpFlash(b)}}})},0)}}
- if(el=q('[data-spdup]')){const[id,i]=el.dataset.spdup.split('|');const s=sec(id);if(!s)return;snap();const c=clone(s.data.items[+i]);c.name=c.name+' copy';s.data.items.splice(+i+1,0,c);hard();toast('Product duplicated');return}
+ if(el=q('[data-spdup]')){const[id,i]=el.dataset.spdup.split('|');const s=sec(id);if(!s)return;snap();const c=clone(s.data.items[+i]);c.id=uid();c.name=c.name+' copy';s.data.items.splice(+i+1,0,c);hard();toast('Product duplicated');return}
  if(!q('#spRoot'))return;
  if(q('[data-spclose]')){spClose();return}
  if(!SPV)return;
@@ -3175,7 +3186,8 @@ const allProds=()=>shopSecs().flatMap(s=>s.data.items.map((x,k)=>({s,x,k})));
 function findProd(sid,k,name){const s=spSec(sid);if(s&&s.data.items[k]&&s.data.items[k].name===name)return{s,x:s.data.items[k],k};return allProds().find(p=>p.x.name===name)||null}
 function stockMove(o,dir){if(o.sample)return;(o.lines||[]).forEach(l=>{const f=findProd(l.sid,l.k,l.name);if(!f)return;const x=f.x;
  if(l.vk&&x.vstock&&hasV(x.vstock[l.vk]))x.vstock[l.vk]=Math.max(0,+x.vstock[l.vk]+dir*l.qty);else if(hasV(x.stock))x.stock=Math.max(0,+x.stock+dir*l.qty)})}
-const shopOrders=()=>state.shopOrders||(state.shopOrders=[]);
+// once the owner's site is live, the real orders come from the server (LIVE_ORDERS); example orders still show
+const shopOrders=()=>LIVE_ORDERS?LIVE_ORDERS.concat((state.shopOrders||[]).filter(o=>o.sample)):(state.shopOrders||(state.shopOrders=[]));
 const liveO=o=>o.status!=='cancelled';
 const lowAt=()=>+(state.storeLow??5);
 const stockOf=x=>{const v=vsum(x);return v!=null?v:hasV(x.stock)?+x.stock:null};
@@ -3236,7 +3248,7 @@ function storePanel(){const nw=shopOrders().filter(o=>o.status==='new').length;
  return `<div class="stp"><div class="od-top"><div><h2>Store</h2><p>Orders, stock and pickups for ${esc(state.brand.name)}.</p></div><div class="row">${shopOrders().some(o=>o.sample)?'<button type="button" class="od-btn ghost" data-stsample="0">Remove sample orders</button>':'<button type="button" class="od-btn ghost" data-stsample="1">Add sample orders</button>'}<button type="button" class="od-btn" data-tab="builder">${ic('edit',14)} Edit products</button></div></div>
  <div class="stp-tabs" role="tablist">${ST_TABS.map(([k,l])=>`<button type="button" role="tab" aria-selected="${STV===k}" class="${STV===k?'on':''}" data-stv="${k}">${l}${k==='orders'&&nw?` <i>${nw}</i>`:''}</button>`).join('')}</div>
  <div class="stp-body">${{overview:stOverview,orders:stOrders,inventory:stInventory,production:stProduction,discounts:stDiscounts,customers:stCustomers}[STV]()}</div>
- <p class="stp-demo">${ic('info',13)} Until your store is live, orders here come from test checkouts in your preview and sample data. Real orders and payments land here the same way once it launches.</p></div>`}
+ ${isLive()?'':`<p class="stp-demo">${ic('info',13)} Until your store is live, orders here come from test checkouts in your preview and sample data. Real orders and payments land here the same way once it launches.</p>`}</div>`}
 function stSample(on){state.shopOrders=shopOrders().filter(o=>!o.sample);if(!on){save();return}
  const P=allProds().filter(p=>p.x.kind==='item');if(!P.length){toast('Add products first');return}const d=shopSecs()[0].data,ms=spMethods(d).map(m=>m[0]);const names=[['Jamie Lee','jamie@example.com'],['Priya Shah','priya@example.com'],['Marcus Hill','marcus@example.com'],['Ana Lopez','ana@example.com'],['Sam Carter','sam@example.com'],['Jamie Lee','jamie@example.com'],['Kelly Nguyen','kelly@example.com'],['Tom Alvarez','tom@example.com']];
  const now=new Date();let no=1001+state.shopOrders.length+50;
@@ -3773,7 +3785,118 @@ document.addEventListener('submit',e=>{const f=e.target;if(!(f instanceof Elemen
  if(f.id==='adBookForm'){e.preventDefault();e.stopImmediatePropagation();adBookSend();return}
  if(f.matches('[data-nwsub]')){e.preventDefault();e.stopImmediatePropagation();if(f.closest('#site.edit')){toast('Sign-ups work in Full screen and on your live site.');return}nwSubscribe(f)}},true);
 
+
+/* ---------- live store: owner sign-in, publishing, real orders, and the shop's public site ----------
+   Owners sign in (server/accounts.js) and publish their design to /s/<slug> (server/shop.js). From then on the
+   server keeps the real stock counts and orders: the Store panel shows them and sends inventory edits back.
+   On /s/<slug> this page is the shop's site only, and checkout sends the order to the server, which prices it. */
+Object.assign(P,{user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>'});
+let ACCT=null,LIVE_ORDERS=null,liveSig='';
+async function acctApi(path,opts={}){const f=(window.TWP&&TWP.fetch)||fetch;
+ const r=await f(path,{method:opts.method||'GET',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:opts.body?JSON.stringify(opts.body):undefined});
+ const d=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(d.error||'Something went wrong. Please try again.');e.status=r.status;e.data=d;throw e}return d}
+const liveUrl=()=>ACCT&&ACCT.shop?`${location.origin}/s/${ACCT.shop.slug}`:'';
+const isLive=()=>!!(ACCT&&ACCT.shop&&ACCT.shop.published);
+function acctPaint(){const b=$('#acctBtn');if(!b)return;b.hidden=!!SITE;b.classList.toggle('on',!!ACCT);
+ b.innerHTML=ACCT?`<i class="${isLive()?'dot live':'dot'}"></i><span>${esc(ACCT.shop.name)}</span>`:`${ic('user',15)}<span>Sign in</span>`;
+ b.title=ACCT?(isLive()?'Your site is live. Click to publish changes or sign out.':'Signed in. Publish your site to take real orders.'):'Sign in to publish your site and take real orders'}
+// counts from the server go into the products, so the studio and the shop page show what's really on the shelf
+function applyStock(map,all){allProds().forEach(({x})=>{if(!x.id)return;
+ const vs=x.vstock&&typeof x.vstock==='object'?x.vstock:null;let any=false;
+ if(vs)Object.keys(vs).forEach(vk=>{const k=x.id+'|'+vk;if(k in map){vs[vk]=map[k];any=true}else if(all)vs[vk]=''});
+ if(x.id in map){x.stock=map[x.id];any=true}else if(all&&!any)x.stock=''})}
+function liveOrder(o){return{no:o.no,at:o.at,name:o.name,email:o.email,phone:o.phone||'',addr:o.addr||'',method:o.method,date:o.date||'',slot:o.slot||'',when:o.when||'',note:o.note||'',code:o.code||'',pay:o.payment&&o.payment.method||'later',paid:o.payment&&o.payment.status,
+ lines:(o.lines||[]).map(l=>({name:l.name,opts:l.opts||l.variant||'',qty:l.qty,unit:l.unit,sub:l.sub,every:l.every||'',sid:l.sid,k:l.k,vk:l.variant||''})),subtotal:o.subtotal,discount:o.discount,fee:o.fee,tax:o.tax||0,total:o.total,status:o.status,srv:o.id}}
+async function liveRefresh(){if(!isLive())return;try{const[orders,stock]=await Promise.all([acctApi('/api/shop/orders'),acctApi('/api/shop/stock')]);
+  LIVE_ORDERS=orders.map(liveOrder);applyStock(stock);save();
+  const sig=orders.map(o=>o.id+o.status+(o.payment&&o.payment.status)).join();const typing=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#v-dashboard input,#v-dashboard select,#v-dashboard textarea');
+  if(sig!==liveSig&&!typing){liveSig=sig;stRe()}}
+ catch(e){if(e.status===401){ACCT=null;LIVE_ORDERS=null;acctPaint()}}}
+function openAcct(mode){if(ACCT){acctPanel();return}mode=mode||'in';
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal acct-modal" id="acctForm" data-mode="${mode}" role="dialog" aria-label="${mode==='up'?'Create your account':'Sign in'}"><div class="modal-h"><div><h2>${mode==='up'?'Create your account':'Sign in'}</h2><p class="muted">${mode==='up'?'Your account keeps your shop, products and orders on our servers, so you can work from any device and take real orders.':'Sign in to publish your site and see real orders.'}</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+  ${mode==='up'?`<label class="fld"><span>Business name</span><input type="text" id="ac-biz" required maxlength="80" autocomplete="organization" value="${esc(state.brand&&state.brand.name||'')}"></label>`:''}
+  <label class="fld"><span>Email</span><input type="email" id="ac-email" required autocomplete="email"></label>
+  <label class="fld"><span>Password</span><input type="password" id="ac-pw" required minlength="${mode==='up'?8:1}" autocomplete="${mode==='up'?'new-password':'current-password'}">${mode==='up'?'<small class="muted">At least 8 characters.</small>':''}</label>
+  <p class="acct-err" id="acErr" role="alert" hidden></p>
+  <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn sm" data-acctmode="${mode==='up'?'in':'up'}">${mode==='up'?'I already have an account':'Create an account'}</button><button type="submit" class="btn pri">${mode==='up'?'Create account':'Sign in'}</button></div></form></div>`;
+ setTimeout(()=>{const f=$(mode==='up'?'#ac-biz':'#ac-email');if(f)f.focus()},30)}
+function acctPanel(){const sh=ACCT.shop,live=isLive(),pay=sh.payments||{};
+ $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal acct-modal" role="dialog" aria-label="Your shop"><div class="modal-h"><div><h2>${esc(sh.name)}</h2><p class="muted">Signed in as ${esc(ACCT.user.email)}</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+  <div class="acct-card"><b>Your site</b>${live?`<p>Live at <a href="${esc(liveUrl())}" target="_blank" rel="noopener">${esc(liveUrl().replace(/^https?:\/\//,''))}</a>. Last published ${esc(new Date(sh.published.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'<p>Not published yet. Publishing puts this design online and opens your store for real orders.</p>'}
+   ${sh.active?`<button type="button" class="btn pri" data-pubsite>${live?'Publish changes':'Publish my site'}</button>`:`<p>Your site goes online once your plan is paid. Use the same email (${esc(ACCT.user.email)}) when you check out.</p><button type="button" class="btn pri" data-acctplans>Choose a plan</button>`}</div>
+  <div class="acct-card"><b>Card payments</b><p>${pay.chargesEnabled?'Connected. Card payments go straight to your bank account.':pay.connected?'Almost there: finish the payment setup to take cards.':'Not set up yet. Until then shoppers can order and pay at pickup.'}</p><span id="payConnect"></span></div>
+  <div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn sm" data-signout>Sign out</button></div></div></div>`;
+ document.dispatchEvent(new CustomEvent('twp:acctpanel',{detail:ACCT}))}
+async function publishSite(btn){if(!ACCT){openAcct('up');return}
+ if(!shopSecs().length&&!confirm('This design has no Online store section. Publish it anyway?'))return;
+ shopSecs();if(btn){btn.disabled=true;btn.textContent='Publishing…'}
+ try{const d=await acctApi('/api/shop/site',{method:'PUT',body:{design:{...designData(),hours:state.hours}}});ACCT.shop=d.shop;applyStock(d.stock);save();acctPaint();
+  closeModal();toast(`Your site is live at ${liveUrl().replace(/^https?:\/\//,'')}`,{label:'Open it',fn:()=>window.open(liveUrl(),'_blank','noopener')});liveRefresh()}
+ catch(e){if(btn){btn.disabled=false;btn.textContent='Try again'}
+  if(e.data&&e.data.code==='plan_needed'){closeModal();toast(e.message,{label:'See plans',fn:()=>{state.tab='plans';hard()}});return}toast(e.message)}}
+function livePushStock(xs){if(!isLive())return;const counts={};
+ xs.forEach(x=>{if(!x||!x.id)return;const vs=x.vstock&&typeof x.vstock==='object'?x.vstock:{};const keys=Object.keys(vs);
+  keys.forEach(vk=>{counts[x.id+'|'+vk]=hasV(vs[vk])?+vs[vk]:null});counts[x.id]=keys.some(vk=>hasV(vs[vk]))?null:hasV(x.stock)?+x.stock:null});
+ if(Object.keys(counts).length)acctApi('/api/shop/stock',{method:'PUT',body:{counts}}).catch(e=>toast('Stock not saved online: '+e.message))}
+function liveBar(){if(SITE)return'';
+ if(!ACCT)return `<div class="live-bar">${ic('info',16)}<span>These are preview orders. <b>Sign in and publish your site</b> to take real orders from shoppers.</span><button type="button" class="od-btn gold" data-acct>Sign in</button></div>`;
+ if(!isLive())return `<div class="live-bar">${ic('info',16)}<span>Publish your site to open your store for real orders.</span><button type="button" class="od-btn gold" data-pubsite>Publish my site</button></div>`;
+ return `<div class="live-bar on"><i class="dot live"></i><span>Live at <a href="${esc(liveUrl())}" target="_blank" rel="noopener">${esc(liveUrl().replace(/^https?:\/\//,''))}</a>. Orders and stock here are real.</span><button type="button" class="od-btn ghost" data-pubsite>Publish changes</button></div>`}
+storePanel=(o=>function(){return o.apply(this,arguments).replace('<div class="stp">','<div class="stp">'+liveBar())})(storePanel);
+// the studio's main menu (the logo button) has the account and Publish, since the top bar is hidden while designing
+appMenuHtml=(o=>function(){const h=o.apply(this,arguments),i=h.indexOf('<div class="obm-sep"></div>');
+ const acct=ACCT?obItem('data-acct','user',esc(ACCT.shop.name),isLive()?'Your site is live':'Signed in')+obItem('data-pubsite','upload',isLive()?'Publish changes':'Publish my site',isLive()?'Update your live site':'Put this design online and take orders'):obItem('data-acct','user','Sign in','Publish your site and take real orders');
+ return i<0?h+acct:h.slice(0,i)+'<div class="obm-sep"></div>'+acct+h.slice(i)})(appMenuHtml);
+ordStatus=(o0=>function(no,st){const o=LIVE_ORDERS&&LIVE_ORDERS.find(x=>x.no===no&&x.srv);if(!o)return o0.apply(this,arguments);if(o.status===st)return;const was=o.status;o.status=st;stRe();
+ acctApi('/api/shop/orders/'+o.srv,{method:'PATCH',body:{status:st}}).then(()=>{toast(`Order #${no}: ${ORD_ST[st]}`);liveRefresh()}).catch(e=>{o.status=was;stRe();toast(e.message)})})(ordStatus);
+document.addEventListener('click',e=>{const t=e.target;if(!(t instanceof Element))return;let el;
+ if(t.closest('[data-acct]')){e.preventDefault();openAcct();return}
+ if(el=t.closest('[data-acctmode]')){e.preventDefault();openAcct(el.dataset.acctmode);return}
+ if(el=t.closest('[data-pubsite]')){e.preventDefault();publishSite(el);return}
+ if(t.closest('[data-acctplans]')){e.preventDefault();closeModal();setTab('plans');return}
+ if(t.closest('[data-signout]')){e.preventDefault();acctApi('/api/account/logout',{method:'POST'}).catch(()=>{}).then(()=>{ACCT=null;LIVE_ORDERS=null;liveSig='';closeModal();acctPaint();stRe();toast('Signed out')});return}});
+document.addEventListener('submit',async e=>{const f=e.target;if(!(f instanceof Element)||f.id!=='acctForm')return;e.preventDefault();
+ const up=f.dataset.mode==='up',err=$('#acErr'),b=f.querySelector('[type=submit]');err.hidden=true;b.disabled=true;
+ try{ACCT=await acctApi(up?'/api/account/signup':'/api/account/login',{method:'POST',body:{email:$('#ac-email').value,password:$('#ac-pw').value,business:up?$('#ac-biz').value:undefined}});
+  acctPaint();closeModal();toast(up?'Account created. Publish your site when you’re ready.':`Welcome back, ${ACCT.shop.name}`);liveRefresh();stRe()}
+ catch(x){err.textContent=x.message;err.hidden=false;b.disabled=false}});
+// inventory edits in the Store panel go to the server once the site is live
+document.addEventListener('change',e=>{const t=e.target;if(!isLive()||!(t instanceof Element)||!t.closest('#v-dashboard'))return;let sid,k;
+ if(t.matches('[data-inv]')){const p=t.dataset.inv.split('|');if(p[2]!=='stock')return;[sid,k]=p}else if(t.matches('[data-vst]'))[sid,k]=t.dataset.vst.split('|');else return;
+ const x=spSec(sid)?.data.items[+k];if(x)livePushStock([x])});
+document.addEventListener('click',e=>{const el=e.target instanceof Element&&e.target.closest('[data-vstoff]');if(!el||!isLive())return;const[sid,k]=el.dataset.vstoff.split('|');setTimeout(()=>livePushStock([spSec(sid)?.data.items[+k]]),0)});
+setInterval(()=>{if(isLive()&&state.tab==='dashboard'&&!document.hidden)liveRefresh()},30000);
+
+/* the shop's own site at /s/<slug> */
+function spPayOpts(t,d){const later=t.m==='pickup'&&d.payLater==='yes'?[['later','Pay at pickup']]:[];
+ if(!SITE)return [['card','Card, Apple Pay or Google Pay'],['paypal','PayPal or Venmo'],...later];
+ return [...(SITE_CARDS?[['card','Card, Apple Pay or Google Pay']]:[]),...later]}
+const siteDevice=()=>innerWidth<=760?'phone':innerWidth<1024?'tablet':'desktop';
+async function refreshSiteStock(){try{applyStock(await acctApi(`/api/sites/${SITE}/stock`),true);renderSites();if(SPV)spPaint(true)}catch(e){}}
+async function sitePlace(){const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.name||'').trim(),em=(F.email||'').trim();if(!nm||!/^\S+@\S+\.\S+$/.test(em)){toast('Add your name and a valid email');return}
+ const opts=spPayOpts(t,d),pay=opts.some(o=>o[0]===F.pay)?F.pay:(opts[0]||[])[0];if(!pay){toast('This shop isn’t taking online orders yet. Please call to order.');return}
+ const when=t.m==='ship'?'':`${dayLbl(fromIso(F.date))} at ${slotLbl(F.slot)}`,btn=$('#spForm .sp-go'),label=btn&&btn.textContent;if(btn){btn.disabled=true;btn.textContent=pay==='card'?'Opening secure payment…':'Placing your order…'}
+ try{const r=await acctApi(`/api/sites/${SITE}/orders`,{method:'POST',body:{order:{name:nm,email:em,phone:F.phone||'',addr:F.addr||'',method:t.m,date:F.date||'',slot:F.slot||'',when,note:F.note||'',code:F.code||'',pay,
+   lines:CART.map(l=>({id:l.pid,variant:l.vk||'',qty:l.qty,sub:l.sub,every:l.every,opts:l.opts}))}}});
+  if(r.pay&&r.pay.url){location.href=r.pay.url;return}
+  CART=[];cartSave();SPV.step='done';SPV.done={...r.order,email:em};refreshSiteStock();spPaint()}
+ catch(e){if(btn){btn.disabled=false;btn.textContent=label}toast(e.message);if(e.status===409)refreshSiteStock()}}
+async function bootSite(){document.body.classList.add('site-mode');let d;
+ try{d=await acctApi('/api/sites/'+SITE)}catch(e){document.body.innerHTML=`<main class="site-missing"><h1>This site isn’t available</h1><p>${esc(e.status===404?'It may not be published yet. Check the address and try again.':'Please try again in a minute.')}</p></main>`;return}
+ const x=d.design;Object.assign(state,{pages:x.pages||null,pageId:x.pageId||'home',brand:x.brand,sections:x.sections,biz:x.biz||state.biz,hours:x.hours||state.hours,started:true,announce:x.announce||state.announce,ads:x.ads||null,selected:null,tab:'builder',onboarded:true,device:siteDevice(),libOpen:false,inspOpen:false});
+ SITE_TAX=+d.shop.taxRate||0;SITE_CARDS=!!d.shop.cards;document.title=d.shop.name;FULL={native:false,site:true};document.body.classList.add('full-on');
+ pagesInit();shopSecs();applyStock(d.stock||{},true);hard();
+ addEventListener('resize',()=>{const v=siteDevice();if(v!==state.device){state.device=v;hard()}else fitDevice()});
+ const q=new URLSearchParams(location.search),paid=q.get('paid');
+ if(paid)acctApi(`/api/sites/${SITE}/orders/${encodeURIComponent(paid)}`).then(o=>{CART=[];cartSave();renderSites();SPV={view:'cart',step:'done',f:{},done:o};spPaint()}).catch(()=>{});
+ else if(q.get('pay')==='cancel')toast('Payment cancelled. Your cart is still here.');
+ if(paid||q.get('pay'))history.replaceState(null,'',location.pathname)}
+fullOff=(o=>function(){if(SITE)return;return o.apply(this,arguments)})(fullOff);
+fitDevice=(o=>function(){o.apply(this,arguments);const d=$('#device');if(SITE&&d){d.style.zoom='';d.style.width='100%';d.style.maxWidth='none';d.classList.remove('fitted')}})(fitDevice);
+if(!SITE)acctApi('/api/account/me').then(d=>{ACCT=d;acctPaint();liveRefresh()}).catch(()=>acctPaint());
+
 /* ---------- init ---------- */
+if(SITE)bootSite();else{
 window.addEventListener('resize',()=>{if(state.tab==='dashboard')fitMini();if(!$('#v-start').hidden)fitObMinis()});
 const h=(location.hash||'').slice(1);if(['builder','designs','dashboard','plans','admin'].includes(h))state.tab=h;if(h==='quote'||h==='storage')state.tab='plans';
 designsLoad();
@@ -3784,6 +3907,8 @@ pagesInit();
 if(!state.announce||state.announce.v!==2)state.announce={on:false,text:'',v:2,style:'bar',speed:'normal',size:'md',where:'all',close:false};
 hard();
 if(h==='quote')openQuote();
-if(h==='storage')openStorage();
+// wait for the ways to pay so the form can offer them
+if(h==='storage')(window.TWP&&TWP.payReady||Promise.resolve()).then(openStorage);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(state.tab==='dashboard')fitMini()});
+}
 })();
