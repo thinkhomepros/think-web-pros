@@ -50,6 +50,14 @@ docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... -e ADMIN_TOKEN=... -v twp-data:
 
 Before taking real orders, add Upstash Redis under **Storage** so orders last; without it they go to the function's temporary disk and disappear. Vercel caps request bodies at 4.5 MB, so an order whose design has large photos is sent without the design (it is marked `designTooLarge`) and payment still goes ahead.
 
+## Register (POS)
+
+`/pos` is the in-person register and `/kitchen` the kitchen screen: installable web apps that keep working offline.
+Product grid with options and variants, discounts, tips, split payments, cash with drawer counts, receipts, refunds,
+staff PINs and roles, time clock, end-of-day reports, and Stripe Terminal card readers (server-driven, with Stripe's
+simulated reader in test mode). Products and stock are shared with the online store. Server code: `server/pos.js`,
+`server/terminal.js`. Setup steps: [docs/pos-setup.md](docs/pos-setup.md).
+
 ## API
 
 | Method | Path | Notes |
