@@ -2,7 +2,7 @@ import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createApp } from '../server/app.js';
 import { createDb } from '../server/db.js';
-import { checkPin, cleanItem, hashPin, itemsFromCatalog, sellStock } from '../server/pos.js';
+import { checkPin, cleanItem, hashPin, itemsFromCatalog, kitchenForOrder, sellStock } from '../server/pos.js';
 import { createTerminal, formBody } from '../server/terminal.js';
 import { catalogFromDesign } from '../server/shop.js';
 import * as C from '../web/js/pos-core.js';
@@ -253,6 +253,22 @@ describe('register pieces', () => {
     assert.equal(items[1].track, false);
   });
 
+  test('online pickup orders send their kitchen items to the kitchen screen; shipped ones never do', async () => {
+    const db = createDb();
+    const shop = { id: 's1', name: 'Bakery' };
+    const order = { id: 'o1', no: 7, name: 'Ana', method: 'pickup', when: 'Today 3pm', lines: [{ id: 'bun', name: 'Bun', qty: 2, variant: '' }, { id: 'mug', name: 'Mug', qty: 1 }] };
+    await kitchenForOrder(db, shop, order);
+    assert.equal((await db.zrange('shop:s1:kitchen')).length, 0, 'kitchen screen is off');
+    await db.set('shop:s1:pos', { settings: { kitchenOn: true } });
+    await db.set('shop:s1:pos-catalog', { items: [], overrides: { bun: { kitchen: true } } });
+    await kitchenForOrder(db, shop, { ...order, id: 'o2', method: 'ship' });
+    await kitchenForOrder(db, shop, order);
+    await kitchenForOrder(db, shop, order);
+    assert.deepEqual(await db.zrange('shop:s1:kitchen'), ['web-o1']);
+    const t = await db.get('shop:s1:ticket:web-o1');
+    assert.equal(t.source, 'web');
+    assert.deepEqual(t.lines.map((l) => [l.name, l.qty]), [['Bun', 2]]);
+  });
   test('Stripe form bodies nest like Stripe expects', () => {
     assert.equal(decodeURIComponent(formBody({ a: { b: 1 }, c: ['x'], d: undefined }).toString()), 'a[b]=1&c[0]=x');
   });

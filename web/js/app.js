@@ -6,7 +6,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const uid=()=>Math.random().toString(36).slice(2,9);
 const clone=o=>JSON.parse(JSON.stringify(o));
 // a published shop's site (/s/<slug>): shoppers see the site only, nothing is saved in their browser but the cart
-const SITE=(window.TWP&&TWP.site)||null;let SITE_TAX=0,SITE_CARDS=false;
+const SITE=(window.TWP&&TWP.site)||null;let SITE_TAX=0,SITE_CARDS=false,SITE_EMAILS=false;
 const money=(n,dec)=>{n=Number(n)||0;const d=dec!=null?dec:(Math.round(n*100)%100?2:0);return (n<0?'-$':'$')+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d})};
 const getPath=(o,p)=>p.split('.').reduce((a,k)=>a==null?a:a[k],o);
 function setPath(o,p,v){const ks=p.split('.');const last=ks.pop();const t=ks.reduce((a,k)=>a[k],o);if(t)t[last]=v;}
@@ -3061,7 +3061,7 @@ function spTotals(d){const F=SPV.f,sub=CART.reduce((a,l)=>a+l.unit*l.qty,0),m=F.
  disc=Math.round(disc*100)/100;const tax=SITE_TAX?Math.round((sub-disc)*SITE_TAX)/100:0;return{sub,fee,disc,tax,total:Math.max(0,sub-disc+fee+tax),m,code}}
 function spCartView(){const d=spStore(),F=SPV.f,t=spTotals(d),n=cartCount(),ms=spMethods(d);
  const head=`<div class="sp-dh"><h2>${SPV.step==='done'?'Order placed':SPV.step==='details'?'Checkout':`Your cart <small>(${n})</small>`}</h2><button type="button" class="sp-x" data-spclose aria-label="Close" data-spfocus>${ic('x',20)}</button></div>`;
- if(SPV.step==='done'){const o=SPV.done;return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Order placed">${head}<div class="sp-scroll"><div class="sp-done">${ic('check',30)}<h3>Thanks, ${esc(o.name.split(' ')[0]||'friend')}!</h3><p>Order <b>#${o.no}</b> is in. ${o.method==='ship'?'We will email tracking when it ships.':o.method==='delivery'?`We will deliver it ${esc(o.when)}.`:`It will be ready for pickup ${esc(o.when)}.`}</p><p class="muted">A receipt is on its way to ${esc(o.email)}.</p>${EDIT_DEMO()}<button type="button" class="sbtn" data-spclose>Keep shopping</button></div></div></aside>`}
+ if(SPV.step==='done'){const o=SPV.done;return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Order placed">${head}<div class="sp-scroll"><div class="sp-done">${ic('check',30)}<h3>Thanks, ${esc(o.name.split(' ')[0]||'friend')}!</h3><p>Order <b>#${o.no}</b> is in. ${o.method==='ship'?'We will email tracking when it ships.':o.method==='delivery'?`We will deliver it ${esc(o.when)}.`:`It will be ready for pickup ${esc(o.when)}.`}</p>${!SITE||SITE_EMAILS?`<p class="muted">A receipt is on its way to ${esc(o.email)}.</p>`:'<p class="muted">Keep your order number handy for pickup.</p>'}${EDIT_DEMO()}<button type="button" class="sbtn" data-spclose>Keep shopping</button></div></div></aside>`}
  if(!CART.length)return `<div class="sp-bg" data-spclose></div><aside class="sp-drawer" role="dialog" aria-modal="true" aria-label="Cart">${head}<div class="sp-scroll"><div class="sp-done">${ic('bag',30)}<h3>Your cart is empty</h3><p class="muted">Tap a product to see sizes, flavors and photos.</p><button type="button" class="sbtn" data-spclose>Start shopping</button></div></div></aside>`;
  const freeBar=t.m==='ship'&&num$(d.freeOver)?(()=>{const left=num$(d.freeOver)-t.sub;return `<div class="sp-free">${left>0?`You are <b>${money(left,2)}</b> away from free shipping`:`${ic('check',14)} You get free shipping`}<span><i style="width:${Math.min(100,t.sub/num$(d.freeOver)*100)}%"></i></span></div>`})():'';
  const lines=CART.map((l,i)=>{const s=spSec(l.sid),x=s&&s.data.items[l.k];return `<div class="sp-line"><div class="sp-lth">${x&&x.image?mediaHtml(x.image,true):ic('bag',18)}</div><div class="sp-ltx"><b>${esc(l.name)}</b>${l.opts?`<small>${esc(l.opts)}</small>`:''}${l.sub?`<small class="sp-subtag">${ic('repeat',11)} ${esc(l.every)}</small>`:''}${l.pre?`<small class="sp-subtag">${ic('calendar',11)} Preorder · ${+l.lead||0} days notice</small>`:''}<span class="sp-qty sm"><button type="button" data-spline="${i}|-1" aria-label="Fewer">${ic('minus',13)}</button><b>${l.qty}</b><button type="button" data-spline="${i}|1" ${l.fixed?'disabled':''} aria-label="More">${ic('plus',13)}</button></span></div><div class="sp-lpr"><b>${money(l.unit*l.qty,2)}</b><button type="button" class="sp-rm" data-sprm="${i}">Remove</button></div></div>`}).join('');
@@ -3197,7 +3197,8 @@ function csvParse(t){const rows=[];let r=[],c='',q=false;for(let i=0;i<t.length;
 const INV_COLS=['name','collection','price','compare','stock','daily','badge','kind','desc','opt1','opt1v','opt2','opt2v','preorder','lead'];
 const stPill=x=>{const n=stockOf(x);if(n==null)return hasV(x.daily)?`<span class="stp-pill">${esc(x.daily)}/day</span>`:'<span class="stp-pill mut">Not tracked</span>';return n<=0?'<span class="stp-pill bad">Sold out</span>':n<=lowAt()?`<span class="stp-pill warn">Low · ${n}</span>`:`<span class="stp-pill ok">${n} in stock</span>`};
 const stBtn=(o)=>{const nx=o.status==='new'?['preparing','Start preparing']:o.status==='preparing'?(o.method==='ship'?['shipped','Mark shipped']:['ready',o.method==='delivery'?'Out for delivery':'Ready for pickup']):o.status==='ready'||o.status==='shipped'?['done','Complete']:null;return nx?`<button type="button" class="od-btn" data-ostep="${o.no}|${nx[0]}">${nx[1]}</button>`:''};
-const whenTxt=o=>o.method==='ship'?'Shipping':`${o.method==='delivery'?'Delivery':'Pickup'} ${o.when||''}`;
+// register sales (method 'in-store', from the POS) show as In store and stay off the pickup list
+const whenTxt=o=>o.method==='in-store'?'In store':o.method==='ship'?'Shipping':`${o.method==='delivery'?'Delivery':'Pickup'} ${o.when||''}`;
 
 function stOverview(){const O=shopOrders().filter(liveO),sales=O.reduce((a,o)=>a+o.total,0),items=O.reduce((a,o)=>a+o.lines.reduce((b,l)=>b+l.qty,0),0),nw=shopOrders().filter(o=>o.status==='new').length;
  const top={};O.forEach(o=>o.lines.forEach(l=>{top[l.name]=top[l.name]||{q:0,r:0};top[l.name].q+=l.qty;top[l.name].r+=l.qty*l.unit}));const T=Object.entries(top).sort((a,b)=>b[1].r-a[1].r).slice(0,5),mx=T.length?T[0][1].r:1;
@@ -3228,9 +3229,9 @@ function stInventory(){const P=allProds(),cols=[...new Set(P.map(p=>String(p.x.c
   ${cb.length>1?`<details class="stp-var" data-stvar="${id}"${STVOPEN.has(id)?' open':''}><summary>${vs?'Stock by '+pOpts(x).map(g=>g.name.toLowerCase()).join(' and '):'Track stock by '+pOpts(x).map(g=>g.name.toLowerCase()).join(' and ')}</summary><div class="stp-vg">${cb.map(c=>`<label><span>${esc(c)}</span><input type="number" min="0" data-vst="${id}|${esc(c)}" value="${esc(x.vstock&&x.vstock[c]!=null?x.vstock[c]:'')}" placeholder="—"></label>`).join('')}</div>${vs?`<button type="button" class="od-btn ghost" data-vstoff="${id}">Stop tracking by ${esc(pOpts(x)[0].name.toLowerCase())}</button>`:'<p class="mut">Fill in counts and shoppers see which sizes or flavors are sold out.</p>'}</details>`:''}</div>`}).join('')}</div>
  <p class="mut">Leave stock empty for things you do not count. Sold-out products can't be added to a cart. Orders take stock off; cancelling an order puts it back.</p>`}
 function stProduction(){const today=new Date();today.setHours(0,0,0,0);const days=[];for(let i=0;days.length<8&&i<30;i++){const d=new Date(today);d.setDate(d.getDate()+i);if(spOpenDay(d)||i===0)days.push(d)}
- if(!STD)STD=isoD(days[0]);const O=shopOrders().filter(o=>liveO(o)&&o.date===STD&&o.method!=='ship').sort((a,b)=>String(a.slot).localeCompare(String(b.slot)));
+ if(!STD)STD=isoD(days[0]);const O=shopOrders().filter(o=>liveO(o)&&o.date===STD&&o.method!=='ship'&&o.method!=='in-store').sort((a,b)=>String(a.slot).localeCompare(String(b.slot)));
  const make={};O.forEach(o=>o.lines.forEach(l=>{const key=l.name+(l.opts?' · '+l.opts:'');make[key]=(make[key]||0)+l.qty}));const slots={};O.forEach(o=>(slots[o.slot||'Any time']=slots[o.slot||'Any time']||[]).push(o));
- return `<div class="stp-tools"><div class="stp-days">${days.map(d=>{const k=isoD(d),n=shopOrders().filter(o=>liveO(o)&&o.date===k&&o.method!=='ship').length;return `<button type="button" class="${k===STD?'on':''}" data-std="${k}"><small>${k===isoD(today)?'Today':d.toLocaleDateString('en-US',{weekday:'short'})}</small><b>${d.getDate()}</b>${n?`<i>${n}</i>`:''}</button>`}).join('')}</div><button type="button" class="od-btn ghost" data-stprint>Print</button></div>
+ return `<div class="stp-tools"><div class="stp-days">${days.map(d=>{const k=isoD(d),n=shopOrders().filter(o=>liveO(o)&&o.date===k&&o.method!=='ship'&&o.method!=='in-store').length;return `<button type="button" class="${k===STD?'on':''}" data-std="${k}"><small>${k===isoD(today)?'Today':d.toLocaleDateString('en-US',{weekday:'short'})}</small><b>${d.getDate()}</b>${n?`<i>${n}</i>`:''}</button>`}).join('')}</div><button type="button" class="od-btn ghost" data-stprint>Print</button></div>
  <div class="stp-print"><h3>${dayLbl(fromIso(STD))} · ${O.length} order${O.length===1?'':'s'}</h3><div class="stp-2"><div class="w"><div class="w-h"><h3>What to make</h3></div>${Object.keys(make).length?Object.entries(make).sort((a,b)=>b[1]-a[1]).map(([n,q])=>`<div class="w-row"><span class="t"><b>${esc(n)}</b></span><b class="num">× ${q}</b></div>`).join(''):'<p class="mut">No orders for this day yet.</p>'}</div>
  <div class="w"><div class="w-h"><h3>Pickup and delivery schedule</h3></div>${Object.entries(slots).map(([t,os])=>`<div class="stp-slot"><b>${esc(slotLbl(t))}</b>${os.map(o=>`<div class="w-row"><span class="t"><b>#${o.no} · ${esc(o.name)}${o.method==='delivery'?' · Delivery':''}</b><span>${o.lines.map(l=>l.qty+'× '+l.name).join(', ')}${o.note?' · “'+esc(o.note)+'”':''}</span></span><span class="stp-st st-${o.status}">${ORD_ST[o.status]}</span>${stBtn(o)}</div>`).join('')}</div>`).join('')||'<p class="mut">Nothing scheduled.</p>'}</div></div></div>`}
 function stCodes(){const s=shopSecs()[0];if(!s)return[];return String(s.data.codes||'').split(/\n|,/).map(r=>{const[a,b]=r.split('=').map(x=>(x||'').trim());if(!a)return null;return{code:a.toUpperCase(),type:/free\s*ship/i.test(b||'')?'ship':/%/.test(b||'')?'pct':'amt',val:num$(b)}}).filter(Boolean)}
@@ -3817,6 +3818,7 @@ function openAcct(mode){if(ACCT){acctPanel();return}mode=mode||'in';
   ${mode==='up'?`<label class="fld"><span>Business name</span><input type="text" id="ac-biz" required maxlength="80" autocomplete="organization" value="${esc(state.brand&&state.brand.name||'')}"></label>`:''}
   <label class="fld"><span>Email</span><input type="email" id="ac-email" required autocomplete="email"></label>
   <label class="fld"><span>Password</span><input type="password" id="ac-pw" required minlength="${mode==='up'?8:1}" autocomplete="${mode==='up'?'new-password':'current-password'}">${mode==='up'?'<small class="muted">At least 8 characters.</small>':''}</label>
+  ${mode==='in'?'<p style="margin:-4px 0 10px"><button type="button" class="linkbtn" data-acctforgot>Forgot your password?</button></p>':''}
   <p class="acct-err" id="acErr" role="alert" hidden></p>
   <div class="row" style="justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px"><button type="button" class="btn sm" data-acctmode="${mode==='up'?'in':'up'}">${mode==='up'?'I already have an account':'Create an account'}</button><button type="submit" class="btn pri">${mode==='up'?'Create account':'Sign in'}</button></div></form></div>`;
  setTimeout(()=>{const f=$(mode==='up'?'#ac-biz':'#ac-email');if(f)f.focus()},30)}
@@ -3824,7 +3826,12 @@ function acctPanel(){const sh=ACCT.shop,live=isLive(),pay=sh.payments||{};
  $('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><div class="modal acct-modal" role="dialog" aria-label="Your shop"><div class="modal-h"><div><h2>${esc(sh.name)}</h2><p class="muted">Signed in as ${esc(ACCT.user.email)}</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
   <div class="acct-card"><b>Your site</b>${live?`<p>Live at <a href="${esc(liveUrl())}" target="_blank" rel="noopener">${esc(liveUrl().replace(/^https?:\/\//,''))}</a>. Last published ${esc(new Date(sh.published.at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))}.</p>`:'<p>Not published yet. Publishing puts this design online and opens your store for real orders.</p>'}
    ${sh.active?`<button type="button" class="btn pri" data-pubsite>${live?'Publish changes':'Publish my site'}</button>`:`<p>Your site goes online once your plan is paid. Use the same email (${esc(ACCT.user.email)}) when you check out.</p><button type="button" class="btn pri" data-acctplans>Choose a plan</button>`}</div>
-  <div class="acct-card"><b>Card payments</b><p>${pay.chargesEnabled?'Connected. Card payments go straight to your bank account.':pay.connected?'Almost there: finish the payment setup to take cards.':'Not set up yet. Until then shoppers can order and pay at pickup.'}</p><span id="payConnect"></span></div>
+  <div class="acct-card" id="payCard">${payCardHtml(pay)}</div>
+  <form class="acct-card acct-set" id="shopSetForm"><b>Orders and tax</b>
+   <label class="fld"><span>Sales tax rate (%)</span><input type="number" id="ss-tax" min="0" max="20" step="0.001" inputmode="decimal" value="${esc(sh.taxRate||0)}"><small class="muted">Added to goods at checkout. Use your city and state's combined rate.</small></label>
+   <label class="acct-chk"><input type="checkbox" id="ss-mail" ${(sh.settings||{}).orderEmails===false?'':'checked'}> Email me each new order at ${esc(sh.email)}</label>
+   <label class="fld"><span>Text new orders to (optional)</span><input type="tel" id="ss-phone" autocomplete="tel" placeholder="(207) 555-0142" value="${esc((sh.settings||{}).alertPhone||'')}"></label>
+   <button type="submit" class="btn sm">Save</button></form>
   <div class="row" style="justify-content:flex-end;margin-top:6px"><button type="button" class="btn sm" data-signout>Sign out</button></div></div></div>`;
  document.dispatchEvent(new CustomEvent('twp:acctpanel',{detail:ACCT}))}
 async function publishSite(btn){if(!ACCT){openAcct('up');return}
@@ -3834,6 +3841,28 @@ async function publishSite(btn){if(!ACCT){openAcct('up');return}
   closeModal();toast(`Your site is live at ${liveUrl().replace(/^https?:\/\//,'')}`,{label:'Open it',fn:()=>window.open(liveUrl(),'_blank','noopener')});liveRefresh()}
  catch(e){if(btn){btn.disabled=false;btn.textContent='Try again'}
   if(e.data&&e.data.code==='plan_needed'){closeModal();toast(e.message,{label:'See plans',fn:()=>{state.tab='plans';hard()}});return}toast(e.message)}}
+// card payments: each shop connects its own Stripe account (server/connect.js); money goes straight to the owner
+function payCardHtml(p){const head='<b>Card payments</b>';
+ if(p.available===false)return head+'<p>Card payments aren’t switched on for Think Web Pros yet. Shoppers can order and pay at pickup.</p>';
+ if(p.chargesEnabled)return head+`<p>${ic('check',14)} Taking cards, Apple Pay and Google Pay. Money goes straight to your bank through your own Stripe account${p.testMode?' (test mode: no real money moves)':''}.</p><a class="btn sm" href="https://dashboard.stripe.com/" target="_blank" rel="noopener">Open my Stripe dashboard</a>`;
+ if(p.connected)return head+'<p>Almost there. Stripe needs a few more details before you can take cards.</p><button type="button" class="btn pri" data-payconnect>Finish card setup</button>';
+ return head+'<p>Take cards, Apple Pay and Google Pay on your site. Stripe sets up your account in about 5 minutes and pays out to your bank. Until then shoppers can order and pay at pickup.</p><button type="button" class="btn pri" data-payconnect>Set up card payments</button>'}
+async function payStatus(){try{const p=await acctApi('/api/shop/payments');if(p.shop&&ACCT)ACCT.shop=p.shop;const c=$('#payCard');if(c)c.innerHTML=payCardHtml(p);return p}catch(e){return null}}
+document.addEventListener('twp:acctpanel',()=>payStatus());
+function openForgot(){$('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal acct-modal" id="forgotForm" role="dialog" aria-label="Reset your password"><div class="modal-h"><div><h2>Reset your password</h2><p class="muted">We’ll email you a link to choose a new one.</p></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+ <label class="fld"><span>Email</span><input type="email" id="fg-email" required autocomplete="email"></label><p class="acct-err" id="fgMsg" role="alert" hidden></p><div class="row" style="justify-content:space-between;gap:10px"><button type="button" class="btn sm" data-acctmode="in">Back to sign in</button><button type="submit" class="btn pri">Send the link</button></div></form></div>`;setTimeout(()=>$('#fg-email')&&$('#fg-email').focus(),30)}
+function openReset(token){$('#modalRoot').innerHTML=`<div class="modal-bg" data-modalbg><form class="modal acct-modal" id="resetForm" data-token="${esc(token)}" role="dialog" aria-label="Choose a new password"><div class="modal-h"><div><h2>Choose a new password</h2></div><button type="button" class="iconbtn" data-closemodal aria-label="Close">${ic('x',18)}</button></div>
+ <label class="fld"><span>New password</span><input type="password" id="rs-pw" required minlength="8" autocomplete="new-password"><small class="muted">At least 8 characters.</small></label><p class="acct-err" id="rsErr" role="alert" hidden></p><div class="row" style="justify-content:flex-end"><button type="submit" class="btn pri">Save and sign in</button></div></form></div>`;setTimeout(()=>$('#rs-pw')&&$('#rs-pw').focus(),30)}
+document.addEventListener('click',e=>{if(e.target instanceof Element&&e.target.closest('[data-acctforgot]')){e.preventDefault();openForgot()}});
+document.addEventListener('submit',async e=>{const f=e.target;if(!(f instanceof Element))return;
+ if(f.id==='forgotForm'){e.preventDefault();const m=$('#fgMsg'),b=f.querySelector('[type=submit]');b.disabled=true;
+  try{await acctApi('/api/account/forgot',{method:'POST',body:{email:$('#fg-email').value}});m.textContent='If there’s an account for that email, the link is on its way. Check your inbox (and spam).';m.classList.add('ok')}catch(x){m.textContent=x.message;b.disabled=false}m.hidden=false;return}
+ if(f.id==='resetForm'){e.preventDefault();const er=$('#rsErr'),b=f.querySelector('[type=submit]');b.disabled=true;er.hidden=true;
+  try{ACCT=await acctApi('/api/account/reset',{method:'POST',body:{token:f.dataset.token,password:$('#rs-pw').value}});acctPaint();closeModal();toast('Password changed. You’re signed in.');liveRefresh()}catch(x){er.textContent=x.message;er.hidden=false;b.disabled=false}return}
+ if(f.id==='shopSetForm'){e.preventDefault();const b=f.querySelector('[type=submit]');b.disabled=true;
+  try{const d=await acctApi('/api/shop/settings',{method:'PATCH',body:{taxRate:+$('#ss-tax').value||0,settings:{orderEmails:$('#ss-mail').checked,alertPhone:$('#ss-phone').value.trim()}}});ACCT.shop=d.shop;toast('Saved')}catch(x){toast(x.message)}b.disabled=false}});
+document.addEventListener('click',async e=>{const b=e.target instanceof Element&&e.target.closest('[data-payconnect]');if(!b)return;e.preventDefault();b.disabled=true;b.textContent='Opening Stripe…';
+ try{const d=await acctApi('/api/shop/payments/connect',{method:'POST'});location.href=d.url}catch(x){b.disabled=false;b.textContent='Try again';toast(x.message)}});
 function livePushStock(xs){if(!isLive())return;const counts={};
  xs.forEach(x=>{if(!x||!x.id)return;const vs=x.vstock&&typeof x.vstock==='object'?x.vstock:{};const keys=Object.keys(vs);
   keys.forEach(vk=>{counts[x.id+'|'+vk]=hasV(vs[vk])?+vs[vk]:null});counts[x.id]=keys.some(vk=>hasV(vs[vk]))?null:hasV(x.stock)?+x.stock:null});
@@ -3884,7 +3913,7 @@ async function sitePlace(){const d=spStore(),F=SPV.f,t=spTotals(d);const nm=(F.n
 async function bootSite(){document.body.classList.add('site-mode');let d;
  try{d=await acctApi('/api/sites/'+SITE)}catch(e){document.body.innerHTML=`<main class="site-missing"><h1>This site isn’t available</h1><p>${esc(e.status===404?'It may not be published yet. Check the address and try again.':'Please try again in a minute.')}</p></main>`;return}
  const x=d.design;Object.assign(state,{pages:x.pages||null,pageId:x.pageId||'home',brand:x.brand,sections:x.sections,biz:x.biz||state.biz,hours:x.hours||state.hours,started:true,announce:x.announce||state.announce,ads:x.ads||null,selected:null,tab:'builder',onboarded:true,device:siteDevice(),libOpen:false,inspOpen:false});
- SITE_TAX=+d.shop.taxRate||0;SITE_CARDS=!!d.shop.cards;document.title=d.shop.name;FULL={native:false,site:true};document.body.classList.add('full-on');
+ SITE_TAX=+d.shop.taxRate||0;SITE_CARDS=!!d.shop.cards;SITE_EMAILS=!!d.shop.emails;document.title=d.shop.name;FULL={native:false,site:true};document.body.classList.add('full-on');
  pagesInit();shopSecs();applyStock(d.stock||{},true);hard();
  addEventListener('resize',()=>{const v=siteDevice();if(v!==state.device){state.device=v;hard()}else fitDevice()});
  const q=new URLSearchParams(location.search),paid=q.get('paid');
@@ -3893,7 +3922,11 @@ async function bootSite(){document.body.classList.add('site-mode');let d;
  if(paid||q.get('pay'))history.replaceState(null,'',location.pathname)}
 fullOff=(o=>function(){if(SITE)return;return o.apply(this,arguments)})(fullOff);
 fitDevice=(o=>function(){o.apply(this,arguments);const d=$('#device');if(SITE&&d){d.style.zoom='';d.style.width='100%';d.style.maxWidth='none';d.classList.remove('fitted')}})(fitDevice);
-if(!SITE)acctApi('/api/account/me').then(d=>{ACCT=d;acctPaint();liveRefresh()}).catch(()=>acctPaint());
+if(!SITE){const rt=new URLSearchParams(location.search).get('reset');if(rt){history.replaceState(null,'',location.pathname+location.hash);setTimeout(()=>openReset(rt),400)}}
+if(!SITE)acctApi('/api/account/me').then(d=>{ACCT=d;acctPaint();liveRefresh();
+ // back from Stripe's setup pages
+ const c=new URLSearchParams(location.search).get('connect');if(c){history.replaceState(null,'',location.pathname+location.hash);payStatus().then(p=>{toast(p&&p.chargesEnabled?'Card payments are on. Shoppers can pay by card now.':'Stripe still needs a few details. Open your account to finish.',{label:'Open',fn:()=>openAcct()})})}
+}).catch(()=>acctPaint());
 
 /* ---------- init ---------- */
 if(SITE)bootSite();else{

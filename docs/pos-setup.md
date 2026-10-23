@@ -62,7 +62,7 @@ Think Web Pros' cut of each register card payment comes from `POS_FEE_PERCENT` a
   receipt paper size in the print dialog.
 - **Cash drawer**: plug it into the receipt printer and turn on "open drawer when printing" in the printer's settings.
   **Drawer → Open drawer (no sale)** prints a small slip to pop it.
-- **Email receipts**: sign up at resend.com, verify your domain, then set `RESEND_API_KEY` and `RECEIPT_FROM` in Vercel.
+- **Email receipts**: sign up at resend.com, verify your domain, then set `RESEND_API_KEY` and `EMAIL_FROM` (the same ones the online store's receipts use) in Vercel.
 - **Text receipts**: sign up at twilio.com, buy a number, then set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and
   `TWILIO_FROM`. Until these are set, Email and Text open the device's own mail or messages app with the receipt.
 - **Barcode scanners**: any USB or Bluetooth scanner that types like a keyboard. Put the barcode on a product under

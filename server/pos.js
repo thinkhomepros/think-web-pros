@@ -34,6 +34,7 @@ const newKey = () => randomBytes(32).toString('base64url');
 const str = (v, max = 200) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const cents = (v) => (Number.isFinite(+v) ? Math.round(+v) : 0);
 const ok = (v, re) => typeof v === 'string' && re.test(v);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function hashPin(pin, salt = randomBytes(16).toString('hex')) {
   return { salt, hash: pbkdf2Sync(String(pin), salt, PIN_ROUNDS, 32, 'sha256').toString('hex') };
@@ -676,12 +677,15 @@ export function addPosRoutes(app, { db, terminal = null, mailer = null, texter =
     const totalText = `$${((sale.total + sale.tip) / 100).toFixed(2)}`;
     if (email && mailer) {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, 'That email address doesn’t look right.');
-      await mailer.send({ to: email, subject: `Your receipt from ${req.shop.name}`, text: `Thanks for shopping at ${req.shop.name}.\n\nTotal: ${totalText}\nReceipt ${sale.no}: ${url}\n` });
+      await mailer.send({ to: email, replyTo: req.shop.email, subject: `Your receipt from ${req.shop.name}`, html: `<p>Thanks for shopping at ${esc(req.shop.name)}.</p><p>Total: <b>${totalText}</b></p><p><a href="${esc(url)}">See receipt ${esc(sale.no)}</a></p>`, text: `Thanks for shopping at ${req.shop.name}.\n\nTotal: ${totalText}\nReceipt ${sale.no}: ${url}\n` })
+        .catch(() => { throw Object.assign(new Error('The email did not send. Check RESEND_API_KEY and EMAIL_FROM in Vercel.'), { status: 400, code: 'email_failed' }); });
       sent.email = true;
     }
     if (phone && texter) {
       if (phone.replace(/\D/g, '').length < 10) return fail(res, 400, 'That phone number doesn’t look right.');
-      await texter.send({ to: phone, body: `${req.shop.name}: your receipt for ${totalText}: ${url}` });
+      const done = await texter.send({ to: phone, body: `${req.shop.name}: your receipt for ${totalText}: ${url}` })
+        .catch(() => { throw Object.assign(new Error('The text did not send. Check the Twilio settings in Vercel.'), { status: 400, code: 'text_failed' }); });
+      if (!done) return fail(res, 400, 'Texts go to US phone numbers only for now.');
       sent.text = true;
     }
     res.json({ url, sent });
@@ -696,7 +700,7 @@ export function addPosRoutes(app, { db, terminal = null, mailer = null, texter =
   }));
 }
 
-// Online orders can show up on the kitchen screen too: the store's checkout calls this with a ticket.
+// Online orders can show up on the kitchen screen too: the store calls kitchenForOrder once an order is placed.
 export async function addKitchenTicket(db, shopId, ticket) {
   if (await db.claim(`shop:${shopId}:ticket:${ticket.id}`, ticket)) {
     await db.set(`shop:${shopId}:ticket:${ticket.id}`, ticket, { ttlSec: 3 * 86400 });
@@ -704,23 +708,15 @@ export async function addKitchenTicket(db, shopId, ticket) {
   }
 }
 
-/* email and text receipts: Resend for email, Twilio for texts. Each stays off until its keys are set. */
-export function createMailer({ apiKey, from, fetchImpl = fetch } = {}) {
-  if (!apiKey || !from) return null;
-  return {
-    async send({ to, subject, text }) {
-      const r = await fetchImpl('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from, to, subject, text }), signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw Object.assign(new Error('The email did not send. Check RESEND_API_KEY and RECEIPT_FROM.'), { status: 400, code: 'email_failed' });
-    },
-  };
-}
-export function createTexter({ sid, token, from, fetchImpl = fetch } = {}) {
-  if (!sid || !token || !from) return null;
-  return {
-    async send({ to, body }) {
-      const num = to.startsWith('+') ? to : `+1${to.replace(/\D/g, '').slice(-10)}`;
-      const r = await fetchImpl(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Messages.json`, { method: 'POST', headers: { Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ To: num, From: from, Body: body }).toString(), signal: AbortSignal.timeout(10000) });
-      if (!r.ok) throw Object.assign(new Error('The text did not send. Check the Twilio settings.'), { status: 400, code: 'text_failed' });
-    },
-  };
+// An online pickup or delivery order becomes a ticket when the shop uses the kitchen screen. Only the items marked
+// "Send to kitchen" in the register's Products go on it, the same as at the counter. Shipped orders never do.
+export async function kitchenForOrder(db, shop, order) {
+  if (!shop?.id || !order?.id || order.source === 'pos' || order.method === 'ship') return;
+  const [pos, cat] = await db.getMany([`shop:${shop.id}:pos`, `shop:${shop.id}:pos-catalog`]);
+  if (!pos?.settings?.kitchenOn) return;
+  const over = cat?.overrides || {};
+  const lines = (order.lines || []).filter((l) => over[l.id]?.kitchen && l.qty > 0)
+    .map((l) => ({ name: l.name, qty: l.qty, mods: l.opts ? [l.opts] : [], variant: l.variant || '', note: '', done: false }));
+  if (!lines.length) return;
+  await addKitchenTicket(db, shop.id, { id: `web-${order.id}`, no: `#${order.no}`, name: order.name || '', type: order.method === 'delivery' ? 'delivery' : 'pickup', note: [order.when, order.note].filter(Boolean).join(' · '), at: Date.now(), staff: '', lines, status: 'new', source: 'web' });
 }

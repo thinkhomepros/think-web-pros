@@ -4,9 +4,11 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { addAccountRoutes } from './accounts.js';
+import { addConnectRoutes, addConnectWebhook } from './connect.js';
+import { orderHooks } from './notify.js';
 import { createDb } from './db.js';
 import { addImportRoutes } from './importer.js';
-import { addPosRoutes } from './pos.js';
+import { addPosRoutes, kitchenForOrder } from './pos.js';
 import { addReportRoutes, createReportFiles } from './reports.js';
 import { priceOrder, priceQuote } from './catalog.js';
 import { describeSession } from './payments.js';
@@ -34,7 +36,7 @@ function publicPayment(p) {
 // Limits: aiPerMinute/aiPerDay are per visitor; aiDailyTotal caps everyone together so the AI bill can't run away.
 // human is the optional Turnstile check from security.js; counter is where rate limit counts are kept.
 // reports is where "Report a problem" messages are kept (see reports.js).
-export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, pos = {} }) {
+export function createApp({ ai, store, readStore, reports = createReportFiles(path.join(tmpdir(), 'think-web-pros')), reportsPerHour = 5, adminToken, aiPerMinute = 10, aiPerDay = 100, aiDailyTotal = 1000, ordersPerHour = 10, human = null, counter = createCounter(), headers = true, payments = {}, publicUrl, db = createDb(), shopHooks = {}, connect = null, notify = {}, pos = {} }) {
   const { stripe = null, paypal = null, zelle = null } = payments;
   const app = express();
   app.disable('x-powered-by');
@@ -60,6 +62,25 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
       res.status(500).json({ error: 'webhook failed' });
     }
   });
+
+  // card payments for shops go to each shop's own Stripe account (connect.js); emails and the like join via shopHooks
+  const origin = (req) => (publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+  // messages sent outside a request (webhooks) link to the address the site was last reached at
+  let seenOrigin = publicUrl ? publicUrl.replace(/\/$/, '') : '';
+  app.use((req, res, next) => {
+    if (!publicUrl && req.get('host')) seenOrigin = origin(req);
+    next();
+  });
+  const notes = orderHooks({ ...notify, origin: () => seenOrigin });
+  const hooks = {
+    ...notes,
+    ...shopHooks,
+    // an order is confirmed (pay at pickup, or once the card payment lands): receipts, plus anything else that
+    // wants it, like the register's kitchen screen (shopHooks.placed)
+    placed: (shop, order) => Promise.all([notes.placed(shop, order), kitchenForOrder(db, shop, order).catch((err) => console.error(err.message)), shopHooks.placed?.(shop, order)]),
+    ...(connect ? { checkout: (shop, order, req) => connect.checkout(shop, order, origin(req)) } : {}),
+  };
+  addConnectWebhook(app, { connect, db, hooks });
 
   const humanOnly = human ? human.middleware : (req, res, next) => next();
   // Designs carry uploaded logos and photos as data URLs, so orders can be large. Vercel stops bodies over 4.5 MB.
@@ -131,7 +152,6 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
 
   /* ---------- paying for an order ---------- */
   app.use('/api/pay', rateLimit(counter, 'pay', [{ windowSec: 600, max: 60 }]));
-  const origin = (req) => (publicUrl || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
   async function setPayment(id, patch, note) {
     const r = await recordPayment(id, patch, note);
@@ -333,11 +353,14 @@ export function createApp({ ai, store, readStore, reports = createReportFiles(pa
   addImportRoutes(app, { readStore, limit: importLimit });
 
   // owner logins and live shops (accounts.js, shop.js); the register's routes build on the same db
-  addAccountRoutes(app, { db, counter, humanOnly });
-  addShopRoutes(app, { db, counter, humanOnly, hooks: shopHooks });
-  // in-person register and kitchen screen (pos.js). pos: { terminal, mailer, texter, appFee } from pos-env.js
+  addAccountRoutes(app, { db, counter, humanOnly, mailer: notify.mailer || null, origin });
+  addShopRoutes(app, { db, counter, humanOnly, hooks });
+  addConnectRoutes(app, { connect, db, origin });
+  // in-person register and kitchen screen (pos.js). pos: { terminal, appFee } from pos-env.js; receipts use notify's email and texts
   addPosRoutes(app, {
     db,
+    mailer: notify.mailer || null,
+    texter: notify.texter || null,
     ...pos,
     receiptBase: (publicUrl || '').replace(/\/$/, ''),
     pairLimit: rateLimit(counter, 'pos-pair', [{ windowSec: 600, max: 10 }]),

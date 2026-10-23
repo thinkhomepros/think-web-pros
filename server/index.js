@@ -2,6 +2,8 @@ import path from 'node:path';
 import { createAi } from './ai.js';
 import { createApp } from './app.js';
 import { reportsFromEnv } from './reports.js';
+import { connectFromEnv } from './connect.js';
+import { notifyFromEnv } from './notify.js';
 import { dbFromEnv } from './db.js';
 import { paymentsFromEnv } from './env.js';
 import { posFromEnv } from './pos-env.js';
@@ -12,7 +14,7 @@ const port = Number(process.env.PORT) || 3000;
 const ai = createAi();
 const store = storeFromEnv(process.env, path.resolve('data'));
 const payments = paymentsFromEnv();
-const app = createApp({ ai, store, reports: reportsFromEnv(process.env, path.resolve('data')), adminToken: process.env.ADMIN_TOKEN, payments, db: dbFromEnv(process.env, path.resolve('data')), publicUrl: process.env.PUBLIC_URL, pos: posFromEnv(), ...securityFromEnv() });
+const app = createApp({ ai, store, reports: reportsFromEnv(process.env, path.resolve('data')), adminToken: process.env.ADMIN_TOKEN, payments, connect: connectFromEnv(), notify: notifyFromEnv(), db: dbFromEnv(process.env, path.resolve('data')), publicUrl: process.env.PUBLIC_URL, pos: posFromEnv(), ...securityFromEnv() });
 
 app.listen(port, () => {
   console.log(`Think Web Pros Studio running at http://localhost:${port}`);

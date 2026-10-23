@@ -204,7 +204,9 @@ export async function activateShopByEmail(db, email, note) {
 
 /* hooks lets later stages (card payments, emails) join in without this file knowing them:
    hooks.checkout(shop, order, req) -> { url } to send the shopper to pay, or null to finish here
-   hooks.placed(shop, order) runs after an order is saved (receipts, owner alerts) */
+   hooks.placed(shop, order) runs after an order is saved (receipts, owner alerts); for card orders, once paid
+   hooks.status(shop, order) runs when the owner changes an order's status
+   hooks.emails is true when receipts are sent */
 export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) => next(), hooks = {} }) {
   const owner = ownerAuth(db);
   const orderLimit = rateLimit(counter, 'shop-orders', [{ windowSec: 3600, max: 20 }, { windowSec: 86_400, max: 60 }], 'You’ve placed several orders already. Please wait a little and try again.');
@@ -216,12 +218,13 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     const design = req.body?.design;
     if (!design || typeof design !== 'object' || !Array.isArray(design.sections)) return res.status(400).json({ error: 'design is required' });
     const catalog = catalogFromDesign(design);
-    const stock = await db.getStock(req.shop.id);
+    const [stock, before] = await Promise.all([db.getStock(req.shop.id), db.get(`shop:${req.shop.id}:catalog`)]);
     const add = {};
     for (const p of catalog.products) for (const [k, n] of Object.entries(p.start)) if (!(k in stock)) add[k] = n;
-    // counts for products (or sizes) that are gone stop being counted
+    // counts for website products (or sizes) that are gone stop being counted; the register's own items stay
     const keep = new Set(catalog.products.flatMap((p) => Object.keys(p.start)));
-    for (const k of Object.keys(stock)) if (!keep.has(k)) add[k] = null;
+    const web = new Set((before?.products || []).map((p) => p.id).concat(catalog.products.map((p) => p.id)));
+    for (const k of Object.keys(stock)) if (!keep.has(k) && web.has(k.split('|')[0])) add[k] = null;
     try {
       await db.set(`shop:${req.shop.id}:site`, design);
     } catch (err) {
@@ -264,7 +267,9 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     const status = req.body?.status;
     if (!ORDER_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of: ${ORDER_STATUSES.join(', ')}` });
     let putBack = null;
+    let was = null;
     const o = await updateOrder(db, req.shop.id, req.params.id, (x) => {
+      was = x.status;
       // cancelling puts the items back on the shelf, once
       if (status === 'cancelled' && x.status !== 'cancelled' && !x.stockReturned) {
         putBack = x.lines;
@@ -275,6 +280,8 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     });
     if (!o) return res.status(404).json({ error: 'not found' });
     if (putBack) await db.putStock(req.shop.id, putBack);
+    // tell the shopper when it's ready, shipped or cancelled
+    if (was !== status && hooks.status) hooks.status(req.shop, o).catch((err) => console.error('Status note failed:', err.message));
     res.json(o);
   });
 
@@ -283,7 +290,7 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     const shop = await getShopBySlug(db, req.params.slug);
     const design = shop?.published ? await db.get(`shop:${shop.id}:site`) : null;
     if (!design) return res.status(404).json({ error: 'This site isn’t published yet.' });
-    res.json({ shop: { name: shop.name, slug: shop.slug, taxRate: shop.taxRate || 0, cards: Boolean(shop.chargesEnabled) && Boolean(hooks.checkout) }, design, stock: await db.getStock(shop.id) });
+    res.json({ shop: { name: shop.name, slug: shop.slug, taxRate: shop.taxRate || 0, cards: Boolean(shop.chargesEnabled) && Boolean(hooks.checkout), emails: Boolean(hooks.emails) }, design, stock: await db.getStock(shop.id) });
   });
   app.get('/api/sites/:slug/stock', async (req, res) => {
     const shop = await getShopBySlug(db, req.params.slug);
