@@ -57,6 +57,22 @@ To go live: switch to **Live** in Apps & Credentials, create the app there, repl
 
 When a customer picks Zelle they see the amount, where to send it, and their order number to put in the memo. When the money shows up in your bank, open **Admin > Orders > Payments** and click **Mark paid**.
 
+## 6. Card payments for your customers' shops (Stripe Connect)
+
+Sections 3 to 5 are how **your** customers pay **you** for plans. This section lets the shops you build take cards from **their** shoppers. Each shop connects its own Stripe account, so shoppers' money goes straight to the shop's bank, never through yours. Uses the same `STRIPE_SECRET_KEY` from section 3.
+
+1. In Stripe (test mode on), open **Connect** from the left menu (or search "Connect") and click **Get started**. When asked how you'll use Connect, pick the option for a **platform** whose users have their **own Stripe accounts** (Standard accounts). Fill in the **Platform profile** Stripe asks for.
+2. Go to **Developers > Webhooks**, click **Add destination** (or **Add endpoint**), and choose **Events on Connected accounts** (not "Your account"). Enter:
+   - Endpoint URL: `https://think-web-pros.vercel.app/api/stripe/connect-webhook`
+   - Events: `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `charge.refunded`, `account.updated`
+3. Open that webhook, click **Reveal** under **Signing secret**, and add it in Vercel as `STRIPE_CONNECT_WEBHOOK_SECRET`.
+4. Optional: add `SHOP_FEE_PERCENT` (for example `1` for 1%) to take a cut of each shop sale for Think Web Pros. Left out, you take nothing; Stripe's own fee is paid by the shop.
+5. Redeploy.
+
+Then a shop owner signs in to the Studio, opens their name in the main menu, and clicks **Set up card payments**. Stripe walks them through it (about 5 minutes). Once Stripe says yes, their site offers card, Apple Pay and Google Pay at checkout. In test mode, use card `4242 4242 4242 4242`.
+
+A shopper's unpaid card checkout holds the stock for 30 minutes, then the order is cancelled and the items go back on the shelf.
+
 ## Custom quotes
 
 Quote requests appear in **Admin > Orders > Payments** as **Needs a price**. Type the design fee and, if there is one, the monthly price, and click **Set price**. The pay link is copied for you; paste it into an email to the customer. The same **Copy pay link** button works for any unpaid order, such as a customer whose card was declined.
