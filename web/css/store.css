@@ -430,3 +430,10 @@ body.site-mode .device{width:100%!important;max-width:none!important;zoom:1!impo
 .acct-chk{display:flex;gap:8px;align-items:center;font-size:14px}
 .acct-err.ok{color:#1F7A4D}
 .linkbtn{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
+.acct-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 10px;width:100%}
+.acct-grid .fld{margin-bottom:8px}
+.acct-grid input,.acct-grid select{width:100%}
+#shipForm{max-height:90vh;overflow:auto}
+#shipForm .acct-card{justify-items:stretch}
+#shipForm .btn{justify-self:start}
+.sh-rate{padding:4px 0}

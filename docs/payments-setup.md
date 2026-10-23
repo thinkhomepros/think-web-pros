@@ -93,6 +93,20 @@ Shoppers get a receipt and a note when their order is ready, out for delivery, s
 
 Each shop owner sets their own sales tax rate in their account panel (**Orders and tax**). It's added to goods (not delivery or shipping) at checkout and shows on receipts. Owners should use their city and state's combined rate, and file and pay the tax themselves.
 
+## 9. Shipping labels (Shippo)
+
+Shop owners buy postage from the order screen (**Store › Orders › Ship**): they check the address, the box size and weight, pick the cheapest rate, and print a 4×6 label. The order is marked shipped and the shopper gets the tracking link by email.
+
+Each owner uses **their own Shippo account**, so postage is charged to them, not to Think Web Pros. What an owner does:
+
+1. Sign up free at [goshippo.com](https://goshippo.com) and add a payment card there.
+2. In Shippo, go to **Settings › Advanced › API** and click **Generate token** next to *Live token*. Copy it (it starts with `shippo_live_`).
+3. In the studio: **Sign in menu › your shop › Shipping labels**. Paste the token, fill in the ship-from address and usual box, and click **Save**.
+
+Owners who ship some other way can type the carrier and tracking number in the same Ship window instead.
+
+Optional, for you: to let every owner try **test** labels before they sign up, paste your own Shippo **test** token (`shippo_test_…`, same page in Shippo) into Vercel as `SHIPPO_API_KEY` and redeploy. A live token there is ignored, so you're never billed for other people's postage.
+
 ## Custom quotes
 
 Quote requests appear in **Admin > Orders > Payments** as **Needs a price**. Type the design fee and, if there is one, the monthly price, and click **Set price**. The pay link is copied for you; paste it into an email to the customer. The same **Copy pay link** button works for any unpaid order, such as a customer whose card was declined.

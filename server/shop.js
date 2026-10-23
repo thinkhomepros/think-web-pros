@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ownerAuth, publicShop } from './accounts.js';
 import { stockKey } from './db.js';
 import { rateLimit } from './security.js';
+import { trackingUrl } from './shipping.js';
 
 /* ---------- live shops ----------
    An owner publishes their design: the server keeps it (shown at /s/<slug>), reads the products out of its store
@@ -293,12 +294,20 @@ export function addShopRoutes(app, { db, counter, humanOnly = (req, res, next) =
     res.json(orders.map(ownerView));
   });
   app.patch('/api/shop/orders/:id', owner, async (req, res) => {
-    const status = req.body?.status;
+    // { status } and/or { shipping: { carrier, tracking } } for a package the owner sent some other way
+    const ship = req.body?.shipping && typeof req.body.shipping === 'object' ? req.body.shipping : null;
+    const status = req.body?.status || (ship ? 'shipped' : undefined);
     if (!ORDER_STATUSES.includes(status)) return res.status(400).json({ error: `status must be one of: ${ORDER_STATUSES.join(', ')}` });
+    if (ship && !String(ship.tracking || '').trim()) return res.status(400).json({ error: 'Add the tracking number.' });
     let putBack = null;
     let was = null;
     const o = await updateOrder(db, req.shop.id, req.params.id, (x) => {
       was = x.status;
+      if (ship) {
+        const carrier = String(ship.carrier || '').trim().slice(0, 40);
+        const tracking = String(ship.tracking).trim().slice(0, 60);
+        x.shipping = { ...(x.shipping || {}), carrier, tracking, trackingUrl: trackingUrl(carrier, tracking), at: Date.now() };
+      }
       // cancelling puts the items back on the shelf, once
       if (status === 'cancelled' && x.status !== 'cancelled' && !x.stockReturned) {
         putBack = x.lines;

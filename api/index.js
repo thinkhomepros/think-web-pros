@@ -3,6 +3,7 @@ import { createAi } from '../server/ai.js';
 import { createApp } from '../server/app.js';
 import { reportsFromEnv } from '../server/reports.js';
 import { connectFromEnv } from '../server/connect.js';
+import { shippingFromEnv } from '../server/shipping.js';
 import { notifyFromEnv } from '../server/notify.js';
 import { dbFromEnv } from '../server/db.js';
 import { paymentsFromEnv } from '../server/env.js';
@@ -14,4 +15,4 @@ import { securityFromEnv } from '../server/security.js';
 const store = storeFromEnv(process.env, '/tmp/think-web-pros');
 if (!store.durable) console.warn('Orders are kept in /tmp and will be lost. Add Upstash Redis under Vercel Storage.');
 
-export default createApp({ ai: createAi(), store, reports: reportsFromEnv(process.env, '/tmp/think-web-pros'), adminToken: process.env.ADMIN_TOKEN, payments: paymentsFromEnv(), connect: connectFromEnv(), notify: notifyFromEnv(), db: dbFromEnv(process.env, '/tmp/think-web-pros'), publicUrl: process.env.PUBLIC_URL, pos: posFromEnv(), ...securityFromEnv() });
+export default createApp({ ai: createAi(), store, reports: reportsFromEnv(process.env, '/tmp/think-web-pros'), adminToken: process.env.ADMIN_TOKEN, payments: paymentsFromEnv(), connect: connectFromEnv(), notify: notifyFromEnv(), shipping: shippingFromEnv(), db: dbFromEnv(process.env, '/tmp/think-web-pros'), publicUrl: process.env.PUBLIC_URL, pos: posFromEnv(), ...securityFromEnv() });
