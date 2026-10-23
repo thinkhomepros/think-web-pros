@@ -255,6 +255,8 @@
     if (OPEN_TOUR || !inStudio()) return;
     if (store.get('tour') === 'off' || session.get('tourseen')) return;
     if (/[?&]tour=0\b/.test(location.search)) return;
+    // someone who came from a pay link or back from checkout is here to pay, not to tour
+    if (window.TWP && window.TWP.payScreen) return;
     session.set('tourseen', '1');
     setTimeout(function () { if (inStudio()) openTour(true); }, 600);
   }

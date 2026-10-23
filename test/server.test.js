@@ -71,8 +71,10 @@ describe('server', () => {
   });
 
   test('reports whether AI is configured', async () => {
-    assert.deepEqual(await (await fetch(`${live.base}/api/config`)).json(), { ai: true });
-    assert.deepEqual(await (await fetch(`${offline.base}/api/config`)).json(), { ai: false });
+    assert.equal((await (await fetch(`${live.base}/api/config`)).json()).ai, true);
+    const off = await (await fetch(`${offline.base}/api/config`)).json();
+    assert.equal(off.ai, false);
+    assert.deepEqual(off.payments, { card: false, test: false, paypal: null, zelle: null });
   });
 
   test('AI endpoint answers, validates, and rate limits', async () => {

@@ -2,15 +2,19 @@ import path from 'node:path';
 import { createAi } from './ai.js';
 import { createApp } from './app.js';
 import { reportsFromEnv } from './reports.js';
+import { paymentsFromEnv } from './env.js';
 import { securityFromEnv } from './security.js';
-import { createStore } from './store.js';
+import { storeFromEnv } from './store.js';
 
 const port = Number(process.env.PORT) || 3000;
 const ai = createAi();
-const store = createStore(path.resolve(process.env.DATA_DIR || 'data'));
-const app = createApp({ ai, store, reports: reportsFromEnv(process.env, path.resolve('data')), adminToken: process.env.ADMIN_TOKEN, ...securityFromEnv() });
+const store = storeFromEnv(process.env, path.resolve('data'));
+const payments = paymentsFromEnv();
+const app = createApp({ ai, store, reports: reportsFromEnv(process.env, path.resolve('data')), adminToken: process.env.ADMIN_TOKEN, payments, publicUrl: process.env.PUBLIC_URL, ...securityFromEnv() });
 
 app.listen(port, () => {
   console.log(`Think Web Pros Studio running at http://localhost:${port}`);
   console.log(ai ? `AI logo maker: live (${ai.model})` : 'AI logo maker: quick ideas only (set ANTHROPIC_API_KEY for live AI)');
+  const on = [payments.stripe && `cards${payments.stripe.testMode ? ' (test mode)' : ''}`, payments.paypal && `PayPal/Venmo (${payments.paypal.env})`, payments.zelle && 'Zelle'].filter(Boolean);
+  console.log(on.length ? `Payments: ${on.join(', ')}` : 'Payments: none set up (orders are taken without payment)');
 });
